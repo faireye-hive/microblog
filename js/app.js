@@ -1,12 +1,16 @@
-import { extractTagsFromText, extractMentionsFromText, parseEmbeddedJson } from "./utils.js";
+import {
+  extractTagsFromText,
+  extractMentionsFromText,
+  parseEmbeddedJson,
+} from "./utils.js";
 import { buildPostCard, buildRepliesRecursive } from "./render.js";
 import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
-import { 
-    NavbarHTML, 
-    LoginModalHTML, 
-    NewPostSectionHTML,
-    FeedHeaderHTML,
-    SidebarHTML
+import {
+  NavbarHTML,
+  LoginModalHTML,
+  NewPostSectionHTML,
+  FeedHeaderHTML,
+  SidebarHTML,
 } from "./templates.js";
 import { APP_ID, API_URL } from "./config.js";
 
@@ -15,22 +19,142 @@ let allPosts = [];
 let renderedCount = 0;
 const BATCH_SIZE = 50;
 let loading = false;
+let voteCounts = {}; // NOVO: Estrutura para armazenar as contagens de votos
+
+const VOTE_CUSTOM_ID = "micro.fair.interation";
+const VOTE_API_URL = `https://hafsql-api.mahdiyari.info/operations/custom_json/${VOTE_CUSTOM_ID}?limit=1000`; // NOVO: URL da API de votos
 
 // ---------- Funções de Ação e Estado ----------
 
+// NOVO: Função para processar os dados de voto
+function processVoteData(voteData) {
+  const finalCounts = {};
+  
+  // Estrutura temporária: Map<postId, Map<username, latestVote>>
+  // Ex: { "433581157599152658": { "faireye": { timestamp: '...', type: 'upvote' }, ... } }
+  const latestVotes = {}; 
+
+  if (!Array.isArray(voteData)) return finalCounts;
+  
+  voteData.forEach((vote) => {
+    // 1. Extrai o autor (username) e o timestamp
+    const author = vote.required_posting_auths?.[0];
+    const timestamp = new Date(vote.timestamp).getTime();
+    
+    // 2. Extrai o JSON e o content_id
+    const voteJson = parseEmbeddedJson(vote.json);
+    const postId = voteJson?.content_id;
+    const type = voteJson?.type; // "upvote" ou "downvote"
+    
+    // 3. Validação básica
+    if (!author || !postId || (type !== 'upvote' && type !== 'downvote')) {
+        return; // Ignora dados inválidos
+    }
+    
+    // Inicializa a estrutura para o post se necessário
+    if (!latestVotes[postId]) {
+      latestVotes[postId] = {};
+    }
+    
+    // Inicializa a estrutura para o usuário neste post
+    if (!latestVotes[postId][author]) {
+      latestVotes[postId][author] = { timestamp: 0, type: null };
+    }
+    
+    // Verifica se este voto é MAIS RECENTE que o voto atual armazenado para este usuário neste post
+    if (timestamp > latestVotes[postId][author].timestamp) {
+      latestVotes[postId][author] = { timestamp, type };
+    }
+  });
+  
+  // 4. Calcula a contagem final baseada apenas nos votos mais recentes
+  for (const postId in latestVotes) {
+    let upvote = 0;
+    let downvote = 0;
+    
+    const userVotes = latestVotes[postId];
+    
+    for (const author in userVotes) {
+      const latestType = userVotes[author].type;
+      
+      if (latestType === 'upvote') {
+        upvote++;
+      } else if (latestType === 'downvote') {
+        downvote++;
+      }
+      // Se o último voto foi um "unvote" ou outro tipo, ele não é contado.
+    }
+    
+    finalCounts[postId] = { upvote, downvote };
+  }
+
+  return finalCounts;
+}
 async function fetchPosts() {
   const feed = document.getElementById("feed");
   feed.innerHTML =
     '<div class="card p-4 text-center small-muted">Carregando...</div>';
+  
+  // 1. Fetch Posts
   const res = await fetch(API_URL);
   const data = await res.json();
   allPosts = (Array.isArray(data) ? data : data.rows || [])
     .filter((x) => x.custom_id === APP_ID)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  // 2. Fetch Votes (NOVO)
+  try {
+      const voteRes = await fetch(VOTE_API_URL);
+      const voteData = await voteRes.json();
+
+      console.log('voteData');
+      console.log(voteData);
+      voteCounts = processVoteData(voteData || []); // Processa os votos
+      console.log('voteData.rows');
+      console.log(voteData.rows);
+  } catch (e) {
+      console.error("Erro ao carregar votos:", e);
+      voteCounts = {};
+  }
+  
   feed.innerHTML = "";
   renderedCount = 0;
   renderNextBatch();
   updateTags();
+}
+
+
+// NOVO: Função para enviar Votos
+function sendVote(contentId, voteType) {
+    const username = localStorage.getItem("hiveUser");
+    if (!username) return alert("Faça login primeiro!");
+
+    const json = JSON.stringify({
+        app: APP_ID, 
+        v: 1,
+        type: voteType, // "upvote" or "downvote"
+        content_id: contentId,
+    });
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username,
+            VOTE_CUSTOM_ID, // "micro.fair.interation"
+            "Posting",
+            json,
+            "Votar",
+            (res) => {
+                if (res.success) {
+                    alert(`✅ Voto '${voteType}' enviado com sucesso!`);
+                    // Futuramente, você pode adicionar fetchPosts() aqui para atualizar a contagem de votos.
+                } else {
+                    alert("❌ Erro ao enviar voto!");
+                }
+            }
+        );
+    } else {
+        alert("Hive Keychain não detectado!");
+    }
 }
 
 function renderNextBatch() {
@@ -39,7 +163,7 @@ function renderNextBatch() {
   const feed = document.getElementById("feed");
   const next = allPosts.slice(renderedCount, renderedCount + BATCH_SIZE);
   // Passamos 'allPosts' para a função de renderização
-  next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts)));
+  next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts))); // MODIFICADO
   renderedCount += next.length;
   loading = false;
   document
@@ -73,10 +197,10 @@ function showSinglePost(postId) {
   const feed = document.getElementById("feed");
   feed.innerHTML = "";
   // Passamos 'allPosts' para a função de renderização
-  feed.appendChild(buildPostCard(post, allPosts));
-  
+  feed.appendChild(buildPostCard(post, allPosts, voteCounts));
+
   // Passamos 'allPosts' para a função de renderização de replies
-  const repliesHtml = buildRepliesRecursive(post.id, allPosts); 
+  const repliesHtml = buildRepliesRecursive(post.id, allPosts);
   const repliesContainer = document.createElement("div");
   repliesContainer.innerHTML = repliesHtml;
   feed.appendChild(repliesContainer);
@@ -85,7 +209,7 @@ function showSinglePost(postId) {
   document.getElementById("btnBack").classList.remove("hidden");
   document.getElementById("newPostSection").classList.add("hidden");
   // Assumindo que a sidebar é o 'sidebar-root' no index.html e contém o SidebarHTML
-  document.getElementById("sidebar-root").classList.add("hidden"); 
+  document.getElementById("sidebar-root").classList.add("hidden");
   window.scrollTo(0, 0);
 }
 
@@ -102,6 +226,8 @@ function backToFeed() {
 function sendPost(content, replyTo = null) {
   const username = localStorage.getItem("hiveUser");
   if (!username) return alert("Faça login primeiro!");
+
+  console.log('this is content: ', content);
   const tags = extractTagsFromText(content);
   const mentions = extractMentionsFromText(content);
   const json = JSON.stringify({
@@ -125,7 +251,8 @@ function sendPost(content, replyTo = null) {
         if (res.success) {
           alert("✅ Enviado com sucesso!");
           document.getElementById("newPostContent").value = ""; // Limpa
-          document.getElementById("charCount").textContent = "Characters: 0 / 512";
+          document.getElementById("charCount").textContent =
+            "Characters: 0 / 512";
           fetchPosts();
         } else {
           alert("❌ Erro ao enviar!");
@@ -137,97 +264,134 @@ function sendPost(content, replyTo = null) {
   }
 }
 
+function setupImageModal() {
+    // Insere a estrutura do modal no DOM (pode ser no final do body ou em 'modal-root')
+    const modalHtml = `
+        <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
+            <div class="relative max-w-full max-h-full">
+                <img id="modalImage" src="" class="max-w-full max-h-[90vh] object-contain" onclick="event.stopPropagation()">
+                <button class="absolute top-2 right-2 text-white text-3xl font-bold" onclick="document.getElementById('imageModal').classList.add('hidden'); event.stopPropagation();">&times;</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function showImageModal(src) {
+    const modal = document.getElementById("imageModal");
+    const img = document.getElementById("modalImage");
+    img.src = src;
+    modal.classList.remove("hidden");
+}
+
 // ---------- FUNÇÕES DE CONFIGURAÇÃO DO DOM E EVENT LISTENERS ----------
 
 function setupInitialDOM() {
-    // Monta a estrutura estática
-    document.getElementById('navbar-root').innerHTML = NavbarHTML;
-    document.getElementById('modal-root').innerHTML = LoginModalHTML;
-    document.getElementById('header-root').innerHTML = FeedHeaderHTML;
-    document.getElementById('new-post-root').innerHTML = NewPostSectionHTML;
-    document.getElementById('sidebar-root').innerHTML = SidebarHTML;
+  // Monta a estrutura estática
+  document.getElementById("navbar-root").innerHTML = NavbarHTML;
+  document.getElementById("modal-root").innerHTML = LoginModalHTML;
+  document.getElementById("header-root").innerHTML = FeedHeaderHTML;
+  document.getElementById("new-post-root").innerHTML = NewPostSectionHTML;
+  document.getElementById("sidebar-root").innerHTML = SidebarHTML;
 }
 
 function setupEventListeners() {
-    // Scroll infinito
-    window.addEventListener("scroll", () => {
-      if (loading) return;
-      const nearBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
-      if (nearBottom) renderNextBatch();
-    });
+  // Scroll infinito
+  window.addEventListener("scroll", () => {
+    if (loading) return;
+    const nearBottom =
+      window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+    if (nearBottom) renderNextBatch();
+  });
 
-    // Interações com o Feed (Reply, View Thread)
-    document.getElementById("feed").addEventListener("click", (e) => {
-      if (e.target.classList.contains("view-thread")) {
-        const id = e.target.dataset.id;
-        showSinglePost(id);
+  // Interações com o Feed (Reply, View Thread)
+  document.getElementById("feed").addEventListener("click", (e) => {
+    if (e.target.classList.contains("view-thread")) {
+      const id = e.target.dataset.id;
+      showSinglePost(id);
+    }
+
+    if (e.target.classList.contains("thread-btn")) {
+      const id = e.target.dataset.id;
+      // O card agora é um elemento filho injetado
+      const card = e.target.closest(".card");
+      const threadDiv = card.querySelector(".thread");
+      if (!threadDiv.classList.contains("hidden")) {
+        threadDiv.classList.add("hidden");
+        threadDiv.innerHTML = "";
+        return;
       }
 
-      if (e.target.classList.contains("thread-btn")) {
-        const id = e.target.dataset.id;
-        // O card agora é um elemento filho injetado
-        const card = e.target.closest(".card"); 
-        const threadDiv = card.querySelector(".thread");
-        if (!threadDiv.classList.contains("hidden")) {
-          threadDiv.classList.add("hidden");
-          threadDiv.innerHTML = "";
-          return;
-        }
+      const repliesHtml = buildRepliesRecursive(id, allPosts);
+      threadDiv.innerHTML =
+        repliesHtml || '<div class="small-muted">Sem replies ainda.</div>';
+      threadDiv.classList.remove("hidden");
+    }
 
-        const repliesHtml = buildRepliesRecursive(id, allPosts);
-        threadDiv.innerHTML =
-          repliesHtml || '<div class="small-muted">Sem replies ainda.</div>';
-        threadDiv.classList.remove("hidden");
+    if (e.target.classList.contains("reply-btn")) {
+      const id = e.target.dataset.id;
+      const existing = e.target.closest(".card").querySelector(".reply-form");
+      if (existing) {
+        existing.remove();
+        return;
       }
 
-      if (e.target.classList.contains("reply-btn")) {
-        const id = e.target.dataset.id;
-        const existing = e.target.closest(".card").querySelector(".reply-form");
-        if (existing) {
-          existing.remove();
-          return;
-        }
-
-        const replyBox = document.createElement("div");
-        replyBox.className = "reply-form mt-3";
-        replyBox.innerHTML = `
+      const replyBox = document.createElement("div");
+      replyBox.className = "reply-form mt-3";
+      replyBox.innerHTML = `
           <textarea class="w-full p-2 border rounded mb-2" rows="2" placeholder="Reply..."></textarea>
           <button class="px-3 py-1 bg-red-600 text-white rounded send-reply">Enviar</button>`;
-        e.target.closest(".card").appendChild(replyBox);
+      e.target.closest(".card").appendChild(replyBox);
 
-        replyBox.querySelector(".send-reply").addEventListener("click", () => {
-          const text = replyBox.querySelector("textarea").value.trim();
-          if (!text) return alert("Digite algo!");
-          sendPost(text, parseInt(id));
-        });
-      }
-    });
+      replyBox.querySelector(".send-reply").addEventListener("click", () => {
+        const text = replyBox.querySelector("textarea").value.trim();
+        if (!text) return alert("Digite algo!");
+        sendPost(text, parseInt(id));
+      });
+    }
 
-    // Botões estáticos (Post, Refresh, Back) - Agora existem no DOM
-    document.getElementById("btnPost").addEventListener("click", () => {
-      const text = document.getElementById("newPostContent").value.trim();
-      if (!text) return alert("Digite algo!");
-      sendPost(text);
-    });
-    
-    document.getElementById("btnBack").addEventListener("click", backToFeed);
-    document.getElementById("btnRefresh").addEventListener("click", fetchPosts);
-    document.getElementById("btnRefreshTags").addEventListener("click", updateTags);
-    
-    document.getElementById("newPostContent").addEventListener("input", (e) => {
-      const len = e.target.value.length;
-      document.getElementById("charCount").textContent = `Characters: ${len} / 512`;
-    });
+    if (e.target.classList.contains("post-image")) {
+      const fullSrc = e.target.dataset.fullSrc;
+      showImageModal(fullSrc);
+    }
+
+    if (e.target.classList.contains("vote-btn")) {
+      const contentId = e.target.dataset.id;
+      const voteType = e.target.dataset.vote; // "upvote" or "downvote"
+      sendVote(contentId, voteType);
+    }
+  });
+
+  // Botões estáticos (Post, Refresh, Back) - Agora existem no DOM
+  document.getElementById("btnPost").addEventListener("click", () => {
+    const text = document.getElementById("newPostContent").value.trim();
+    if (!text) return alert("Digite algo!");
+    sendPost(text);
+  });
+
+  document.getElementById("btnBack").addEventListener("click", backToFeed);
+  document.getElementById("btnRefresh").addEventListener("click", fetchPosts);
+  document
+    .getElementById("btnRefreshTags")
+    .addEventListener("click", updateTags);
+
+  document.getElementById("newPostContent").addEventListener("input", (e) => {
+    const len = e.target.value.length;
+    document.getElementById(
+      "charCount"
+    ).textContent = `Characters: ${len} / 512`;
+  });
 }
 
 // ---------- Inicialização ----------
 
 // 1. Monta o HTML no DOM
-setupInitialDOM(); 
+setupInitialDOM();
 
 // 2. Configura os Listeners
-setupEventListeners(); 
+setupEventListeners();
+
+setupImageModal();
 
 // 3. Configura a Lógica de Autenticação e seus Listeners
 setAuthCallbacks(fetchPosts, fetchPosts);

@@ -1,5 +1,3 @@
-
-
 // A URL agora usa a constante importada
 
 
@@ -26,20 +24,56 @@ export function escapeHtml(str = "") {
       }[m])
   );
 }
+
+// CORRIGIDA: Remoção do bloco de imagem Markdown
 export function stripMarkdown(txt = "") {
-  return txt
-    .replace(/!\[\]\(.*?\)/g, "")
-    .replace(/\[([^\]]+)\]\(.*?\)/g, "$1")
-    .replace(/[*_`]/g, "")
+  let result = txt
+    // Remove Markdown de imagem: ![alt text](<URL>) -> Usa [^)]+ para capturar a URL até o fim
+    .replace(/!\[.*?\]\(([^)]+)\)/g, "") 
+    // Remove links de imagem crus (URL que termina com extensão)
+    .replace(
+      /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp))(?=\s|$)/gi,
+      "" 
+    );
+
+  return result
+    .replace(/\[([^\]]+)\]\(.*?\)/g, "$1") // Remove links de texto: [texto](url) -> texto
+    .replace(/[*_`]/g, "") // Remove formatação (bold, italic, code)
     .trim();
 }
+
+// CORRIGIDA: Extração de URLs do Markdown e links crus
 export function extractImages(txt = "") {
-  const r = /!\[\]\((.*?)\)/g;
   const imgs = [];
   let m;
-  while ((m = r.exec(txt)) !== null) imgs.push(m[1]);
+
+  // Regex 1: Captura o formato Markdown, capturando TUDO dentro dos parenteses
+  // [^)]+ garante a URL completa, independentemente de http(s)
+  const markdownR = /!\[.*?\]\(([^)]+)\)/g; 
+  while ((m = markdownR.exec(txt)) !== null) {
+      // Adiciona apenas se o link extraído do Markdown começar com http(s)
+      if (m[1].startsWith('http')) {
+          imgs.push(m[1]);
+      }
+  }
+
+  // Regex 2: Captura links de imagem crus
+  const rawUrlR = /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp))(?=\s|$)/gi;
+  
+  const rawMatches = [];
+  while ((m = rawUrlR.exec(txt)) !== null) {
+      rawMatches.push(m[1]);
+  }
+  
+  // Combina todos os resultados, garantindo que não haja duplicatas
+  rawMatches.forEach(url => {
+      if (!imgs.includes(url)) {
+          imgs.push(url);
+      }
+  });
   return imgs;
 }
+
 export function fmtDate(iso) {
   const d = new Date(iso);
   const pad = (n) => String(n).padStart(2, "0");

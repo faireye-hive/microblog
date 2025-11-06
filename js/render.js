@@ -58,24 +58,38 @@ export function buildThreadAbove(post, allPosts) {
 
 // /js/render.js (Função buildPostCard REESTRUTURADA)
 
-export function buildPostCard(p, allPosts) {
+export function buildPostCard(p, allPosts, voteCounts = {}) {
     const author =
         (p.required_posting_auths && p.required_posting_auths[0]) || "unknown";
     const parsed = parseEmbeddedJson(p.json); //
     const content = parsed?.content || ""; //
-    const text = stripMarkdown(content); //
+    let text = stripMarkdown(content); //
     const imgs = extractImages(content); //
+
+    if (imgs.length === 1 && text.trim() === imgs[0]) {
+        text = ''; // Se o texto for idêntico à única imagem extraída, limpa o texto para evitar duplicidade.
+    } else {
+        text = stripMarkdown(content); // Se for conteúdo misto, mantém a lógica original
+    }
     const replies = allPosts.filter(
         (r) => parseEmbeddedJson(r.json)?.reply_to == p.id
     ); //
+
+
+    // NOVO: Pega a contagem de votos
+    const votes = voteCounts[p.id] || { upvote: 0, downvote: 0 };
+    const upvoteCount = votes.upvote;
+    const downvoteCount = votes.downvote;
 
     const el = document.createElement("article");
     el.className = "card p-4";
     el.innerHTML = `
         <div class="flex gap-3">
-            <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold">${
-                author[0]?.toUpperCase() || "U"
-            }</div>
+            <img 
+                src="https://images.hive.blog/u/${author}/avatar" 
+                alt="Avatar de @${author}" 
+                class="w-12 h-12 rounded-full object-cover bg-gray-100"
+            >
             <div class="flex-1">
                 
                 <div class="flex justify-between">
@@ -99,20 +113,30 @@ export function buildPostCard(p, allPosts) {
                         ${imgs
                             .map(
                                 (u) =>
-                                    `<img src="${u}" class="rounded w-full max-h-64 object-cover">`
+                                    `<img 
+                                      src="${u}" 
+                                      class="rounded w-full max-h-64 object-cover cursor-pointer post-image" 
+                                      data-full-src="${u}"
+                                    >`
                             )
                             .join("")}
                     </div>`
                         : ""
                 }
                 
-                <div class="flex gap-2 mt-3 justify-end">
-                    <button class="px-2 py-1 border rounded small-muted thread-btn" data-id="${
-                        p.id
-                    }">💬 ${replies.length}</button>
-                    <button class="px-2 py-1 border rounded small-muted reply-btn" data-id="${
-                        p.id
-                    }">Reply</button>
+                <div class="flex mt-3 justify-between">
+                    <div class="flex gap-2">
+                        <button class="px-2 py-1 border rounded small-muted vote-btn upvote-btn" data-id="${p.id}" data-vote="upvote">👍 ${upvoteCount}</button>
+                        <button class="px-2 py-1 border rounded small-muted vote-btn downvote-btn" data-id="${p.id}" data-vote="downvote">👎 ${downvoteCount}</button>
+                    </div>
+                    <div class="flex gap-2 justify-end">
+                        <button class="px-2 py-1 border rounded small-muted thread-btn" data-id="${
+                            p.id
+                        }">💬 ${replies.length}</button>
+                        <button class="px-2 py-1 border rounded small-muted reply-btn" data-id="${
+                            p.id
+                        }">Reply</button>
+                    </div>
                 </div>
                 
                 <div class="thread hidden mt-4"></div>
