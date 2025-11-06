@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>micro.feed — threads + Hive Keychain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  
+  <body>
+    <div id="navbar-root"></div> 
+
+    <div class="bg-[#f5f6fa] pt-[4.5rem] sm:pt-[5rem] lg:pt-[5.5rem]">
+      <div id="modal-root"></div>
+      
+      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <main id="mainArea" class="lg:col-span-2 space-y-6">
+          
+          <div id="header-root"></div>
+          
+          <div id="new-post-root"></div>
+          
+          <section id="feed" class="space-y-4"></section>
+          <div id="loadingIndicator" class="text-center small-muted py-4 hidden">
+            Carregando mais posts...
+          </div>
+        </main>
+
+        <aside id="sidebar-root" class="space-y-4"></aside>
+
+      </div>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
