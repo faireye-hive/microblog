@@ -32,37 +32,42 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1) {
 }
 
 export function buildThreadAbove(post, allPosts) {
-    let threadHTML = "";
-    let current = post;
-    while (true) {
-        const parsed = parseEmbeddedJson(current.json);
-        if (!parsed?.reply_to) break;
-        const parent = findPost(parsed.reply_to, allPosts);
-        if (!parent) break;
-        const pj = parseEmbeddedJson(parent.json);
-        threadHTML = `
-            <div class="reply-box small-muted">
-                <em class="view-thread" data-id="${parent.id}">Em resposta a @${
-                    parent.required_posting_auths?.[0] || "user"
-                }</em><br>
-                ${escapeHtml(pj.content?.slice(0, 120) || "")}...
-                ${threadHTML}
-            </div>`;
-        current = parent;
-    }
-    return threadHTML;
+    const parsed = parseEmbeddedJson(post.json);
+    
+    // 1. Verifica se o post atual é uma resposta
+    if (!parsed?.reply_to) return ""; 
+
+    // 2. Busca o post PARENTAL imediato
+    const parent = findPost(parsed.reply_to, allPosts);
+    
+    // 3. Se não encontrar o pai, ou se o pai não tiver conteúdo
+    if (!parent) return ""; 
+    
+    const pj = parseEmbeddedJson(parent.json);
+
+    // 4. Retorna o HTML APENAS para o pai imediato
+    return `
+        <div class="reply-box small-muted">
+            <em class="view-thread" data-id="${parent.id}">Em resposta a @${
+                parent.required_posting_auths?.[0] || "user"
+            }</em><br>
+            ${escapeHtml(pj.content?.slice(0, 120) || "")}...
+        </div>`;
+    // Nota: O loop 'while' e o uso de 'threadHTML' para empilhar foram removidos
 }
+
+// /js/render.js (Função buildPostCard REESTRUTURADA)
 
 export function buildPostCard(p, allPosts) {
     const author =
         (p.required_posting_auths && p.required_posting_auths[0]) || "unknown";
-    const parsed = parseEmbeddedJson(p.json);
-    const content = parsed?.content || "";
-    const text = stripMarkdown(content);
-    const imgs = extractImages(content);
+    const parsed = parseEmbeddedJson(p.json); //
+    const content = parsed?.content || ""; //
+    const text = stripMarkdown(content); //
+    const imgs = extractImages(content); //
     const replies = allPosts.filter(
         (r) => parseEmbeddedJson(r.json)?.reply_to == p.id
-    );
+    ); //
 
     const el = document.createElement("article");
     el.className = "card p-4";
@@ -72,21 +77,16 @@ export function buildPostCard(p, allPosts) {
                 author[0]?.toUpperCase() || "U"
             }</div>
             <div class="flex-1">
-                ${parsed?.reply_to ? buildThreadAbove(p, allPosts) : ""}
+                
                 <div class="flex justify-between">
                     <div>
                         <div class="text-red-600 font-semibold">@${author}</div>
                         <div class="small-muted">#${p.id} • ${fmtDate(p.timestamp)}</div>
                     </div>
-                    <div class="flex gap-2">
-                        <button class="px-2 py-1 border rounded small-muted thread-btn" data-id="${
-                            p.id
-                        }">💬 ${replies.length}</button>
-                        <button class="px-2 py-1 border rounded small-muted reply-btn" data-id="${
-                            p.id
-                        }">Reply</button>
-                    </div>
                 </div>
+                
+                ${parsed?.reply_to ? buildThreadAbove(p, allPosts) : ""}
+                
                 <div class="mt-3 text-sm">${escapeHtml(text).replace(
                     /\n/g,
                     "<br>"
@@ -105,6 +105,16 @@ export function buildPostCard(p, allPosts) {
                     </div>`
                         : ""
                 }
+                
+                <div class="flex gap-2 mt-3 justify-end">
+                    <button class="px-2 py-1 border rounded small-muted thread-btn" data-id="${
+                        p.id
+                    }">💬 ${replies.length}</button>
+                    <button class="px-2 py-1 border rounded small-muted reply-btn" data-id="${
+                        p.id
+                    }">Reply</button>
+                </div>
+                
                 <div class="thread hidden mt-4"></div>
             </div>
         </div>`;

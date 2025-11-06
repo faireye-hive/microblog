@@ -1,5 +1,7 @@
-export const API_URL =
-  "https://hafsql-api.mahdiyari.info/operations/custom_json/micro.fair?limit=1000";
+
+
+// A URL agora usa a constante importada
+
 
 // Funções Helpers
 export function parseEmbeddedJson(str) {

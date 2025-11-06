@@ -1,4 +1,4 @@
-import { API_URL, extractTagsFromText, extractMentionsFromText, parseEmbeddedJson } from "./utils.js";
+import { extractTagsFromText, extractMentionsFromText, parseEmbeddedJson } from "./utils.js";
 import { buildPostCard, buildRepliesRecursive } from "./render.js";
 import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
 import { 
@@ -8,6 +8,7 @@ import {
     FeedHeaderHTML,
     SidebarHTML
 } from "./templates.js";
+import { APP_ID, API_URL } from "./config.js";
 
 // Variáveis de Estado (Centralizadas aqui)
 let allPosts = [];
@@ -24,7 +25,7 @@ async function fetchPosts() {
   const res = await fetch(API_URL);
   const data = await res.json();
   allPosts = (Array.isArray(data) ? data : data.rows || [])
-    .filter((x) => x.custom_id === "micro.fair")
+    .filter((x) => x.custom_id === APP_ID)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   feed.innerHTML = "";
   renderedCount = 0;
@@ -104,7 +105,7 @@ function sendPost(content, replyTo = null) {
   const tags = extractTagsFromText(content);
   const mentions = extractMentionsFromText(content);
   const json = JSON.stringify({
-    app: "micro.fair",
+    app: APP_ID,
     v: 1,
     type: replyTo ? "reply" : "post",
     content,
@@ -116,7 +117,7 @@ function sendPost(content, replyTo = null) {
   if (window.hive_keychain) {
     window.hive_keychain.requestCustomJson(
       username,
-      "micro.fair",
+      APP_ID,
       "Posting",
       json,
       replyTo ? "Responder" : "Postar",
