@@ -1,9 +1,10 @@
+// /js/app.js (Arquivo Principal Refatorado)
+
 import {
   extractTagsFromText,
   extractMentionsFromText,
-  parseEmbeddedJson,
-} from "./utils.js";
-import { buildPostCard, buildRepliesRecursive } from "./render.js";
+} from "./utils.js"; // Apenas o necessário para sendPost
+import { buildRepliesRecursive } from "./render.js";
 import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
 import {
   NavbarHTML,
@@ -12,482 +13,16 @@ import {
   FeedHeaderHTML,
   SidebarHTML,
 } from "./templates.js";
-import { APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL } from "./config.js";
 
-// Variáveis de Estado (Centralizadas aqui)
-let allPosts = [];
-let renderedCount = 0;
-const BATCH_SIZE = 50;
-let loading = false;
-let voteCounts = {}; // Estrutura para armazenar as contagens de votos
-let allPostsToRender = []; // Lista atual de posts (completa ou filtrada) para renderização
-let currentPage = "feed"; // Controla a página atual ('feed', 'trending', 'active', 'thread', 'tag')
+// Importa dos novos módulos
+import { allPosts, renderNextBatch, loading } from "./state.js";
+import { fetchData, sendPost, sendVote } from "./api.js";
+import { handleRoute, backToFeed, showSinglePost, filterByTag } from "./routing.js";
+import { updateTags } from "./state.js";
 
-// ---------- Funções de Ação e Estado ----------
-
-function rankPostsByVotes(posts, votes) {
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-
-  // 1. Filtra posts do último mês e calcula o score
-  const ranked = posts.map((p) => {
-    const postDate = new Date(p.timestamp);
-
-    // Inicializa o score para posts mais antigos que 1 mês
-    let score = 0;
-
-    if (postDate >= oneMonthAgo) {
-      const postId = p.id;
-      // Upvotes - Downvotes
-      const upvotes = votes[postId]?.upvote || 0;
-      const downvotes = votes[postId]?.downvote || 0;
-      score = upvotes - downvotes;
-    }
-
-    return { ...p, score };
-  });
-
-  // 2. Classifica do maior score para o menor
-  return ranked.sort((a, b) => b.score - a.score);
-}
-
-/**
- * Classifica posts pelo número de comentários/respostas.
- * @param {Array<Object>} posts - Lista completa de posts.
- * @returns {Array<Object>} Lista de posts classificados.
- */
-function rankPostsByComments(posts) {
-  // 1️⃣ Mapa pai -> [filhos]
-  const replyToMap = new Map();
-
-  for (const p of posts) {
-    const data = parseEmbeddedJson(p.json);
-    const replyTo = data?.reply_to;
-    if (replyTo) {
-      const parent = Number(replyTo);
-      if (!replyToMap.has(parent)) replyToMap.set(parent, []);
-      replyToMap.get(parent).push(Number(p.id));
-    }
-  }
-
-  // 2️⃣ Cache para não recalcular replies repetidamente
-  const cache = new Map();
-
-  function countRepliesRecursively(postId) {
-    if (cache.has(postId)) return cache.get(postId);
-    const replies = replyToMap.get(postId);
-    if (!replies) {
-      cache.set(postId, 0);
-      return 0;
-    }
-    let count = replies.length;
-    for (const childId of replies) {
-      count += countRepliesRecursively(childId);
-    }
-    cache.set(postId, count);
-    return count;
-  }
-
-  // 3️⃣ Calcular contagem de replies e marcar quem é reply
-  const ranked = posts
-    .map((p) => {
-      const data = parseEmbeddedJson(p.json);
-      const isReply = !!data?.reply_to;
-      const commentCount = countRepliesRecursively(Number(p.id));
-      return {
-        ...p,
-        commentCount,
-        isReply,
-      };
-    })
-    .filter((p) => !p.isReply);
-
-  // 4️⃣ Ordenar
-  return ranked.sort((a, b) => b.commentCount - a.commentCount);
-}
-
-//  Função para filtrar posts por tag
-//  Função para buscar todos os dados (Posts e Votos)
-async function fetchData() {
-  document.getElementById("feed").innerHTML =
-    '<div class="card p-4 text-center small-muted">Carregando...</div>';
-
-  // 1. Fetch Posts e Votes em paralelo
-  const resPromise = fetch(API_URL).then((res) => res.json());
-  const voteResPromise = fetch(VOTE_API_URL).then((res) => res.json());
-
-  const [data, voteDataRaw] = await Promise.all([
-    resPromise,
-    voteResPromise,
-  ]).catch((e) => {
-    console.error("Erro ao carregar dados:", e);
-    return [{}, {}];
-  });
-
-  // Processa Posts
-  allPosts = (Array.isArray(data) ? data : data.rows || [])
-    .filter((x) => x.custom_id === APP_ID)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  // Processa Votos
-  voteCounts = processVoteData(voteDataRaw || []);
-
-  // Atualiza tags na sidebar (Trending)
-  updateTags();
-}
-
-// NOVO: Função para iniciar a renderização do feed (com paginação)
-function renderFeed(postsToRender) {
-  allPostsToRender = postsToRender;
-  renderedCount = 0;
-
-  const feed = document.getElementById("feed");
-  feed.innerHTML = ""; // Limpa antes de renderizar
-
-  renderNextBatch();
-}
-
-function filterByTag(tag, pushHistory = true) {
-  // 1. Atualiza a URL com Hash (ex: /#/hashtag/pump)
-  if (pushHistory) {
-    window.location.hash = `/hashtag/${tag}`;
-  }
-
-  const filteredPosts = allPosts.filter((p) => {
-    const js = parseEmbeddedJson(p.json);
-    return js?.tags?.map((t) => t.toLowerCase()).includes(tag.toLowerCase());
-  });
-
-  // 2. Atualiza a UI
-  document.getElementById("pageTitle").textContent = `#${tag}`;
-  document.getElementById("pageTitle").dataset.tag = tag;
-  document.getElementById("btnBack").classList.remove("hidden");
-
-  // CORREÇÃO UI: Mantém a sidebar e o new post
-  document.getElementById("newPostSection").classList.remove("hidden");
-  document.getElementById("sidebar-root").classList.remove("hidden");
-  updateNavSelection("tag"); // Seleção da navbar
-
-  renderFeed(filteredPosts); // Renderiza a lista filtrada
-  window.scrollTo(0, 0);
-}
-// NOVO: Função para lidar com o roteamento inicial (URL direta ou botão Voltar/Avançar)
-function handleInitialRoute() {
-  // 1. Busca todos os dados primeiro (posts e votos)
-  fetchData()
-    .then(() => {
-      // 2. Analisa o Hash da URL (ex: #/hashtag/pump)
-      const path = window.location.hash.substring(1); // Remove o '#' inicial
-      const tagMatch = path.match(/^\/hashtag\/([a-z0-9]+)$/i);
-
-      if (tagMatch) {
-        // Acesso direto à URL de tag: filtra (sem alterar history)
-        const tag = tagMatch[1];
-        filterByTag(tag, false);
-      } else {
-        // Rota principal (hash vazio ou inválido): renderiza o feed completo
-        renderFeed(allPosts);
-      }
-    })
-    .catch((e) => {
-      document.getElementById("feed").innerHTML =
-        '<div class="card p-4 text-center text-red-600">Erro ao carregar dados. Tente atualizar a página.</div>';
-    });
-}
-
-function updateNavSelection(newPage) {
-  currentPage = newPage;
-  const navLinks = document.querySelectorAll("#main-nav a");
-  navLinks.forEach((link) => {
-    link.classList.remove("text-red-600", "font-bold");
-    link.classList.add("small-muted");
-  });
-
-  if (newPage === "feed" || newPage === "tag" || newPage === "thread") {
-    document
-      .querySelector('a[href="#/"]')
-      .classList.add("text-red-600", "font-bold");
-    document.querySelector('a[href="#/"]').classList.remove("small-muted");
-  } else {
-    const activeLink = document.querySelector(`a[href="#/${newPage}"]`);
-    if (activeLink) {
-      activeLink.classList.add("text-red-600", "font-bold");
-      activeLink.classList.remove("small-muted");
-    }
-  }
-}
-
-async function handleRoute() {
-  // 1. Busca os dados se ainda não foram carregados
-  if (allPosts.length === 0) {
-    await fetchData().catch((e) => {
-      document.getElementById("feed").innerHTML =
-        '<div class="card p-4 text-center text-red-600">Erro ao carregar dados. Tente atualizar a página.</div>';
-      return;
-    });
-  }
-
-  // 2. Analisa o Hash da URL
-  const path = window.location.hash.substring(1);
-  const tagMatch = path.match(/^\/hashtag\/([a-z0-9-_]+)$/i);
-  const postMatch = path.match(/^\/thread\/(\d+)$/i); // Rota para post individual
-
-  // Configura UI padrão (para rotas de feed/trending/active)
-  document.getElementById("btnBack").classList.add("hidden");
-  document.getElementById("newPostSection").classList.remove("hidden");
-  document.getElementById("sidebar-root").classList.remove("hidden");
-
-  if (tagMatch) {
-    // Rota de Tag
-    const tag = tagMatch[1];
-    filterByTag(tag, false);
-    currentPage = "tag";
-  } else if (postMatch) {
-    // Rota de Thread
-    const postId = postMatch[1];
-    showSinglePost(postId);
-    currentPage = "thread";
-  } else if (path === "/trending") {
-    // Rota Trending
-    document.getElementById("pageTitle").textContent = "Trending (Votos)";
-    const trendingPosts = rankPostsByVotes(allPosts, voteCounts);
-    renderFeed(trendingPosts);
-    updateNavSelection("trending");
-    window.scrollTo(0, 0);
-  } else if (path === "/active") {
-    // Rota Active
-    document.getElementById("pageTitle").textContent = "Active (Comentários)";
-    const activePosts = rankPostsByComments(allPosts);
-    renderFeed(activePosts);
-    updateNavSelection("active");
-    window.scrollTo(0, 0);
-  } else {
-    // Rota Home/Feed Principal
-    document.getElementById("pageTitle").textContent = "Feed";
-    document.getElementById("pageTitle").removeAttribute("data-tag");
-    renderFeed(allPosts);
-    updateNavSelection("feed");
-    window.scrollTo(0, 0);
-  }
-}
-
-// NOVO: Função para processar os dados de voto
-function processVoteData(voteData) {
-  const finalCounts = {};
-
-  // Estrutura temporária: Map<postId, Map<username, latestVote>>
-  // Ex: { "433581157599152658": { "faireye": { timestamp: '...', type: 'upvote' }, ... } }
-  const latestVotes = {};
-
-  if (!Array.isArray(voteData)) return finalCounts;
-
-  voteData.forEach((vote) => {
-    // 1. Extrai o autor (username) e o timestamp
-    const author = vote.required_posting_auths?.[0];
-    const timestamp = new Date(vote.timestamp).getTime();
-
-    // 2. Extrai o JSON e o content_id
-    const voteJson = parseEmbeddedJson(vote.json);
-    const postId = voteJson?.content_id;
-    const type = voteJson?.type; // "upvote" ou "downvote"
-
-    // 3. Validação básica
-    if (!author || !postId || (type !== "upvote" && type !== "downvote")) {
-      return; // Ignora dados inválidos
-    }
-
-    // Inicializa a estrutura para o post se necessário
-    if (!latestVotes[postId]) {
-      latestVotes[postId] = {};
-    }
-
-    // Inicializa a estrutura para o usuário neste post
-    if (!latestVotes[postId][author]) {
-      latestVotes[postId][author] = { timestamp: 0, type: null };
-    }
-
-    // Verifica se este voto é MAIS RECENTE que o voto atual armazenado para este usuário neste post
-    if (timestamp > latestVotes[postId][author].timestamp) {
-      latestVotes[postId][author] = { timestamp, type };
-    }
-  });
-
-  // 4. Calcula a contagem final baseada apenas nos votos mais recentes
-  for (const postId in latestVotes) {
-    let upvote = 0;
-    let downvote = 0;
-
-    const userVotes = latestVotes[postId];
-
-    for (const author in userVotes) {
-      const latestType = userVotes[author].type;
-
-      if (latestType === "upvote") {
-        upvote++;
-      } else if (latestType === "downvote") {
-        downvote++;
-      }
-      // Se o último voto foi um "unvote" ou outro tipo, ele não é contado.
-    }
-
-    finalCounts[postId] = { upvote, downvote };
-  }
-
-  return finalCounts;
-}
-
-async function fetchPosts() {
-  // Agora é a ação de 'Voltar ao Feed Principal'
-  await fetchData();
-
-  document.getElementById("pageTitle").textContent = "Feed";
-  document.getElementById("pageTitle").removeAttribute("data-tag");
-
-  renderFeed(allPosts);
-}
-
-// NOVO: Função para enviar Votos
-function sendVote(contentId, voteType) {
-  const username = localStorage.getItem("hiveUser");
-  if (!username) return alert("Faça login primeiro!");
-
-  const json = JSON.stringify({
-    app: APP_ID,
-    v: 1,
-    type: voteType, // "upvote" or "downvote"
-    content_id: contentId,
-  });
-
-  if (window.hive_keychain) {
-    window.hive_keychain.requestCustomJson(
-      username,
-      VOTE_CUSTOM_ID, // "micro.fair.interation"
-      "Posting",
-      json,
-      "Votar",
-      (res) => {
-        if (res.success) {
-          alert(`✅ Voto '${voteType}' enviado com sucesso!`);
-          // Futuramente, você pode adicionar fetchPosts() aqui para atualizar a contagem de votos.
-        } else {
-          alert("❌ Erro ao enviar voto!");
-        }
-      }
-    );
-  } else {
-    alert("Hive Keychain não detectado!");
-  }
-}
-
-function renderNextBatch() {
-  if (loading) return;
-  loading = true;
-  const feed = document.getElementById("feed");
-
-  const currentList = allPostsToRender.length > 0 ? allPostsToRender : allPosts;
-  const next = currentList.slice(renderedCount, renderedCount + BATCH_SIZE);
-
-  next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts)));
-
-  renderedCount += next.length;
-  loading = false;
-  document
-    .getElementById("loadingIndicator")
-    .classList.toggle("hidden", renderedCount >= currentList.length);
-}
-
-function updateTags() {
-  const map = new Map();
-  allPosts.forEach((p) => {
-    const js = parseEmbeddedJson(p.json);
-    const tags = js?.tags || [];
-    tags.forEach((t) => map.set(t, (map.get(t) || 0) + 1));
-  });
-  const sorted = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
-  const tList = document.getElementById("trendingList");
-  tList.innerHTML = "";
-  sorted.forEach(([t, c]) => {
-    const div = document.createElement("div");
-    div.className = "flex justify-between";
-    div.innerHTML = `<span class="text-red-600 font-medium cursor-pointer tag-link" data-tag="${t}">#${t}</span><span class="inline-code">${c}</span>`;
-    tList.appendChild(div);
-  });
-}
-
-// ---------- Funções de Navegação ----------
-
-function showSinglePost(postId) {
-  const post = allPosts.find((p) => p.id == postId);
-  if (!post) return alert("Post não encontrado!");
-  const feed = document.getElementById("feed");
-  feed.innerHTML = "";
-  // Passamos 'allPosts' para a função de renderização
-  feed.appendChild(buildPostCard(post, allPosts, voteCounts));
-
-  // Passamos 'allPosts' para a função de renderização de replies
-  const repliesHtml = buildRepliesRecursive(post.id, allPosts);
-  const repliesContainer = document.createElement("div");
-  repliesContainer.innerHTML = repliesHtml;
-  feed.appendChild(repliesContainer);
-
-  document.getElementById("pageTitle").textContent = "Thread";
-  document.getElementById("btnBack").classList.remove("hidden");
-  document.getElementById("newPostSection").classList.add("hidden");
-  // Assumindo que a sidebar é o 'sidebar-root' no index.html e contém o SidebarHTML
-  document.getElementById("sidebar-root").classList.add("hidden");
-  window.scrollTo(0, 0);
-}
-
-function backToFeed() {
-  // 1. Limpa o Hash
-  window.location.hash = "";
-}
-
-// ---------- Funções de Postagem (Lógica de API) ----------
-
-function sendPost(content, replyTo = null) {
-  const username = localStorage.getItem("hiveUser");
-  if (!username) return alert("Faça login primeiro!");
-
-  console.log("this is content: ", content);
-  const tags = extractTagsFromText(content);
-  const mentions = extractMentionsFromText(content);
-  const json = JSON.stringify({
-    app: APP_ID,
-    v: 1,
-    type: replyTo ? "reply" : "post",
-    content,
-    reply_to: replyTo,
-    mentions,
-    tags,
-  });
-
-  if (window.hive_keychain) {
-    window.hive_keychain.requestCustomJson(
-      username,
-      APP_ID,
-      "Posting",
-      json,
-      replyTo ? "Responder" : "Postar",
-      (res) => {
-        if (res.success) {
-          alert("✅ Enviado com sucesso!");
-          document.getElementById("newPostContent").value = ""; // Limpa
-          document.getElementById("charCount").textContent =
-            "Characters: 0 / 512";
-          fetchPosts();
-        } else {
-          alert("❌ Erro ao enviar!");
-        }
-      }
-    );
-  } else {
-    alert("Hive Keychain não detectado!");
-  }
-}
+// ---------- Funções de UI Locais (Modal) ----------
 
 function setupImageModal() {
-  // Insere a estrutura do modal no DOM (pode ser no final do body ou em 'modal-root')
   const modalHtml = `
         <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
             <div class="relative max-w-full max-h-full">
@@ -526,45 +61,46 @@ function setupEventListeners() {
     if (nearBottom) renderNextBatch();
   });
 
-  // Interações com o Feed (Reply, View Thread)
+  // Delegação de Eventos no Feed (Reply, Thread, Vote, Imagem, Tag)
   document.getElementById("feed").addEventListener("click", (e) => {
+    
+    // VIEW THREAD (clicar em 'Em resposta a...')
     if (e.target.classList.contains("view-thread")) {
       const id = e.target.dataset.id;
       showSinglePost(id);
     }
 
+    // THREAD BUTTON (clicar no ícone de 💬)
     if (e.target.classList.contains("thread-btn")) {
       const id = e.target.dataset.id;
-      // O card agora é um elemento filho injetado
       const card = e.target.closest(".card");
       const threadDiv = card.querySelector(".thread");
+      if (!threadDiv) return;
+
       if (!threadDiv.classList.contains("hidden")) {
         threadDiv.classList.add("hidden");
         threadDiv.innerHTML = "";
         return;
       }
-
       const repliesHtml = buildRepliesRecursive(id, allPosts);
       threadDiv.innerHTML =
         repliesHtml || '<div class="small-muted">Sem replies ainda.</div>';
       threadDiv.classList.remove("hidden");
     }
 
+    // REPLY BUTTON
     if (e.target.classList.contains("reply-btn")) {
       const id = e.target.dataset.id;
       const existing = e.target.closest(".card").querySelector(".reply-form");
       if (existing) {
-        existing.remove();
-        return;
+        existing.remove(); return;
       }
-
       const replyBox = document.createElement("div");
       replyBox.className = "reply-form mt-3";
       replyBox.innerHTML = `
           <textarea class="w-full p-2 border rounded mb-2" rows="2" placeholder="Reply..."></textarea>
           <button class="px-3 py-1 bg-red-600 text-white rounded send-reply">Enviar</button>`;
       e.target.closest(".card").appendChild(replyBox);
-
       replyBox.querySelector(".send-reply").addEventListener("click", () => {
         const text = replyBox.querySelector("textarea").value.trim();
         if (!text) return alert("Digite algo!");
@@ -572,23 +108,27 @@ function setupEventListeners() {
       });
     }
 
+    // IMAGE MODAL
     if (e.target.classList.contains("post-image")) {
       const fullSrc = e.target.dataset.fullSrc;
       showImageModal(fullSrc);
     }
 
+    // VOTE BUTTON
     if (e.target.classList.contains("vote-btn")) {
       const contentId = e.target.dataset.id;
-      const voteType = e.target.dataset.vote; // "upvote" or "downvote"
+      const voteType = e.target.dataset.vote;
       sendVote(contentId, voteType);
     }
+    
+    // TAG LINK (no corpo do post)
     if (e.target.classList.contains("tag-link")) {
       const tag = e.target.dataset.tag;
-      filterByTag(tag);
+      filterByTag(tag); // Usa a função de roteamento
     }
   });
 
-  // Botões estáticos (Post, Refresh, Back) - Agora existem no DOM
+  // Botões estáticos (Post, Refresh, Back)
   document.getElementById("btnPost").addEventListener("click", () => {
     const text = document.getElementById("newPostContent").value.trim();
     if (!text) return alert("Digite algo!");
@@ -596,32 +136,31 @@ function setupEventListeners() {
   });
 
   document.getElementById("btnBack").addEventListener("click", backToFeed);
-  document.getElementById("btnRefresh").addEventListener("click", fetchPosts);
-  document
-    .getElementById("btnRefreshTags")
-    .addEventListener("click", updateTags);
+  document.getElementById("btnRefresh").addEventListener("click", refreshCurrentView);
+  document.getElementById("btnRefreshTags").addEventListener("click", updateTags); // Apenas atualiza a sidebar
 
+  // Contador de caracteres
   document.getElementById("newPostContent").addEventListener("input", (e) => {
     const len = e.target.value.length;
     document.getElementById(
       "charCount"
     ).textContent = `Characters: ${len} / 512`;
   });
+
+  // TAG LINK (na sidebar)
   document.getElementById("trendingList").addEventListener("click", (e) => {
-    // O texto da tag está dentro do span com a classe 'text-red-600'
-    const tagSpan = e.target.closest("div").querySelector(".text-red-600");
+    const tagSpan = e.target.closest("div").querySelector(".tag-link");
     if (tagSpan) {
-      // Remove o '#' e a tag na URL para obter o nome limpo
       const tag = tagSpan.textContent.replace("#", "");
-      filterByTag(tag);
+      filterByTag(tag); // Usa a função de roteamento
     }
   });
-  document.getElementById("main-nav").addEventListener("click", (e) => {
-    if (e.target.tagName === "A" && e.target.closest("#main-nav")) {
-      // Permite que o handleRoute cuide do roteamento
-      // Certifique-se de que o hash foi alterado para disparar o hashchange
-    }
-  });
+}
+
+async function refreshCurrentView() {
+    // 1. Força a busca de novos dados
+    await fetchData(); 
+    handleRoute(); 
 }
 
 // ---------- Inicialização ----------
@@ -629,16 +168,16 @@ function setupEventListeners() {
 // 1. Monta o HTML no DOM
 setupInitialDOM();
 
-// 2. Configura a Lógica de Autenticação e seus Listeners (DEVE VIR LOGO APÓS A CRIAÇÃO DO DOM)
-setAuthCallbacks(fetchPosts, fetchPosts);
-setupAuthListeners(); // <-- MOVIDO PARA CIMA
+// 2. Configura a Lógica de Autenticação e seus Listeners
+setAuthCallbacks(handleRoute, handleRoute); // Recarrega a view no login/logout
+setupAuthListeners();
 
 // 3. Configura os Listeners restantes (e modais)
 setupEventListeners();
 setupImageModal();
 
-// 4. Inicia o carregamento do feed
-handleInitialRoute();
+// 4. Inicia o carregamento do feed e o roteamento
+handleRoute();
 
-// Adiciona listener para botões Voltar/Avançar do navegador e links de Hash
+// 5. Adiciona listener para botões Voltar/Avançar do navegador e links de Hash
 window.addEventListener("hashchange", handleRoute);
