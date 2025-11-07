@@ -92,6 +92,8 @@ export async function fetchData() {
 
         const mutedIds = processMutedData(muteDataRaw || []);
         setMutedPostIds(mutedIds);
+        const mutedPostMap = processMuteData(muteDataRaw.rows || muteDataRaw); 
+        setMutedPostIds(mutedPostMap); // Esta função deve ser alterada no state.js para aceitar um Map
 
         updateTags(); // Atualiza a UI da sidebar
         
@@ -213,4 +215,35 @@ export function sendUnmute(contentId) {
             }
         );
     }
+}
+
+
+function processMuteData(muteData) {
+    // Retorna um Map: Map<postId, {cause: string, admin: string}>
+    const finalMutes = new Map(); 
+
+    if (!Array.isArray(muteData)) return finalMutes;
+
+    muteData
+        // Ordena para que a última operação (mute/unmute) prevaleça
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+        .forEach((muteOp) => {
+            const muteJson = parseEmbeddedJson(muteOp.json);
+            const postId = muteJson?.content_id;
+            const type = muteJson?.type; // 'mute' ou 'unmute'
+            const cause = muteJson?.cause || 'Motivo não especificado'; // Pega o motivo
+            const admin = muteOp.required_posting_auths?.[0] || 'admin';
+            
+            if (!postId) return;
+
+            if (type === 'mute') {
+                // Armazena o objeto de mute, incluindo o motivo e quem mutou
+                finalMutes.set(postId, { cause: cause, admin: admin });
+            } else if (type === 'unmute') {
+                // Remove do mapa se for um 'unmute'
+                finalMutes.delete(postId);
+            }
+        });
+
+    return finalMutes;
 }

@@ -60,7 +60,7 @@ export function buildThreadAbove(post, allPosts) {
 
 // /js/render.js (Função buildPostCard REESTRUTURADA)
 
-export function buildPostCard(p, allPosts, voteCounts = {}) {
+export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new Map()) {
     const author =
         (p.required_posting_auths && p.required_posting_auths[0]) || "unknown";
     const parsed = parseEmbeddedJson(p.json); //
@@ -82,11 +82,42 @@ export function buildPostCard(p, allPosts, voteCounts = {}) {
     const votes = voteCounts[p.id] || { upvote: 0, downvote: 0 };
     const upvoteCount = votes.upvote;
     const downvoteCount = votes.downvote;
+    
+    // NOVO: Lógica do Mute
+    // 1. Obtém as informações do Map (que agora inclui {cause, admin})
+    const muteInfo = mutedPostMap.get(p.id);
+    const isMuted = !!muteInfo;
+    const muteCause = muteInfo ? escapeHtml(muteInfo.cause) : ''; // Motivo do mute
+    const muteAdmin = muteInfo ? muteInfo.admin : 'Admin'; // Administrador
+    const loggedInUser = localStorage.getItem("hiveUser");
     const isAdmin = loggedInUser === ADMIN;
-    const isMuted = mutedPostIds.has(p.id);
+
+
+    // NOVO: HTML do Banner de Mute
+    let muteBannerHTML = '';
+    if (isMuted) {
+        muteBannerHTML = `
+            <div class="mt-2 p-3 bg-red-50 border border-red-300 rounded text-sm text-red-700">
+                <strong>🚨 Post Mutado</strong> 
+                <span class="small-muted">(por @${muteAdmin})</span>:
+                <p class="mt-1 font-semibold">${muteCause}</p>
+            </div>
+        `;
+    }
+
+    // Variáveis de escopo global que você deve ter definido:
+    // const isAdmin = loggedInUser === ADMIN; // Ex: admin deve vir do config
+    // const loggedInUser = localStorage.getItem("hiveUser"); // Ex: deve ser global
+    
+    // O seu código original estava lendo 'isMuted' e 'isAdmin' de variáveis globais. 
+    // Mantenho a estrutura de botões de admin, mas é preciso garantir que 'isAdmin' esteja definida.
+
 
     const el = document.createElement("article");
-    el.className = `card p-4 ${isMuted ? 'opacity-50 bg-gray-50' : ''}`;
+    // Altera a classe CSS para o post mutado
+    el.className = `card p-4 ${isMuted ? 'opacity-70 bg-gray-50' : ''}`; 
+    el.setAttribute('data-id', p.id); // É bom ter o ID no <article>
+
     el.innerHTML = `
         <div class="flex gap-3">
             <img 
@@ -105,7 +136,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}) {
                 
                 ${parsed?.reply_to ? buildThreadAbove(p, allPosts) : ""}
                 
-                <div class="mt-3 text-sm">${
+                ${muteBannerHTML} <div class="mt-3 text-sm">${
                     // NOVO: Usamos linkifyText para transformar #tags e @mentions em links
                     linkifyText(escapeHtml(text)).replace( 
                         /\n/g,

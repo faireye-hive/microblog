@@ -130,6 +130,13 @@ function setupEventListeners() {
 
     // NOVO: MUTE/UNMUTE BUTTON
     if (e.target.classList.contains("mute-btn")) {
+        // CORREÇÃO: Verificar se o usuário está logado
+        const loggedInUser = localStorage.getItem("hiveUser");
+        if (!loggedInUser) {
+            alert("Você precisa estar logado para mutar/desmutar posts.");
+            return; 
+        }
+        
         const contentId = e.target.dataset.id;
         const type = e.target.dataset.type;
 

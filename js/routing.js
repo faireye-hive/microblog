@@ -1,9 +1,10 @@
 // /js/routing.js
 
-import { allPosts, voteCounts, renderFeed, BATCH_SIZE, mutedPostIds } from "./state.js";
+import { allPosts, voteCounts, renderFeed, BATCH_SIZE, mutedPostIds,loggedInUser } from "./state.js";
 import { fetchData } from "./api.js";
 import { parseEmbeddedJson, extractTagsFromText } from "./utils.js";
 import { buildPostCard, buildRepliesRecursive } from "./render.js";
+import { ADMIN } from "./config.js";
 
 let currentPage = "feed";
 
@@ -124,6 +125,14 @@ export function filterByTag(tag, pushHistory = true) {
         const js = parseEmbeddedJson(p.json);
         return js?.tags?.map((t) => t.toLowerCase()).includes(tag.toLowerCase());
     });
+    
+    // NOVO: Aplica o filtro de mute para não-admins
+    let finalPosts = filteredPosts;
+    const isAdmin = loggedInUser === ADMIN;
+    
+    if (!isAdmin) {
+        finalPosts = filteredPosts.filter(p => !mutedPostIds.has(p.id));
+    }
 
     // Atualiza UI
     document.getElementById("pageTitle").textContent = `#${tag}`;
@@ -133,7 +142,7 @@ export function filterByTag(tag, pushHistory = true) {
     document.getElementById("sidebar-root").classList.remove("hidden");
     updateNavSelection("tag");
 
-    renderFeed(filteredPosts);
+    renderFeed(finalPosts); // Usa a lista final filtrada
     window.scrollTo(0, 0);
 }
 
@@ -198,11 +207,18 @@ export async function handleRoute() {
         // Rota Home/Feed Principal
         // (Já configurado para o padrão)
     }
+    const isAdmin = loggedInUser === ADMIN;
+    
+    if (!isAdmin && newPage !== "muted") {
+        postsToRender = postsToRender.filter(p => !mutedPostIds.has(p.id));
+    }
+
 
     // Renderiza e atualiza a navegação (se não for tag/thread)
     if (newPage !== "tag" && newPage !== "thread") {
         document.getElementById("pageTitle").textContent = title;
-        renderFeed(postsToRender, isMural);
+        // renderFeed agora recebe a lista *final* de posts
+        renderFeed(postsToRender); 
         updateNavSelection(newPage);
         window.scrollTo(0, 0);
     }

@@ -4,6 +4,7 @@ import { buildPostCard } from "./render.js";
 import { parseEmbeddedJson } from "./utils.js";
 import { ADMIN } from "./config.js";
 
+
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
 export let allPosts = []; // Todos os posts brutos
 export let voteCounts = {}; // Contagem de votos processada
@@ -13,7 +14,7 @@ export let loading = false;
 export const BATCH_SIZE = 50;
 
 export let loggedInUser = null; // Armazena o usuário logado
-export let mutedPostIds = new Set(); // Armazena os IDs dos posts mutados
+export let mutedPostIds = new Map(); // Armazena os IDs dos posts mutados
 
 // ---------- Funções de Mutação de Estado ----------
 
@@ -29,19 +30,16 @@ export function setLoggedInUser(user) {
     loggedInUser = user;
 }
 
-export function setMutedPostIds(ids) {
-    mutedPostIds = ids;
+export function setMutedPostIds(newMutedPostMap) {
+    mutedPostIds = newMutedPostMap;
 }
 
 // ---------- Funções de Renderização de Estado ----------
 
 // Inicia a renderização do feed (com paginação)
 export function renderFeed(postsToRender) {
-    const isAdmin = loggedInUser === ADMIN;
-    if (!isAdmin) {
-        postsToRender = postsToRender.filter(p => !mutedPostIds.has(p.id));
-    }
-
+    // REVERTIDO: A lógica de filtragem foi movida para routing.js
+    
     allPostsToRender = postsToRender;
     renderedCount = 0;
 
@@ -52,7 +50,6 @@ export function renderFeed(postsToRender) {
     }
     renderNextBatch();
 }
-
 // Renderiza o próximo lote de posts para scroll infinito
 export function renderNextBatch() {
     if (loading) return;
@@ -66,7 +63,8 @@ export function renderNextBatch() {
         feed.innerHTML = '<div class="card p-4 text-center small-muted">Nenhum post encontrado.</div>';
     }
 
-    next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts)));
+    // AQUI ESTÁ A MUDANÇA: O 'mutedPostIds' é passado como 4º argumento.
+    next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts, mutedPostIds)));
 
     renderedCount += next.length;
     loading = false;
