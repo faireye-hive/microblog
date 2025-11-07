@@ -1,5 +1,7 @@
 // /js/render.js
 import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
+import { loggedInUser, mutedPostIds } from "./state.js"; // Importa estado
+import { ADMIN } from "./config.js"; // Importa nome do Admin
 
 // Função Helper local
 function findPost(postId, allPosts) {
@@ -80,9 +82,11 @@ export function buildPostCard(p, allPosts, voteCounts = {}) {
     const votes = voteCounts[p.id] || { upvote: 0, downvote: 0 };
     const upvoteCount = votes.upvote;
     const downvoteCount = votes.downvote;
+    const isAdmin = loggedInUser === ADMIN;
+    const isMuted = mutedPostIds.has(p.id);
 
     const el = document.createElement("article");
-    el.className = "card p-4";
+    el.className = `card p-4 ${isMuted ? 'opacity-50 bg-gray-50' : ''}`;
     el.innerHTML = `
         <div class="flex gap-3">
             <img 
@@ -131,6 +135,14 @@ export function buildPostCard(p, allPosts, voteCounts = {}) {
                     <div class="flex gap-2">
                         <button class="px-2 py-1 border rounded small-muted vote-btn upvote-btn" data-id="${p.id}" data-vote="upvote">👍 ${upvoteCount}</button>
                         <button class="px-2 py-1 border rounded small-muted vote-btn downvote-btn" data-id="${p.id}" data-vote="downvote">👎 ${downvoteCount}</button>
+
+                        ${isAdmin ? `
+                    ${isMuted ? `
+                        <button class="px-2 py-1 border rounded small-muted text-green-600 mute-btn" data-id="${p.id}" data-type="unmute">Unmute</button>
+                    ` : `
+                        <button class="px-2 py-1 border rounded small-muted text-red-600 mute-btn" data-id="${p.id}" data-type="mute">Mute</button>
+                    `}
+                ` : ''}
                     </div>
                     <div class="flex gap-2 justify-end">
                         <button class="px-2 py-1 border rounded small-muted thread-btn" data-id="${

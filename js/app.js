@@ -16,9 +16,10 @@ import {
 
 // Importa dos novos módulos
 import { allPosts, renderNextBatch, loading } from "./state.js";
-import { fetchData, sendPost, sendVote } from "./api.js";
+import { fetchData, sendPost, sendVote,sendMute,sendUnmute } from "./api.js";
 import { handleRoute, backToFeed, showSinglePost, filterByTag } from "./routing.js";
-import { updateTags } from "./state.js";
+import { updateTags,setLoggedInUser } from "./state.js";
+
 
 // ---------- Funções de UI Locais (Modal) ----------
 
@@ -126,7 +127,28 @@ function setupEventListeners() {
       const tag = e.target.dataset.tag;
       filterByTag(tag); // Usa a função de roteamento
     }
+
+    // NOVO: MUTE/UNMUTE BUTTON
+    if (e.target.classList.contains("mute-btn")) {
+        const contentId = e.target.dataset.id;
+        const type = e.target.dataset.type;
+
+        if (type === "mute") {
+            const cause = prompt("Por favor, insira o motivo para mutar este post:");
+            if (cause && cause.trim() !== "") {
+                sendMute(contentId, cause.trim());
+            } else if (cause !== null) { // Só alerta se não clicou em "Cancelar"
+                alert("O motivo é obrigatório para mutar.");
+            }
+        } else if (type === "unmute") {
+            sendUnmute(contentId);
+        }
+    }
+
+
   });
+
+  
 
   // Botões estáticos (Post, Refresh, Back)
   document.getElementById("btnPost").addEventListener("click", () => {
@@ -163,6 +185,15 @@ async function refreshCurrentView() {
     handleRoute(); 
 }
 
+async function handleInitialRoute() {
+  // A lógica de roteamento agora está em handleRoute()
+  // Apenas garantimos que o usuário seja verificado no início
+  setLoggedInUser(localStorage.getItem("hiveUser")); 
+  
+  // handleRoute cuidará de chamar fetchData se necessário
+  handleRoute();
+}
+
 // ---------- Inicialização ----------
 
 // 1. Monta o HTML no DOM
@@ -176,8 +207,22 @@ setupAuthListeners();
 setupEventListeners();
 setupImageModal();
 
+// 3. Configura a Lógica de Autenticação
+setAuthCallbacks(
+    (user) => { // On Login
+        setLoggedInUser(user);
+        handleRoute();
+    }, 
+    () => { // On Logout
+        setLoggedInUser(null);
+        handleRoute();
+    }
+);
+
 // 4. Inicia o carregamento do feed e o roteamento
 handleRoute();
+
+handleInitialRoute();
 
 // 5. Adiciona listener para botões Voltar/Avançar do navegador e links de Hash
 window.addEventListener("hashchange", handleRoute);

@@ -1,8 +1,11 @@
 // /js/api.js
 
-import { APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL } from "./config.js";
+import { 
+    APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
+    ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL, ADMIN 
+} from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText } from "./utils.js";
-import { setAllPosts, setVoteCounts, updateTags } from "./state.js";
+import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts } from "./state.js";
 
 // Processa os dados de voto brutos da API
 function processVoteData(voteData) {
@@ -46,6 +49,25 @@ function processVoteData(voteData) {
     return finalCounts;
 }
 
+function processMutedData(muteData) {
+    const currentlyMuted = new Set();
+    
+    // Ordena por data (mais antigo primeiro) para que o último estado (mute/unmute) prevaleça
+    muteData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    muteData.forEach(op => {
+        const json = parseEmbeddedJson(op.json);
+        if (json.content_id) {
+            if (json.type === "mute") {
+                currentlyMuted.add(json.content_id);
+            } else if (json.type === "unmute") {
+                currentlyMuted.delete(json.content_id);
+            }
+        }
+    });
+    return currentlyMuted;
+}
+
 // Função principal para buscar todos os dados (Posts e Votos)
 export async function fetchData() {
     document.getElementById("feed").innerHTML =
@@ -54,7 +76,8 @@ export async function fetchData() {
     try {
         const resPromise = fetch(API_URL).then((res) => res.json());
         const voteResPromise = fetch(VOTE_API_URL).then((res) => res.json());
-        const [data, voteDataRaw] = await Promise.all([resPromise, voteResPromise]);
+        const muteResPromise = fetch(ADMIN_POST_MUTE_API_URL).then((res) => res.json()); // NOVO
+        const [data, voteDataRaw, muteDataRaw] = await Promise.all([resPromise, voteResPromise, muteResPromise]);
 
         // Processa Posts
         const posts = (Array.isArray(data) ? data : data.rows || [])
@@ -66,6 +89,9 @@ export async function fetchData() {
         // Processa Votos
         const counts = processVoteData(voteDataRaw || []);
         setVoteCounts(counts); // Atualiza o estado
+
+        const mutedIds = processMutedData(muteDataRaw || []);
+        setMutedPostIds(mutedIds);
 
         updateTags(); // Atualiza a UI da sidebar
         
@@ -136,5 +162,55 @@ export function sendVote(contentId, voteType) {
         );
     } else {
         alert("Hive Keychain não detectado!");
+    }
+}
+
+export function sendMute(contentId, cause) {
+    const username = localStorage.getItem("hiveUser");
+    if (username !== ADMIN) return alert("Apenas administradores podem mutar posts.");
+
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "mute",
+        cause: cause,
+        content_id: contentId,
+    });
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username, ADMIN_PMUTE_CUSTOM_ID, "Posting", json, "Mutar Post",
+            (res) => {
+                if (res.success) {
+                    alert("✅ Post mutado com sucesso!");
+                    fetchData().then(() => window.dispatchEvent(new Event('hashchange')));
+                } else {
+                    alert("❌ Erro ao mutar post!");
+                }
+            }
+        );
+    }
+}
+
+// NOVO: Envia um Unmute
+export function sendUnmute(contentId) {
+    const username = localStorage.getItem("hiveUser");
+    if (username !== ADMIN) return alert("Apenas administradores podem desmutar posts.");
+
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "unmute",
+        content_id: contentId,
+    });
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username, ADMIN_PMUTE_CUSTOM_ID, "Posting", json, "Desmutar Post",
+            (res) => {
+                if (res.success) {
+                    alert("✅ Post desmutado com sucesso!");
+                    fetchData().then(() => window.dispatchEvent(new Event('hashchange')));
+                } else {
+                    alert("❌ Erro ao desmutar post!");
+                }
+            }
+        );
     }
 }

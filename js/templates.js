@@ -14,14 +14,11 @@ export const NavbarHTML = `
             <a href="#/" class="text-red-600 font-bold text-sm">Home</a>
             <a href="#/trending" class="small-muted text-sm">Trending</a>
             <a href="#/active" class="small-muted text-sm">Active</a>
+            <a href="#/muted" class="small-muted text-sm">Mural</a>
         </div>
       </div>
 
       <div class="flex items-center gap-4">
-        <h1 id="pageTitle" class="text-xl font-semibold hidden sm:block">
-          Feed
-        </h1>
-        
         <div class="relative">
           <button
             id="btnMenu"
@@ -67,6 +64,7 @@ export const NavbarHTML = `
     </div>
   </nav>
 `;
+
 // --- 2. Modal de Login ---
 export const LoginModalHTML = `
   <div

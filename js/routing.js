@@ -1,6 +1,6 @@
 // /js/routing.js
 
-import { allPosts, voteCounts, renderFeed, BATCH_SIZE } from "./state.js";
+import { allPosts, voteCounts, renderFeed, BATCH_SIZE, mutedPostIds } from "./state.js";
 import { fetchData } from "./api.js";
 import { parseEmbeddedJson, extractTagsFromText } from "./utils.js";
 import { buildPostCard, buildRepliesRecursive } from "./render.js";
@@ -66,7 +66,7 @@ function rankPostsByComments(posts) {
 
 // ---------- Funções de View (Navegação) ----------
 
-function updateNavSelection(newPage) {
+export function updateNavSelection(newPage) {
     currentPage = newPage;
     const navLinks = document.querySelectorAll("#main-nav a");
     navLinks.forEach((link) => {
@@ -77,6 +77,7 @@ function updateNavSelection(newPage) {
     const hashMatch = {
         "feed": "#/", "tag": "#/", "thread": "#/",
         "trending": "#/trending", "active": "#/active",
+        "muted": "#/muted",
     };
     const targetHash = hashMatch[newPage] || "#/";
     const activeLink = document.querySelector(`a[href="${targetHash}"]`);
@@ -165,6 +166,7 @@ export async function handleRoute() {
     let postsToRender = allPosts;
     let title = "Feed";
     let newPage = "feed";
+    let isMural = false;
 
     if (tagMatch) {
         const tag = tagMatch[1];
@@ -184,6 +186,14 @@ export async function handleRoute() {
         //document.getElementById("newPostSection").classList.add("hidden");
         postsToRender = rankPostsByComments(allPosts);
         newPage = "active";
+    }else if (path === "/muted") {
+        // NOVO: Rota do Mural de Transparência
+        title = "Mural (Posts Mutados)";
+        document.getElementById("newPostSection").classList.add("hidden");
+        // Filtra para mostrar APENAS posts mutados
+        postsToRender = allPosts.filter(p => mutedPostIds.has(p.id));
+        newPage = "muted";
+        isMural = true;
     } else {
         // Rota Home/Feed Principal
         // (Já configurado para o padrão)
@@ -192,7 +202,7 @@ export async function handleRoute() {
     // Renderiza e atualiza a navegação (se não for tag/thread)
     if (newPage !== "tag" && newPage !== "thread") {
         document.getElementById("pageTitle").textContent = title;
-        renderFeed(postsToRender);
+        renderFeed(postsToRender, isMural);
         updateNavSelection(newPage);
         window.scrollTo(0, 0);
     }

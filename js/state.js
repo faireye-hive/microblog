@@ -2,6 +2,7 @@
 
 import { buildPostCard } from "./render.js";
 import { parseEmbeddedJson } from "./utils.js";
+import { ADMIN } from "./config.js";
 
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
 export let allPosts = []; // Todos os posts brutos
@@ -10,6 +11,9 @@ export let allPostsToRender = []; // Lista atual de posts (completa ou filtrada)
 export let renderedCount = 0;
 export let loading = false;
 export const BATCH_SIZE = 50;
+
+export let loggedInUser = null; // Armazena o usuário logado
+export let mutedPostIds = new Set(); // Armazena os IDs dos posts mutados
 
 // ---------- Funções de Mutação de Estado ----------
 
@@ -21,15 +25,31 @@ export function setVoteCounts(counts) {
     voteCounts = counts;
 }
 
+export function setLoggedInUser(user) {
+    loggedInUser = user;
+}
+
+export function setMutedPostIds(ids) {
+    mutedPostIds = ids;
+}
+
 // ---------- Funções de Renderização de Estado ----------
 
 // Inicia a renderização do feed (com paginação)
 export function renderFeed(postsToRender) {
+    const isAdmin = loggedInUser === ADMIN;
+    if (!isAdmin) {
+        postsToRender = postsToRender.filter(p => !mutedPostIds.has(p.id));
+    }
+
     allPostsToRender = postsToRender;
     renderedCount = 0;
 
     const feed = document.getElementById("feed");
     feed.innerHTML = "";
+    if (allPostsToRender.length === 0) {
+        feed.innerHTML = '<div class="card p-4 text-center small-muted">Nenhum post encontrado.</div>';
+    }
     renderNextBatch();
 }
 
