@@ -66,43 +66,35 @@ function renderFeed(postsToRender) {
 }
 
 function filterByTag(tag, pushHistory = true) {
-    const currentTag = document.getElementById("pageTitle").dataset.tag;
-    
-    // Lógica para voltar ao feed principal se clicar na tag já selecionada
-    if (currentTag === tag && pushHistory) {
-        document.getElementById("pageTitle").removeAttribute("data-tag");
-        window.history.pushState(null, "", window.location.pathname.split('/hashtag/')[0]);
-        return backToFeed();
-    }
-    
-    // Atualiza a URL apenas se for um clique (não um carregamento inicial)
+    // 1. Atualiza a URL com Hash (ex: /#/hashtag/pump)
     if (pushHistory) {
-        const newPath = `/hashtag/${tag}`;
-        window.history.pushState(null, "", newPath);
+        window.location.hash = `/hashtag/${tag}`;
     }
     
     const filteredPosts = allPosts.filter((p) => {
         const js = parseEmbeddedJson(p.json);
-        // Filtro case-insensitive
         return js?.tags?.map(t => t.toLowerCase()).includes(tag.toLowerCase()); 
     });
 
+    // 2. Atualiza a UI
     document.getElementById("pageTitle").textContent = `#${tag}`;
     document.getElementById("pageTitle").dataset.tag = tag;
     document.getElementById("btnBack").classList.remove("hidden");
     
-    // CORREÇÃO UI: Garante que a seção New Post e a Sidebar estão visíveis
+    // CORREÇÃO UI: Mantém a sidebar e o new post
     document.getElementById("newPostSection").classList.remove("hidden");
     document.getElementById("sidebar-root").classList.remove("hidden");
 
-    renderFeed(filteredPosts);
+    renderFeed(filteredPosts); // Renderiza a lista filtrada
+    window.scrollTo(0, 0);
 }
 // NOVO: Função para lidar com o roteamento inicial (URL direta ou botão Voltar/Avançar)
 function handleInitialRoute() {
-    // 1. Busca todos os dados primeiro
+    // 1. Busca todos os dados primeiro (posts e votos)
     fetchData().then(() => {
-        // 2. Analisa a URL
-        const path = window.location.pathname;
+        
+        // 2. Analisa o Hash da URL (ex: #/hashtag/pump)
+        const path = window.location.hash.substring(1); // Remove o '#' inicial
         const tagMatch = path.match(/^\/hashtag\/([a-z0-9]+)$/i);
         
         if (tagMatch) {
@@ -110,7 +102,7 @@ function handleInitialRoute() {
             const tag = tagMatch[1];
             filterByTag(tag, false); 
         } else {
-            // Rota principal: renderiza o feed completo
+            // Rota principal (hash vazio ou inválido): renderiza o feed completo
             renderFeed(allPosts);
         }
     }).catch(e => {
@@ -286,11 +278,19 @@ function showSinglePost(postId) {
 }
 
 function backToFeed() {
+  // 1. Limpa o Hash
+  window.location.hash = "";
+  
+  // 2. Atualiza a UI
   document.getElementById("pageTitle").textContent = "Feed";
+  document.getElementById("pageTitle").removeAttribute("data-tag");
   document.getElementById("btnBack").classList.add("hidden");
   document.getElementById("newPostSection").classList.remove("hidden");
   document.getElementById("sidebar-root").classList.remove("hidden");
-  fetchPosts();
+  
+  // 3. Renderiza o feed completo
+  renderFeed(allPosts);
+  window.scrollTo(0, 0);
 }
 
 // ---------- Funções de Postagem (Lógica de API) ----------
@@ -488,4 +488,4 @@ setupAuthListeners();
 handleInitialRoute();
 
 // Adiciona listener para botões Voltar/Avançar do navegador
-window.addEventListener('popstate', handleInitialRoute);
+window.addEventListener('hashchange', handleInitialRoute);
