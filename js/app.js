@@ -20,10 +20,104 @@ let renderedCount = 0;
 const BATCH_SIZE = 50;
 let loading = false;
 let voteCounts = {}; // NOVO: Estrutura para armazenar as contagens de votos
+let allPostsToRender = []; // NOVO: Lista atual de posts (completa ou filtrada) para renderização
 
 
 
 // ---------- Funções de Ação e Estado ----------
+
+// NOVO: Função para filtrar posts por tag
+// NOVO: Função para buscar todos os dados (Posts e Votos)
+async function fetchData() {
+    document.getElementById("feed").innerHTML =
+        '<div class="card p-4 text-center small-muted">Carregando...</div>';
+    
+    // 1. Fetch Posts e Votes em paralelo
+    const resPromise = fetch(API_URL).then(res => res.json());
+    const voteResPromise = fetch(VOTE_API_URL).then(res => res.json());
+
+    const [data, voteDataRaw] = await Promise.all([resPromise, voteResPromise]).catch(e => {
+        console.error("Erro ao carregar dados:", e);
+        return [{}, {}];
+    });
+    
+    // Processa Posts
+    allPosts = (Array.isArray(data) ? data : data.rows || [])
+      .filter((x) => x.custom_id === APP_ID)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Processa Votos
+    voteCounts = processVoteData(voteDataRaw || []); 
+
+    // Atualiza tags na sidebar (Trending)
+    updateTags();
+}
+
+
+// NOVO: Função para iniciar a renderização do feed (com paginação)
+function renderFeed(postsToRender) {
+  allPostsToRender = postsToRender; 
+  renderedCount = 0;
+  
+  const feed = document.getElementById("feed");
+  feed.innerHTML = ""; // Limpa antes de renderizar
+  
+  renderNextBatch();
+}
+
+function filterByTag(tag, pushHistory = true) {
+    const currentTag = document.getElementById("pageTitle").dataset.tag;
+    
+    // Lógica para voltar ao feed principal se clicar na tag já selecionada
+    if (currentTag === tag && pushHistory) {
+        document.getElementById("pageTitle").removeAttribute("data-tag");
+        window.history.pushState(null, "", window.location.pathname.split('/hashtag/')[0]);
+        return backToFeed();
+    }
+    
+    // Atualiza a URL apenas se for um clique (não um carregamento inicial)
+    if (pushHistory) {
+        const newPath = `/hashtag/${tag}`;
+        window.history.pushState(null, "", newPath);
+    }
+    
+    const filteredPosts = allPosts.filter((p) => {
+        const js = parseEmbeddedJson(p.json);
+        // Filtro case-insensitive
+        return js?.tags?.map(t => t.toLowerCase()).includes(tag.toLowerCase()); 
+    });
+
+    document.getElementById("pageTitle").textContent = `#${tag}`;
+    document.getElementById("pageTitle").dataset.tag = tag;
+    document.getElementById("btnBack").classList.remove("hidden");
+    
+    // CORREÇÃO UI: Garante que a seção New Post e a Sidebar estão visíveis
+    document.getElementById("newPostSection").classList.remove("hidden");
+    document.getElementById("sidebar-root").classList.remove("hidden");
+
+    renderFeed(filteredPosts);
+}
+// NOVO: Função para lidar com o roteamento inicial (URL direta ou botão Voltar/Avançar)
+function handleInitialRoute() {
+    // 1. Busca todos os dados primeiro
+    fetchData().then(() => {
+        // 2. Analisa a URL
+        const path = window.location.pathname;
+        const tagMatch = path.match(/^\/hashtag\/([a-z0-9]+)$/i);
+        
+        if (tagMatch) {
+            // Acesso direto à URL de tag: filtra (sem alterar history)
+            const tag = tagMatch[1];
+            filterByTag(tag, false); 
+        } else {
+            // Rota principal: renderiza o feed completo
+            renderFeed(allPosts);
+        }
+    }).catch(e => {
+        document.getElementById("feed").innerHTML =
+            '<div class="card p-4 text-center text-red-600">Erro ao carregar dados. Tente atualizar a página.</div>';
+    });
+}
 
 // NOVO: Função para processar os dados de voto
 function processVoteData(voteData) {
@@ -89,37 +183,13 @@ function processVoteData(voteData) {
 
   return finalCounts;
 }
-async function fetchPosts() {
-  const feed = document.getElementById("feed");
-  feed.innerHTML =
-    '<div class="card p-4 text-center small-muted">Carregando...</div>';
-  
-  // 1. Fetch Posts
-  const res = await fetch(API_URL);
-  const data = await res.json();
-  allPosts = (Array.isArray(data) ? data : data.rows || [])
-    .filter((x) => x.custom_id === APP_ID)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  // 2. Fetch Votes (NOVO)
-  try {
-      const voteRes = await fetch(VOTE_API_URL);
-      const voteData = await voteRes.json();
-
-      console.log('voteData');
-      console.log(voteData);
-      voteCounts = processVoteData(voteData || []); // Processa os votos
-      console.log('voteData.rows');
-      console.log(voteData.rows);
-  } catch (e) {
-      console.error("Erro ao carregar votos:", e);
-      voteCounts = {};
-  }
-  
-  feed.innerHTML = "";
-  renderedCount = 0;
-  renderNextBatch();
-  updateTags();
+async function fetchPosts() { // Agora é a ação de 'Voltar ao Feed Principal'
+    await fetchData(); 
+    
+    document.getElementById("pageTitle").textContent = "Feed";
+    document.getElementById("pageTitle").removeAttribute("data-tag");
+    
+    renderFeed(allPosts);
 }
 
 
@@ -160,14 +230,17 @@ function renderNextBatch() {
   if (loading) return;
   loading = true;
   const feed = document.getElementById("feed");
-  const next = allPosts.slice(renderedCount, renderedCount + BATCH_SIZE);
-  // Passamos 'allPosts' para a função de renderização
-  next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts))); // MODIFICADO
+  
+  const currentList = allPostsToRender.length > 0 ? allPostsToRender : allPosts;
+  const next = currentList.slice(renderedCount, renderedCount + BATCH_SIZE);
+
+  next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts)));
+  
   renderedCount += next.length;
   loading = false;
   document
     .getElementById("loadingIndicator")
-    .classList.toggle("hidden", renderedCount >= allPosts.length);
+    .classList.toggle("hidden", renderedCount >= currentList.length);
 }
 
 function updateTags() {
@@ -183,7 +256,7 @@ function updateTags() {
   sorted.forEach(([t, c]) => {
     const div = document.createElement("div");
     div.className = "flex justify-between";
-    div.innerHTML = `<span class="text-red-600 font-medium">#${t}</span><span class="inline-code">${c}</span>`;
+    div.innerHTML = `<span class="text-red-600 font-medium cursor-pointer tag-link" data-tag="${t}">#${t}</span><span class="inline-code">${c}</span>`;
     tList.appendChild(div);
   });
 }
@@ -359,6 +432,12 @@ function setupEventListeners() {
       const voteType = e.target.dataset.vote; // "upvote" or "downvote"
       sendVote(contentId, voteType);
     }
+    if (e.target.classList.contains("tag-link")) {
+      const tag = e.target.dataset.tag;
+      filterByTag(tag);
+    }
+
+
   });
 
   // Botões estáticos (Post, Refresh, Back) - Agora existem no DOM
@@ -380,6 +459,15 @@ function setupEventListeners() {
       "charCount"
     ).textContent = `Characters: ${len} / 512`;
   });
+  document.getElementById("trendingList").addEventListener("click", (e) => {
+    // O texto da tag está dentro do span com a classe 'text-red-600'
+    const tagSpan = e.target.closest("div").querySelector(".text-red-600");
+    if (tagSpan) {
+        // Remove o '#' e a tag na URL para obter o nome limpo
+        const tag = tagSpan.textContent.replace("#", ""); 
+        filterByTag(tag);
+    }
+  });
 }
 
 // ---------- Inicialização ----------
@@ -397,4 +485,7 @@ setAuthCallbacks(fetchPosts, fetchPosts);
 setupAuthListeners();
 
 // 4. Inicia o carregamento do feed
-fetchPosts();
+handleInitialRoute();
+
+// Adiciona listener para botões Voltar/Avançar do navegador
+window.addEventListener('popstate', handleInitialRoute);

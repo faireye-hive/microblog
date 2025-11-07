@@ -92,3 +92,25 @@ export function extractMentionsFromText(text) {
     new Set((text.match(/@(\w+)/g) || []).map((t) => t.slice(1).toLowerCase()))
   );
 }
+
+export function linkifyText(text) {
+    if (!text) return "";
+    
+    // 1. Linkify Hashtags
+    // Regex: /(^|\s)#[a-z0-9]+/gi
+    // Transforma #tag em <a href="/hashtag/tag" class="tag-link" data-tag="tag">#tag</a>
+    let linkedText = text.replace(/(^|\s)#[a-z0-9]+/gi, (match) => {
+        const tag = match.trim().substring(1); // Remove '#' e espaços
+        return `${match.startsWith(' ') ? ' ' : ''}<span class="text-red-600 font-medium cursor-pointer tag-link" data-tag="${tag}">#${tag}</span>`;
+    });
+    
+    // 2. Linkify Mentions (Opcional, mas útil)
+    // Regex: /(^|\s)@[a-z0-9]+/gi
+    // Transforma @user em <a href="/user/user">@user</a> (apenas texto por enquanto, sem função de clique)
+    linkedText = linkedText.replace(/(^|\s)@[a-z0-9]+/gi, (match) => {
+        const user = match.trim().substring(1); 
+        return `${match.startsWith(' ') ? ' ' : ''}<span class="text-red-600 font-medium cursor-pointer" data-user="${user}">@${user}</span>`;
+    });
+    
+    return linkedText;
+}

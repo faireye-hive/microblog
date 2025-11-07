@@ -1,5 +1,5 @@
 // /js/render.js
-import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate } from "./utils.js";
+import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
 
 // Função Helper local
 function findPost(postId, allPosts) {
@@ -101,10 +101,13 @@ export function buildPostCard(p, allPosts, voteCounts = {}) {
                 
                 ${parsed?.reply_to ? buildThreadAbove(p, allPosts) : ""}
                 
-                <div class="mt-3 text-sm">${escapeHtml(text).replace(
-                    /\n/g,
-                    "<br>"
-                )}</div>
+                <div class="mt-3 text-sm">${
+                    // NOVO: Usamos linkifyText para transformar #tags e @mentions em links
+                    linkifyText(escapeHtml(text)).replace( 
+                        /\n/g,
+                        "<br>"
+                    )
+                }</div>
                 ${
                     imgs.length
                         ? `<div class="mt-3 grid gap-3 ${
