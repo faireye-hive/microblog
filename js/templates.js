@@ -4,13 +4,24 @@
 export const NavbarHTML = `
   <nav class="fixed top-0 left-0 w-full bg-white shadow-sm z-50">
     <div class="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
-      <div class="flex items-center gap-2 text-red-600 font-bold text-lg">
-        🐝 micro.feed
+      
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2 text-red-600 font-bold text-lg">
+          🐝 micro.feed
+        </div>
+        
+        <div id="main-nav" class="flex items-center gap-4">
+            <a href="#/" class="text-red-600 font-bold text-sm">Home</a>
+            <a href="#/trending" class="small-muted text-sm">Trending</a>
+            <a href="#/active" class="small-muted text-sm">Active</a>
+        </div>
       </div>
+
       <div class="flex items-center gap-4">
         <h1 id="pageTitle" class="text-xl font-semibold hidden sm:block">
           Feed
         </h1>
+        
         <div class="relative">
           <button
             id="btnMenu"
@@ -34,27 +45,28 @@ export const NavbarHTML = `
           </button>
           <div
             id="userMenuDropdown"
-            class="hidden absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-50"
+            class="hidden absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-50 p-2"
           >
-            <button
-              id="menuLogin"
-              class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-            >
-              Login
-            </button>
-            <button
-              id="menuLogout"
-              class="hidden block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              Logout
-            </button>
+            <div id="userMenuContent" class="flex flex-col gap-2">
+              <button
+                id="menuLogin"
+                class="w-full text-left px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded"
+              >
+                Entrar
+              </button>
+              <button
+                id="menuLogout"
+                class="hidden w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-gray-100 rounded"
+              >
+                Sair
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </nav>
 `;
-
 // --- 2. Modal de Login ---
 export const LoginModalHTML = `
   <div
