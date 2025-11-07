@@ -12,7 +12,7 @@ import {
   FeedHeaderHTML,
   SidebarHTML,
 } from "./templates.js";
-import { APP_ID, API_URL } from "./config.js";
+import { APP_ID, API_URL, VOTE_CUSTOM_ID,VOTE_API_URL } from "./config.js";
 
 // Variáveis de Estado (Centralizadas aqui)
 let allPosts = [];
@@ -21,8 +21,7 @@ const BATCH_SIZE = 50;
 let loading = false;
 let voteCounts = {}; // NOVO: Estrutura para armazenar as contagens de votos
 
-const VOTE_CUSTOM_ID = "micro.fair.interation";
-const VOTE_API_URL = `https://hafsql-api.mahdiyari.info/operations/custom_json/${VOTE_CUSTOM_ID}?limit=1000`; // NOVO: URL da API de votos
+
 
 // ---------- Funções de Ação e Estado ----------
 
