@@ -1,6 +1,6 @@
 // /js/render.js
 import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
-import { loggedInUser, mutedPostIds, blockedUsers } from "./state.js"; // Importa estado
+import { loggedInUser, mutedPostIds, blockedUsers, followedUsers } from "./state.js"; // Importa estado
 import { ADMIN } from "./config.js"; // Importa nome do Admin
 
 // Função Helper local
@@ -13,14 +13,21 @@ function buildUserPopover(author, isBlocked) {
     // O Popover só aparece para usuários logados E se o autor não for o próprio usuário logado
     if (!loggedInUser || author === loggedInUser) return '';
 
+    const isFollowing = followedUsers.has(author); // NOVO: Verifica o estado de follow
+    
+    // Texto e ação para Follow/Unfollow
+    const followText = isFollowing ? "💔 Deixar de Seguir" : "⭐ Seguir";
+    const followType = isFollowing ? "unfollow" : "follow";
+    
+    // Texto e ação para Block/Unblock
     const blockText = isBlocked ? "✅ Desbloquear" : "🚫 Bloquear";
     const blockType = isBlocked ? "unblock" : "block";
 
     return `
         <div data-author="${author}" 
              class="user-popover-menu hidden absolute left-0 mt-1 w-40 bg-white border rounded shadow-lg z-20 text-sm">
-            <button data-action="follow" data-user="${author}" class="w-full text-left px-3 py-2 hover:bg-gray-100">
-                ⭐ Seguir (Em breve)
+            <button data-action="${followType}" data-user="${author}" class="w-full text-left px-3 py-2 hover:bg-gray-100">
+                ${followText}
             </button>
             <button data-action="${blockType}" data-user="${author}" class="w-full text-left px-3 py-2 hover:bg-gray-100">
                 ${blockText}

@@ -16,6 +16,7 @@ export const BATCH_SIZE = 50;
 export let loggedInUser = null; // Armazena o usuário logado
 export let mutedPostIds = new Map(); // Armazena os IDs dos posts mutados
 export let blockedUsers = new Set(); // Armazena os nomes de usuários bloqueados
+export let followedUsers = new Set(); // Armazena os nomes de usuários seguidos
 
 // ---------- Funções de Mutação de Estado ----------
 
@@ -37,6 +38,10 @@ export function setMutedPostIds(newMutedPostMap) {
 
 export function setBlockedUsers(newBlockedSet) {
     blockedUsers = newBlockedSet; // NOVO: Define o conjunto de usuários bloqueados
+}
+
+export function setFollowedUsers(newFollowedSet) {
+    followedUsers = newFollowedSet; // NOVO: Define o conjunto de usuários seguidos
 }
 
 // ---------- Funções de Renderização de Estado ----------

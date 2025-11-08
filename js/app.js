@@ -17,7 +17,8 @@ import {
 
 // Importa dos novos módulos
 import { allPosts, renderNextBatch, loading } from "./state.js";
-import { fetchData, sendPost, sendVote,sendMute,sendUnmute, sendBlock, sendUnblock } from "./api.js";
+import { fetchData, sendPost, sendVote,sendMute,sendUnmute,
+   sendBlock, sendUnblock, sendFollow, sendUnfollow } from "./api.js";
 import { handleRoute, backToFeed, showSinglePost, filterByTag } from "./routing.js";
 import { updateTags,setLoggedInUser } from "./state.js";
 
@@ -248,8 +249,10 @@ if (e.target.classList.contains("author-name")) {
                 sendBlock(targetUser);
             } else if (action === 'unblock') {
                 sendUnblock(targetUser);
-            } else if (action === 'follow') {
-                showNotification(`Função Seguir para @${targetUser} em desenvolvimento.`, true);
+            } else if (action === 'follow') { // NOVO
+                sendFollow(targetUser);
+            } else if (action === 'unfollow') { // NOVO
+                sendUnfollow(targetUser);
             }
         }
     }

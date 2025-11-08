@@ -2,10 +2,12 @@
 
 import { 
     APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
-    ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL, ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID 
+    ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL,
+     ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID,
+      USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID 
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText } from "./utils.js";
-import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts, setBlockedUsers,loggedInUser } from "./state.js";
+import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts, setBlockedUsers,loggedInUser,setFollowedUsers } from "./state.js";
 import { showNotification } from "./auth.js";
 
 // Processa os dados de voto brutos da API
@@ -83,7 +85,11 @@ export async function fetchData() {
             ? fetch(USER_BLOCK_API_URL.replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`)).then((res) => res.json())
             : Promise.resolve([]); // Se não logado, resolve para um array vazio
             
-        const [data, voteDataRaw, muteDataRaw, blockDataRaw] = await Promise.all([resPromise, voteResPromise, muteResPromise, blockResPromise]);
+        const followResPromise = loggedInUser 
+            ? fetch(USER_FOLLOW_API_URL.replace('{user}', loggedInUser)).then((res) => res.json()) // NOVO
+            : Promise.resolve([]);
+            
+        const [data, voteDataRaw, muteDataRaw, blockDataRaw, followDataRaw] = await Promise.all([resPromise, voteResPromise, muteResPromise, blockResPromise, followResPromise]);
 
 
 
@@ -105,6 +111,8 @@ export async function fetchData() {
         // NOVO: Processa Bloqueios
         const blockedSet = processBlockedData(blockDataRaw || []);
         setBlockedUsers(blockedSet);
+        const followedSet = processFollowData(followDataRaw || []);
+        setFollowedUsers(followedSet);
 
         updateTags(); // Atualiza a UI da sidebar
         
@@ -359,6 +367,92 @@ export function sendUnblock(targetUser) {
                     });
                 } else {
                     showNotification("❌ Erro ao desbloquear usuário!", false);
+                }
+            }
+        );
+    }
+}
+
+// Processa os dados de follow brutos da API
+function processFollowData(followData) {
+    const currentlyFollowed = new Set();
+    
+    if (!Array.isArray(followData)) return currentlyFollowed;
+    
+    // Filtra e ordena as operações
+    const relevantOps = followData.filter(op => {
+        const json = parseEmbeddedJson(op.json);
+        return op.required_posting_auths?.[0] === loggedInUser && (json.type === 'follow' || json.type === 'unfollow');
+    });
+
+    // Ordena por data (mais antigo primeiro) para que o último estado prevaleça
+    relevantOps.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    relevantOps.forEach(op => {
+        const json = parseEmbeddedJson(op.json);
+        if (json.target_user) {
+            if (json.type === "follow") {
+                currentlyFollowed.add(json.target_user);
+            } else if (json.type === "unfollow") {
+                currentlyFollowed.delete(json.target_user);
+            }
+        }
+    });
+    return currentlyFollowed;
+}
+
+// NOVO: Envia Ação de Follow
+export function sendFollow(targetUser) {
+    const username = localStorage.getItem("hiveUser");
+    if (!username) return showNotification("🔒 Faça login para seguir usuários.", false);
+
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "follow", target_user: targetUser,
+    });
+
+    // Substitui o placeholder {user} pelo usuário logado
+    const customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username); 
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username, customId, "Posting", json, "Seguir Usuário",
+            (res) => {
+                if (res.success) {
+                    showNotification(`✅ Você está seguindo @${targetUser}!`, true);
+                    // Recarrega os dados e a view atual
+                    fetchData().then(() => {
+                        window.dispatchEvent(new Event('hashchange'));
+                    });
+                } else {
+                    showNotification("❌ Erro ao seguir usuário!", false);
+                }
+            }
+        );
+    }
+}
+
+// NOVO: Envia Ação de Unfollow
+export function sendUnfollow(targetUser) {
+    const username = localStorage.getItem("hiveUser");
+    if (!username) return showNotification("🔒 Faça login para deixar de seguir.", false);
+
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "unfollow", target_user: targetUser,
+    });
+
+    const customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username);
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username, customId, "Posting", json, "Deixar de Seguir",
+            (res) => {
+                if (res.success) {
+                    showNotification(`✅ Você deixou de seguir @${targetUser}.`, true);
+                    fetchData().then(() => {
+                        window.dispatchEvent(new Event('hashchange'));
+                    });
+                } else {
+                    showNotification("❌ Erro ao deixar de seguir!", false);
                 }
             }
         );
