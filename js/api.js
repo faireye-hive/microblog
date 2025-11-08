@@ -6,6 +6,7 @@ import {
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText } from "./utils.js";
 import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts } from "./state.js";
+import { showNotification } from "./auth.js";
 
 // Processa os dados de voto brutos da API
 function processVoteData(voteData) {
@@ -108,7 +109,7 @@ export async function fetchData() {
 // Envia um novo Post ou Reply
 export function sendPost(content, replyTo = null) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return alert("Faça login primeiro!");
+    if (!username) return showNotification("Faça login primeiro!", false);
 
     const tags = extractTagsFromText(content);
     const mentions = extractMentionsFromText(content);
@@ -123,25 +124,25 @@ export function sendPost(content, replyTo = null) {
             replyTo ? "Responder" : "Postar",
             (res) => {
                 if (res.success) {
-                    alert("✅ Enviado com sucesso!");
+                    showNotification("✅ Enviado com sucesso!", true);
                     document.getElementById("newPostContent").value = "";
                     document.getElementById("charCount").textContent = "Characters: 0 / 512";
                     // Após postar, volta ao feed (que recarrega os dados)
                     window.location.hash = ""; 
                 } else {
-                    alert("❌ Erro ao enviar!");
+                    showNotification("❌ Erro ao enviar!",false);
                 }
             }
         );
     } else {
-        alert("Hive Keychain não detectado!");
+        showNotification("Hive Keychain não detectado!",false);
     }
 }
 
 // Envia um Voto
 export function sendVote(contentId, voteType) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return alert("Faça login primeiro!");
+    if (!username) return showNotification("Faça login primeiro!",false);
 
     const json = JSON.stringify({
         app: APP_ID, v: 1, type: voteType, content_id: contentId,
@@ -152,24 +153,24 @@ export function sendVote(contentId, voteType) {
             username, VOTE_CUSTOM_ID, "Posting", json, "Votar",
             (res) => {
                 if (res.success) {
-                    alert(`✅ Voto '${voteType}' enviado com sucesso!`);
+                    showNotification(`✅ Voto '${voteType}' enviado com sucesso!`, true);
                     // Recarrega os dados e a view atual
                     fetchData().then(() => {
                         window.dispatchEvent(new Event('hashchange'));
                     });
                 } else {
-                    alert("❌ Erro ao enviar voto!");
+                    showNotification("❌ Erro ao enviar voto!",false);
                 }
             }
         );
     } else {
-        alert("Hive Keychain não detectado!");
+        showNotification("Hive Keychain não detectado!",false);
     }
 }
 
 export function sendMute(contentId, cause) {
     const username = localStorage.getItem("hiveUser");
-    if (username !== ADMIN) return alert("Apenas administradores podem mutar posts.");
+    if (username !== ADMIN) return showNotification("Apenas administradores podem mutar posts.", false);
 
     const json = JSON.stringify({
         app: APP_ID, v: 1, type: "mute",
@@ -182,10 +183,10 @@ export function sendMute(contentId, cause) {
             username, ADMIN_PMUTE_CUSTOM_ID, "Posting", json, "Mutar Post",
             (res) => {
                 if (res.success) {
-                    alert("✅ Post mutado com sucesso!");
+                    showNotification("✅ Post mutado com sucesso!", true);
                     fetchData().then(() => window.dispatchEvent(new Event('hashchange')));
                 } else {
-                    alert("❌ Erro ao mutar post!");
+                    showNotification("❌ Erro ao mutar post!",false);
                 }
             }
         );
@@ -195,7 +196,7 @@ export function sendMute(contentId, cause) {
 // NOVO: Envia um Unmute
 export function sendUnmute(contentId) {
     const username = localStorage.getItem("hiveUser");
-    if (username !== ADMIN) return alert("Apenas administradores podem desmutar posts.");
+    if (username !== ADMIN) return showNotification("Apenas administradores podem desmutar posts.",false);
 
     const json = JSON.stringify({
         app: APP_ID, v: 1, type: "unmute",
@@ -207,10 +208,10 @@ export function sendUnmute(contentId) {
             username, ADMIN_PMUTE_CUSTOM_ID, "Posting", json, "Desmutar Post",
             (res) => {
                 if (res.success) {
-                    alert("✅ Post desmutado com sucesso!");
+                    showNotification("✅ Post desmutado com sucesso!", true);
                     fetchData().then(() => window.dispatchEvent(new Event('hashchange')));
                 } else {
-                    alert("❌ Erro ao desmutar post!");
+                    showNotification("❌ Erro ao desmutar post!",false);
                 }
             }
         );

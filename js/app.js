@@ -5,13 +5,14 @@ import {
   extractMentionsFromText,
 } from "./utils.js"; // Apenas o necessário para sendPost
 import { buildRepliesRecursive } from "./render.js";
-import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
+import { setupAuthListeners, setAuthCallbacks, showNotification } from "./auth.js";
 import {
   NavbarHTML,
   LoginModalHTML,
   NewPostSectionHTML,
   FeedHeaderHTML,
   SidebarHTML,
+  LogoutModalHTML,
 } from "./templates.js";
 
 // Importa dos novos módulos
@@ -19,6 +20,9 @@ import { allPosts, renderNextBatch, loading } from "./state.js";
 import { fetchData, sendPost, sendVote,sendMute,sendUnmute } from "./api.js";
 import { handleRoute, backToFeed, showSinglePost, filterByTag } from "./routing.js";
 import { updateTags,setLoggedInUser } from "./state.js";
+
+
+
 
 
 // ---------- Funções de UI Locais (Modal) ----------
@@ -41,6 +45,56 @@ function showImageModal(src) {
   img.src = src;
   modal.classList.remove("hidden");
 }
+function showMuteReasonModal(contentId) {
+    // Cria um overlay temporário no DOM ou usa um modal pré-existente
+    const modalHtml = `
+        <div id="muteReasonModal" class="fixed inset-0 bg-black bg-opacity-75 z-[90] flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+                <h3 class="text-lg font-semibold mb-4">Mutar Post</h3>
+                <p class="mb-3">Insira o motivo para mutar este post:</p>
+                <textarea id="muteReasonInput" class="w-full p-2 border rounded resize-none mb-4" rows="3" placeholder="Motivo obrigatório"></textarea>
+                <div class="flex justify-end gap-3">
+                    <button id="cancelMute" class="px-4 py-2 border rounded small-muted hover:bg-gray-100">
+                        Cancelar
+                    </button>
+                    <button id="confirmMute" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                        Mutar
+                    </button>
+                </div>
+            </div>
+        </div>`;
+        
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    const modal = document.getElementById("muteReasonModal");
+    const input = document.getElementById("muteReasonInput");
+    
+    // Foca no input
+    input.focus();
+
+    // Listener para o botão Confirmar
+    document.getElementById("confirmMute").addEventListener("click", () => {
+        const cause = input.value.trim();
+        if (!cause) {
+            showNotification("⚠️ O motivo é obrigatório para mutar.", false);
+            return;
+        }
+        sendMute(contentId, cause);
+        modal.remove();
+        showNotification("✅ Post mutado, aguardando confirmação...", true);
+    });
+
+    // Listener para o botão Cancelar
+    document.getElementById("cancelMute").addEventListener("click", () => {
+        modal.remove();
+    });
+    
+    // Listener para fechar clicando fora
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'muteReasonModal') {
+            modal.remove();
+        }
+    });
+}
 
 // ---------- FUNÇÕES DE CONFIGURAÇÃO DO DOM E EVENT LISTENERS ----------
 
@@ -48,6 +102,7 @@ function setupInitialDOM() {
   // Monta a estrutura estática
   document.getElementById("navbar-root").innerHTML = NavbarHTML;
   document.getElementById("modal-root").innerHTML = LoginModalHTML;
+  document.getElementById("logout-root").innerHTML = LogoutModalHTML;
   document.getElementById("header-root").innerHTML = FeedHeaderHTML;
   document.getElementById("new-post-root").innerHTML = NewPostSectionHTML;
   document.getElementById("sidebar-root").innerHTML = SidebarHTML;
@@ -104,7 +159,7 @@ function setupEventListeners() {
       e.target.closest(".card").appendChild(replyBox);
       replyBox.querySelector(".send-reply").addEventListener("click", () => {
         const text = replyBox.querySelector("textarea").value.trim();
-        if (!text) return alert("Digite algo!");
+        if (!text) return showNotification("⚠️ Digite algo para responder!", false);
         sendPost(text, parseInt(id));
       });
     }
@@ -133,7 +188,7 @@ function setupEventListeners() {
         // CORREÇÃO: Verificar se o usuário está logado
         const loggedInUser = localStorage.getItem("hiveUser");
         if (!loggedInUser) {
-            alert("Você precisa estar logado para mutar/desmutar posts.");
+            showNotification("🔒 Você precisa estar logado para mutar/desmutar posts.", false);
             return; 
         }
         
@@ -141,14 +196,13 @@ function setupEventListeners() {
         const type = e.target.dataset.type;
 
         if (type === "mute") {
-            const cause = prompt("Por favor, insira o motivo para mutar este post:");
-            if (cause && cause.trim() !== "") {
-                sendMute(contentId, cause.trim());
-            } else if (cause !== null) { // Só alerta se não clicou em "Cancelar"
-                alert("O motivo é obrigatório para mutar.");
-            }
+            // SUBSTITUIÇÃO: Chama o modal personalizado em vez de prompt()
+            showMuteReasonModal(contentId); 
+            
         } else if (type === "unmute") {
             sendUnmute(contentId);
+            // Feedback visual não-bloqueante
+            showNotification("✅ Desmutando post...", true);
         }
     }
 
@@ -160,7 +214,7 @@ function setupEventListeners() {
   // Botões estáticos (Post, Refresh, Back)
   document.getElementById("btnPost").addEventListener("click", () => {
     const text = document.getElementById("newPostContent").value.trim();
-    if (!text) return alert("Digite algo!");
+    if (!text) return showNotification("⚠️ Digite algo para publicar!", false);
     sendPost(text);
   });
 

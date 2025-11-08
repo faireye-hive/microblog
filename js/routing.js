@@ -5,6 +5,7 @@ import { fetchData } from "./api.js";
 import { parseEmbeddedJson, extractTagsFromText } from "./utils.js";
 import { buildPostCard, buildRepliesRecursive } from "./render.js";
 import { ADMIN } from "./config.js";
+import { showNotification  } from "./auth.js";
 
 let currentPage = "feed";
 
@@ -92,7 +93,7 @@ export function updateNavSelection(newPage) {
 export function showSinglePost(postId) {
     const post = allPosts.find((p) => p.id == postId);
     if (!post) {
-        alert("Post não encontrado!");
+        showNotification("❌ Post não encontrado ou não carregado!", false);
         window.location.hash = ""; // Volta para o feed
         return;
     }
