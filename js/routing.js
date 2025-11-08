@@ -1,9 +1,9 @@
 // /js/routing.js
 
-import { allPosts, voteCounts, renderFeed, BATCH_SIZE, mutedPostIds,loggedInUser } from "./state.js";
+import { allPosts, voteCounts, renderFeed, BATCH_SIZE, mutedPostIds, loggedInUser, followedUsers } from "./state.js";
 import { fetchData } from "./api.js";
 import { parseEmbeddedJson, extractTagsFromText } from "./utils.js";
-import { buildPostCard, buildRepliesRecursive } from "./render.js";
+import { buildPostCard, buildRepliesRecursive, buildProfilePage } from "./render.js";
 import { ADMIN } from "./config.js";
 import { showNotification  } from "./auth.js";
 
@@ -80,6 +80,7 @@ export function updateNavSelection(newPage) {
         "feed": "#/", "tag": "#/", "thread": "#/",
         "trending": "#/trending", "active": "#/active",
         "muted": "#/muted",
+        "followed": "#/followed",
     };
     const targetHash = hashMatch[newPage] || "#/";
     const activeLink = document.querySelector(`a[href="${targetHash}"]`);
@@ -186,7 +187,25 @@ export async function handleRoute() {
         const postId = postMatch[1];
         showSinglePost(postId);
         newPage = "thread";
-    } else if (path === "/trending") {
+    } else if (path === "/followed" && loggedInUser) { // NOVO: Rota de Seguidos
+        title = "Posts de Quem Você Segue";
+        // Filtra os posts: Autor do post DEVE estar no Set de followedUsers
+        postsToRender = allPosts.filter(p => followedUsers.has(p.required_posting_auths?.[0]));
+        document.getElementById("newPostSection").classList.remove("hidden");
+        newPage = "followed";
+    } else if (path === "/profile" && loggedInUser) { // NOVO: Rota de Perfil
+        title = "Meu Perfil";
+        newPage = "profile";
+        
+        // Remove a seção de novo post e a sidebar
+        document.getElementById("newPostSection").classList.add("hidden");
+        document.getElementById("sidebar-root").classList.add("hidden");
+        
+        // Renderiza o Perfil
+        const feed = document.getElementById("feed");
+        feed.innerHTML = buildProfilePage(); 
+        
+    }else if (path === "/trending") {
         title = "Trending (Votos)";
         //document.getElementById("newPostSection").classList.add("hidden");
         postsToRender = rankPostsByVotes(allPosts);
@@ -216,11 +235,15 @@ export async function handleRoute() {
 
 
     // Renderiza e atualiza a navegação (se não for tag/thread)
-    if (newPage !== "tag" && newPage !== "thread") {
+    if (newPage !== "tag" && newPage !== "thread" && newPage !== "profile") {
         document.getElementById("pageTitle").textContent = title;
         // renderFeed agora recebe a lista *final* de posts
         renderFeed(postsToRender); 
         updateNavSelection(newPage);
+        window.scrollTo(0, 0);
+    } else if (newPage === "profile") { // Caso de sucesso para Perfil
+        updateNavSelection(newPage);
+        document.getElementById("pageTitle").textContent = title;
         window.scrollTo(0, 0);
     }
 }

@@ -215,3 +215,62 @@ let muteBannerHTML = '';
         </div>`;
     return el;
 }
+
+function buildUserListHTML(usersSet, type) {
+    if (usersSet.size === 0) {
+        return `<p class="small-muted mt-2">Nenhum usuário ${type === 'blocked' ? 'bloqueado' : 'seguido'}.</p>`;
+    }
+    
+    // Converte o Set para Array e ordena
+    const users = Array.from(usersSet).sort(); 
+
+    // O botão 'Desbloquear' estará presente apenas na lista de Bloqueados
+    const actionButton = (user) => type === 'blocked' 
+        ? `<button data-action="unblock" data-user="${user}" class="text-xs px-2 py-1 border rounded text-green-600 hover:bg-gray-100">✅ Desbloquear</button>`
+        : '';
+        
+    return users.map(user => `
+        <div class="flex justify-between items-center py-2 border-b last:border-b-0">
+            <span class="font-medium text-red-600">@${user}</span>
+            ${actionButton(user)}
+        </div>
+    `).join('');
+}
+
+export function buildProfilePage() {
+    if (!loggedInUser) return '<div class="card p-4 text-center small-muted">Faça login para ver seu perfil.</div>';
+
+    const followedListHtml = buildUserListHTML(followedUsers, 'followed');
+    const blockedListHtml = buildUserListHTML(blockedUsers, 'blocked');
+
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="card p-6 mb-4 flex items-center gap-4">
+                <img 
+                    src="https://images.hive.blog/u/${loggedInUser}/avatar" 
+                    alt="Avatar de @${loggedInUser}" 
+                    class="w-16 h-16 rounded-full object-cover bg-gray-100"
+                >
+                <h1 class="text-3xl font-extrabold text-red-600">@${loggedInUser}</h1>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div class="card p-4">
+                    <h2 class="text-xl font-bold mb-3">⭐ Seguindo (${followedUsers.size})</h2>
+                    <div id="followedUsersList" class="max-h-96 overflow-y-auto">
+                        ${followedListHtml}
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h2 class="text-xl font-bold mb-3">🚫 Bloqueados (${blockedUsers.size})</h2>
+                    <p class="small-muted mb-2">Usuários que você bloqueou (não verão seus posts).</p>
+                    <div id="blockedUsersList" class="max-h-96 overflow-y-auto">
+                        ${blockedListHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}

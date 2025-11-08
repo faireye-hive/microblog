@@ -10,12 +10,13 @@ export const NavbarHTML = `
           🐝 micro.feed
         </div>
         
-        <div id="main-nav" class="flex items-center gap-4">
-            <a href="#/" class="text-red-600 font-bold text-sm">Home</a>
-            <a href="#/trending" class="small-muted text-sm">Trending</a>
-            <a href="#/active" class="small-muted text-sm">Active</a>
-            <a href="#/muted" class="small-muted text-sm">Mural</a>
-        </div>
+      <div id="main-nav" class="flex items-center gap-4">
+          <a href="#/" class="nav-link text-red-600 font-bold text-sm">Home</a>
+          <a href="#/followed" class="nav-link small-muted text-sm">Seguindo</a>
+          <a href="#/trending" class="nav-link small-muted text-sm">Trending</a>
+          <a href="#/active" class="nav-link small-muted text-sm">Active</a>
+          <a href="#/muted" class="nav-link small-muted text-sm">Mural</a> 
+      </div>
       </div>
 
       <div class="flex items-center gap-4">
@@ -45,6 +46,13 @@ export const NavbarHTML = `
             class="hidden absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-50 p-2"
           >
             <div id="userMenuContent" class="flex flex-col gap-2">
+<a 
+              href="#/profile" 
+              id="menuProfile" 
+              class="w-full text-left px-3 py-2 hover:bg-gray-100"
+            >
+              👤 Perfil
+            </a>
               <button
                 id="menuLogin"
                 class="w-full text-left px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded"

@@ -14,15 +14,18 @@ export function updateLoginUI() {
     const label = document.getElementById("menuUserLabel");
     const btnLogin = document.getElementById("menuLogin");
     const btnLogout = document.getElementById("menuLogout");
+    const linkProfile = document.getElementById("menuProfile");
 
     if (user) {
         label.textContent = "@" + user;
         btnLogin.classList.add("hidden");
         btnLogout.classList.remove("hidden");
+        if (linkProfile) linkProfile.classList.remove("hidden");
     } else {
         label.textContent = "Login";
         btnLogin.classList.remove("hidden");
         btnLogout.classList.add("hidden");
+        if (linkProfile) linkProfile.classList.add("hidden");
     }
 }
 
