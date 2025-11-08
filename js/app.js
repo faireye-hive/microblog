@@ -17,7 +17,7 @@ import {
 
 // Importa dos novos módulos
 import { allPosts, renderNextBatch, loading } from "./state.js";
-import { fetchData, sendPost, sendVote,sendMute,sendUnmute } from "./api.js";
+import { fetchData, sendPost, sendVote,sendMute,sendUnmute, sendBlock, sendUnblock } from "./api.js";
 import { handleRoute, backToFeed, showSinglePost, filterByTag } from "./routing.js";
 import { updateTags,setLoggedInUser } from "./state.js";
 
@@ -205,8 +205,69 @@ function setupEventListeners() {
             showNotification("✅ Desmutando post...", true);
         }
     }
+      const popoverSelector = '.user-popover-menu'; // NOVO SELETOR
+
+    // NOVO: Lógica para mostrar/esconder o Popover de Perfil
+if (e.target.classList.contains("author-name")) {
+    const author = e.target.dataset.author;
+    const popoverSelector = '.user-popover-menu';
+    
+    // Busca o popover dentro do mesmo post (usando o author como filtro)
+    // Usamos e.target.closest('.card') para procurar APENAS dentro do post clicado.
+    const currentPostCard = e.target.closest('.card'); 
+    const popover = currentPostCard 
+        ? currentPostCard.querySelector(`${popoverSelector}[data-author="${author}"]`) 
+        : null;
+    
+    // Esconde todos os outros popovers abertos
+    document.querySelectorAll(popoverSelector).forEach(p => {
+        if (p !== popover) {
+            p.classList.add('hidden');
+        }
+    });
+
+    // Mostra/Esconde o popover do autor clicado
+    if (popover) {
+        popover.classList.toggle('hidden');
+    }
+}
+    
+    // NOVO: Lógica para ações dentro do Popover (Block/Unblock)
+    // Se o clique foi dentro de um popover
+    const clickedPopover = e.target.closest(popoverSelector); 
+    if (clickedPopover) {
+        const btn = e.target.closest('button');
+        const action = btn?.dataset.action;
+        const targetUser = btn?.dataset.user;
+        
+        if (action && targetUser) {
+            // Esconde o popover após a ação
+            clickedPopover.classList.add('hidden'); 
+
+            if (action === 'block') {
+                sendBlock(targetUser);
+            } else if (action === 'unblock') {
+                sendUnblock(targetUser);
+            } else if (action === 'follow') {
+                showNotification(`Função Seguir para @${targetUser} em desenvolvimento.`, true);
+            }
+        }
+    }
 
 
+  });
+
+  // NOVO: Listener global para fechar Popover ao clicar fora
+  document.addEventListener('click', (e) => {
+      const popoverSelector = '.user-popover-menu'; // NOVO SELETOR
+      
+      // Se o clique não foi no Popover e não foi no nome do autor
+      if (!e.target.closest(popoverSelector) && !e.target.classList.contains('author-name')) {
+          // Esconde todos os popovers
+          document.querySelectorAll(popoverSelector).forEach(p => { // USA O NOVO SELETOR
+              p.classList.add('hidden');
+          });
+      }
   });
 
   
@@ -261,14 +322,7 @@ async function handleInitialRoute() {
 setupInitialDOM();
 
 // 2. Configura a Lógica de Autenticação e seus Listeners
-setAuthCallbacks(handleRoute, handleRoute); // Recarrega a view no login/logout
-setupAuthListeners();
-
-// 3. Configura os Listeners restantes (e modais)
-setupEventListeners();
-setupImageModal();
-
-// 3. Configura a Lógica de Autenticação
+// Nota: Seu código tinha este bloco duplicado, mantenha apenas um
 setAuthCallbacks(
     (user) => { // On Login
         setLoggedInUser(user);
@@ -279,10 +333,13 @@ setAuthCallbacks(
         handleRoute();
     }
 );
+setupAuthListeners();
+
+// 3. Configura os Listeners restantes (e modais)
+setupEventListeners();
+setupImageModal();
 
 // 4. Inicia o carregamento do feed e o roteamento
-handleRoute();
-
 handleInitialRoute();
 
 // 5. Adiciona listener para botões Voltar/Avançar do navegador e links de Hash

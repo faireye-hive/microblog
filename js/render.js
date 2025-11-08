@@ -1,11 +1,32 @@
 // /js/render.js
 import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
-import { loggedInUser, mutedPostIds } from "./state.js"; // Importa estado
+import { loggedInUser, mutedPostIds, blockedUsers } from "./state.js"; // Importa estado
 import { ADMIN } from "./config.js"; // Importa nome do Admin
 
 // Função Helper local
 function findPost(postId, allPosts) {
     return allPosts.find((p) => p.id == postId);
+}
+
+// NOVO: HTML do Popover
+function buildUserPopover(author, isBlocked) {
+    // O Popover só aparece para usuários logados E se o autor não for o próprio usuário logado
+    if (!loggedInUser || author === loggedInUser) return '';
+
+    const blockText = isBlocked ? "✅ Desbloquear" : "🚫 Bloquear";
+    const blockType = isBlocked ? "unblock" : "block";
+
+    return `
+        <div data-author="${author}" 
+             class="user-popover-menu hidden absolute left-0 mt-1 w-40 bg-white border rounded shadow-lg z-20 text-sm">
+            <button data-action="follow" data-user="${author}" class="w-full text-left px-3 py-2 hover:bg-gray-100">
+                ⭐ Seguir (Em breve)
+            </button>
+            <button data-action="${blockType}" data-user="${author}" class="w-full text-left px-3 py-2 hover:bg-gray-100">
+                ${blockText}
+            </button>
+        </div>
+    `;
 }
 
 export function buildRepliesRecursive(parentId, allPosts, depth = 1) {
@@ -91,10 +112,13 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
     const muteAdmin = muteInfo ? muteInfo.admin : 'Admin'; // Administrador
     const loggedInUser = localStorage.getItem("hiveUser");
     const isAdmin = loggedInUser === ADMIN;
+    const isBlocked = blockedUsers.has(author);
 
+    if (!isAdmin && isBlocked) {
+         return document.createElement('div'); // Retorna um elemento vazio
+    }
 
-    // NOVO: HTML do Banner de Mute
-    let muteBannerHTML = '';
+let muteBannerHTML = '';
     if (isMuted) {
         muteBannerHTML = `
             <div class="mt-2 p-3 bg-red-50 border border-red-300 rounded text-sm text-red-700">
@@ -105,18 +129,9 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
         `;
     }
 
-    // Variáveis de escopo global que você deve ter definido:
-    // const isAdmin = loggedInUser === ADMIN; // Ex: admin deve vir do config
-    // const loggedInUser = localStorage.getItem("hiveUser"); // Ex: deve ser global
-    
-    // O seu código original estava lendo 'isMuted' e 'isAdmin' de variáveis globais. 
-    // Mantenho a estrutura de botões de admin, mas é preciso garantir que 'isAdmin' esteja definida.
-
-
     const el = document.createElement("article");
-    // Altera a classe CSS para o post mutado
     el.className = `card p-4 ${isMuted ? 'opacity-70 bg-gray-50' : ''}`; 
-    el.setAttribute('data-id', p.id); // É bom ter o ID no <article>
+    el.setAttribute('data-id', p.id);
 
     el.innerHTML = `
         <div class="flex gap-3">
@@ -128,16 +143,19 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
             <div class="flex-1">
                 
                 <div class="flex justify-between">
-                    <div>
-                        <div class="text-red-600 font-semibold">@${author}</div>
-                        <div class="small-muted">#${p.id} • ${fmtDate(p.timestamp)}</div>
+                    <div class="relative inline-block"> 
+                        <strong class="author-name cursor-pointer text-red-600 font-semibold" data-author="${author}">
+                            @${author} ${isMuted ? '<span class="text-red-500">(Mutado)</span>' : ''}
+                        </strong>
+                        <span class="small-muted ml-2">• ${fmtDate(p.timestamp)}</span>
+                        ${buildUserPopover(author, isBlocked)} 
                     </div>
                 </div>
                 
                 ${parsed?.reply_to ? buildThreadAbove(p, allPosts) : ""}
                 
-                ${muteBannerHTML} <div class="mt-3 text-sm">${
-                    // NOVO: Usamos linkifyText para transformar #tags e @mentions em links
+                ${muteBannerHTML} 
+                <div class="mt-3 text-sm">${
                     linkifyText(escapeHtml(text)).replace( 
                         /\n/g,
                         "<br>"

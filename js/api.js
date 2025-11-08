@@ -2,10 +2,10 @@
 
 import { 
     APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
-    ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL, ADMIN 
+    ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL, ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID 
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText } from "./utils.js";
-import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts } from "./state.js";
+import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts, setBlockedUsers,loggedInUser } from "./state.js";
 import { showNotification } from "./auth.js";
 
 // Processa os dados de voto brutos da API
@@ -78,7 +78,14 @@ export async function fetchData() {
         const resPromise = fetch(API_URL).then((res) => res.json());
         const voteResPromise = fetch(VOTE_API_URL).then((res) => res.json());
         const muteResPromise = fetch(ADMIN_POST_MUTE_API_URL).then((res) => res.json()); // NOVO
-        const [data, voteDataRaw, muteDataRaw] = await Promise.all([resPromise, voteResPromise, muteResPromise]);
+                // NOVO: Adicione a busca por bloqueios ao Promise.all
+        const blockResPromise = loggedInUser 
+            ? fetch(USER_BLOCK_API_URL.replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`)).then((res) => res.json())
+            : Promise.resolve([]); // Se não logado, resolve para um array vazio
+            
+        const [data, voteDataRaw, muteDataRaw, blockDataRaw] = await Promise.all([resPromise, voteResPromise, muteResPromise, blockResPromise]);
+
+
 
         // Processa Posts
         const posts = (Array.isArray(data) ? data : data.rows || [])
@@ -95,6 +102,9 @@ export async function fetchData() {
         setMutedPostIds(mutedIds);
         const mutedPostMap = processMuteData(muteDataRaw.rows || muteDataRaw); 
         setMutedPostIds(mutedPostMap); // Esta função deve ser alterada no state.js para aceitar um Map
+        // NOVO: Processa Bloqueios
+        const blockedSet = processBlockedData(blockDataRaw || []);
+        setBlockedUsers(blockedSet);
 
         updateTags(); // Atualiza a UI da sidebar
         
@@ -247,4 +257,110 @@ function processMuteData(muteData) {
         });
 
     return finalMutes;
+}
+
+// Processa os dados de bloqueio brutos da API
+function processBlockedData(blockData) {
+    const currentlyBlocked = new Set();
+    
+    if (!Array.isArray(blockData)) return currentlyBlocked;
+    
+    // Filtra apenas operações de bloco personalizadas
+    const relevantOps = blockData.filter(op => {
+        const json = parseEmbeddedJson(op.json);
+        // Verifica se a operação foi feita pelo usuário logado e se é uma ação de block/unblock
+        return op.required_posting_auths?.[0] === loggedInUser && (json.type === 'block' || json.type === 'unblock');
+    });
+
+    // Ordena por data (mais antigo primeiro) para que o último estado (block/unblock) prevaleça
+    relevantOps.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    relevantOps.forEach(op => {
+        const json = parseEmbeddedJson(op.json);
+        if (json.target_user) {
+            if (json.type === "block") {
+                currentlyBlocked.add(json.target_user);
+            } else if (json.type === "unblock") {
+                currentlyBlocked.delete(json.target_user);
+            }
+        }
+    });
+    return currentlyBlocked;
+}
+
+// NOVO: Função para buscar a lista de usuários bloqueados
+export async function fetchBlockedUsers() {
+    if (!loggedInUser) {
+        setBlockedUsers(new Set()); // Limpa se deslogado
+        return;
+    }
+    try {
+        const blockRes = await fetch(USER_BLOCK_API_URL.replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`));
+        const blockData = await blockRes.json();
+        
+        const blockedUsersSet = processBlockedData(blockData || []);
+        setBlockedUsers(blockedUsersSet);
+        
+    } catch (e) {
+        console.error("Erro ao carregar lista de bloqueios:", e);
+        // Não lança o erro, apenas registra e continua
+    }
+}
+
+// NOVO: Envia Ação de Bloqueio
+export function sendBlock(targetUser) {
+    const username = localStorage.getItem("hiveUser");
+    if (!username) return showNotification("🔒 Faça login para bloquear usuários.", false);
+
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "block", target_user: targetUser,
+    });
+
+    // Usa o Custom ID específico do usuário logado
+    const customId = `${APP_ID}.${username}.block`; 
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username, customId, "Posting", json, "Bloquear Usuário",
+            (res) => {
+                if (res.success) {
+                    showNotification(`✅ Usuário @${targetUser} bloqueado!`, true);
+                    // Recarrega os dados e a view atual
+                    fetchData().then(() => {
+                        window.dispatchEvent(new Event('hashchange'));
+                    });
+                } else {
+                    showNotification("❌ Erro ao bloquear usuário!", false);
+                }
+            }
+        );
+    }
+}
+
+// NOVO: Envia Ação de Desbloqueio
+export function sendUnblock(targetUser) {
+    const username = localStorage.getItem("hiveUser");
+    if (!username) return showNotification("🔒 Faça login para desbloquear usuários.", false);
+
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "unblock", target_user: targetUser,
+    });
+
+    const customId = `${APP_ID}.${username}.block`;
+
+    if (window.hive_keychain) {
+        window.hive_keychain.requestCustomJson(
+            username, customId, "Posting", json, "Desbloquear Usuário",
+            (res) => {
+                if (res.success) {
+                    showNotification(`✅ Usuário @${targetUser} desbloqueado!`, true);
+                    fetchData().then(() => {
+                        window.dispatchEvent(new Event('hashchange'));
+                    });
+                } else {
+                    showNotification("❌ Erro ao desbloquear usuário!", false);
+                }
+            }
+        );
+    }
 }
