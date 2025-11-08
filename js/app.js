@@ -19,7 +19,7 @@ import {
 import { allPosts, renderNextBatch, loading } from "./state.js";
 import { fetchData, sendPost, sendVote,sendMute,sendUnmute,
    sendBlock, sendUnblock, sendFollow, sendUnfollow } from "./api.js";
-import { handleRoute, backToFeed, showSinglePost, filterByTag } from "./routing.js";
+import { handleRoute, backToFeed, showSinglePost, filterByTag, currentPage } from "./routing.js";
 import { updateTags,setLoggedInUser } from "./state.js";
 
 
@@ -260,12 +260,11 @@ if (e.target.classList.contains("author-name")) {
     const btn = e.target.closest('button[data-action="unblock"]');
     if (btn) {
         const targetUser = btn.dataset.user;
-        if (targetUser /*&& currentPage === "profile"*/) { // Ação apenas na página de perfil
+        if (targetUser && currentPage === "profile") { // Ação apenas na página de perfil
             // Confirmação simples
-            if (confirm(`Tem certeza que deseja desbloquear @${targetUser}?`)) {
-                sendUnblock(targetUser);
-                // A função sendUnblock já chama fetchData e handleRoute para recarregar.
-            }
+            sendUnblock(targetUser);
+            // Opcional: Remover o item da lista imediatamente
+            btn.closest('.flex.justify-between').remove();
         }
     }
 

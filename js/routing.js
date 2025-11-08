@@ -7,7 +7,7 @@ import { buildPostCard, buildRepliesRecursive, buildProfilePage } from "./render
 import { ADMIN } from "./config.js";
 import { showNotification  } from "./auth.js";
 
-let currentPage = "feed";
+export let currentPage = "feed";
 
 // ---------- Funções de Classificação (Ranking) ----------
 
