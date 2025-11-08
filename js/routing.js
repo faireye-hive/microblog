@@ -81,6 +81,11 @@ export function updateNavSelection(newPage) {
         "trending": "#/trending", "active": "#/active",
         "muted": "#/muted",
         "followed": "#/followed",
+
+        "profile": "#/profile", 
+        "my-votes": "#/my-votes", 
+        "my-comments": "#/my-comments",
+        "my-replies": "#/my-replies",
     };
     const targetHash = hashMatch[newPage] || "#/";
     const activeLink = document.querySelector(`a[href="${targetHash}"]`);
@@ -179,71 +184,113 @@ export async function handleRoute() {
     let newPage = "feed";
     let isMural = false;
 
-    if (tagMatch) {
+if (tagMatch) {
         const tag = tagMatch[1];
         filterByTag(tag, false); // Não atualiza o hash
         newPage = "tag";
+        return; // Retorna para evitar a lógica de renderização abaixo
     } else if (postMatch) {
         const postId = postMatch[1];
         showSinglePost(postId);
         newPage = "thread";
-    } else if (path === "/followed" && loggedInUser) { // NOVO: Rota de Seguidos
+        return; // Retorna para evitar a lógica de renderização abaixo
+    } else if (path === "/followed" && loggedInUser) { // Rota de Seguidos
         title = "Posts de Quem Você Segue";
-        // Filtra os posts: Autor do post DEVE estar no Set de followedUsers
         postsToRender = allPosts.filter(p => followedUsers.has(p.required_posting_auths?.[0]));
-        document.getElementById("newPostSection").classList.remove("hidden");
         newPage = "followed";
-    } else if (path === "/profile" && loggedInUser) { // NOVO: Rota de Perfil
+    } else if (path === "/profile" && loggedInUser) { // Rota de Perfil
         title = "Meu Perfil";
         newPage = "profile";
         
-        // Remove a seção de novo post e a sidebar
-        document.getElementById("newPostSection").classList.add("hidden");
-        document.getElementById("sidebar-root").classList.add("hidden");
+        // REMOVIDA A LÓGICA DE ESCONDER UI E RENDERIZAR AQUI, AGORA ESTÁ NO FINAL
         
-        // Renderiza o Perfil
-        const feed = document.getElementById("feed");
-        feed.innerHTML = buildProfilePage(); 
+    }else if (path === "/my-votes" && loggedInUser) { // NOVO: Meus Votos
+        title = "⬆️ Meus Votos";
+        newPage = "my-votes";
         
-    }else if (path === "/trending") {
+        const votedPostIds = new Set();
+        for (const postIdStr in voteCounts) {
+            const votes = voteCounts[postIdStr];
+            
+            // Verifica se o objeto votes existe e se o usuário logado votou.
+            // O valor do voto pode ser "upvote" ou "downvote".
+            if (votes && votes.users && votes.users[loggedInUser]) {
+                votedPostIds.add(postIdStr);
+            }
+        }
+        postsToRender = allPosts.filter(p => votedPostIds.has(String(p.id)));   
+
+    } else if (path === "/my-comments" && loggedInUser) { // NOVO: Meus Comentários
+        title = "💬 Meus Comentários";
+        newPage = "my-comments";
+        
+        // Comentários: Posts feitos pelo usuário logado que são respostas
+        postsToRender = allPosts.filter(p => {
+            const isMyPost = p.required_posting_auths?.[0] === loggedInUser;
+            const isReply = !!parseEmbeddedJson(p.json)?.reply_to;
+            return isMyPost && isReply;
+        });
+        
+    } else if (path === "/my-replies" && loggedInUser) { // NOVO: Replies aos Meus Posts
+        title = "↩️ Respostas aos Meus Posts";
+        newPage = "my-replies";
+        
+        // Encontra os IDs de todos os posts principais do usuário
+        const myOriginalPostIds = new Set(
+            allPosts
+                .filter(p => p.required_posting_auths?.[0] === loggedInUser && !parseEmbeddedJson(p.json)?.reply_to)
+                .map(p => p.id)
+        );
+        
+        // Filtra todos os posts que respondem a um post principal do usuário
+        postsToRender = allPosts.filter(p => {
+            const replyTo = parseEmbeddedJson(p.json)?.reply_to;
+            return replyTo && myOriginalPostIds.has(String(replyTo));
+        });
+
+    }  else if (path === "/trending") {
         title = "Trending (Votos)";
-        //document.getElementById("newPostSection").classList.add("hidden");
         postsToRender = rankPostsByVotes(allPosts);
         newPage = "trending";
     } else if (path === "/active") {
         title = "Active (Comentários)";
-        //document.getElementById("newPostSection").classList.add("hidden");
         postsToRender = rankPostsByComments(allPosts);
         newPage = "active";
     }else if (path === "/muted") {
-        // NOVO: Rota do Mural de Transparência
         title = "Mural (Posts Mutados)";
-        document.getElementById("newPostSection").classList.add("hidden");
-        // Filtra para mostrar APENAS posts mutados
         postsToRender = allPosts.filter(p => mutedPostIds.has(p.id));
         newPage = "muted";
         isMural = true;
     } else {
-        // Rota Home/Feed Principal
-        // (Já configurado para o padrão)
+        // Rota Home/Feed Principal (Já configurado para o padrão)
     }
+    
+    // Lógica de filtro de mute/bloqueio para não-admins
     const isAdmin = loggedInUser === ADMIN;
     
     if (!isAdmin && newPage !== "muted") {
         postsToRender = postsToRender.filter(p => !mutedPostIds.has(p.id));
     }
 
+    // NOVO: Define se a UI lateral/superior deve ser escondida 
+    const routesToHideUI = new Set(["profile", "thread", "my-votes", "my-comments", "my-replies"]);
+    const shouldHideUI = routesToHideUI.has(newPage);
 
-    // Renderiza e atualiza a navegação (se não for tag/thread)
-    if (newPage !== "tag" && newPage !== "thread" && newPage !== "profile") {
-        document.getElementById("pageTitle").textContent = title;
-        // renderFeed agora recebe a lista *final* de posts
+    // Aplica a lógica de esconder a UI
+    document.getElementById("newPostSection").classList.toggle("hidden", shouldHideUI);
+    document.getElementById("sidebar-root").classList.toggle("hidden", shouldHideUI);
+
+    // Renderiza e atualiza a navegação
+    document.getElementById("pageTitle").textContent = title;
+
+    if (newPage === "profile") {
+        // ÚNICA ROTA QUE USA O HTML ESTÁTICO DE PERFIL
+        document.getElementById("feed").innerHTML = buildProfilePage(); 
+    } else {
+        // TODAS AS OUTRAS ROTAS DE FEED (Home, Trending, Followed, Meus Votos, etc.)
         renderFeed(postsToRender); 
-        updateNavSelection(newPage);
-        window.scrollTo(0, 0);
-    } else if (newPage === "profile") { // Caso de sucesso para Perfil
-        updateNavSelection(newPage);
-        document.getElementById("pageTitle").textContent = title;
-        window.scrollTo(0, 0);
     }
+
+    updateNavSelection(newPage);
+    window.scrollTo(0, 0);
 }

@@ -53,6 +53,27 @@ export const NavbarHTML = `
             >
               👤 Perfil
             </a>
+            <a 
+              href="#/my-votes" 
+              id="menuMyVotes" 
+              class="w-full text-left px-3 py-2 hover:bg-gray-100 hidden"
+            >
+              ⬆️ Meus Votos
+            </a>
+            <a 
+              href="#/my-comments" 
+              id="menuMyComments" 
+              class="w-full text-left px-3 py-2 hover:bg-gray-100 hidden"
+            >
+              💬 Meus Comentários
+            </a>
+            <a 
+              href="#/my-replies" 
+              id="menuMyReplies" 
+              class="w-full text-left px-3 py-2 hover:bg-gray-100 hidden"
+            >
+              ↩️ Minhas Respostas
+            </a>
               <button
                 id="menuLogin"
                 class="w-full text-left px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded"

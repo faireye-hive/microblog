@@ -17,21 +17,28 @@ export function updateLoginUI() {
     const linkProfile = document.getElementById("menuProfile");
 
     const linkFollowed = document.getElementById("navFollowedLink");
+    const linkMyVotes = document.getElementById("menuMyVotes"); 
+    const linkMyComments = document.getElementById("menuMyComments"); 
+    const linkMyReplies = document.getElementById("menuMyReplies");
+
+    const activityLinks = [linkProfile, linkFollowed, linkMyVotes, linkMyComments, linkMyReplies];
 
     if (user) {
         label.textContent = "@" + user;
         btnLogin.classList.add("hidden");
         btnLogout.classList.remove("hidden");
-        if (linkProfile) linkProfile.classList.remove("hidden");
-        if (linkFollowed) linkFollowed.classList.remove("hidden");
+        activityLinks.forEach(link => {
+            if (link) link.classList.remove("hidden"); //
+        });
     } else {
         label.textContent = "Login";
         btnLogin.classList.remove("hidden");
         btnLogout.classList.add("hidden");
-        if (linkProfile) linkProfile.classList.add("hidden");
-        if (linkFollowed) linkFollowed.classList.add("hidden");
+        activityLinks.forEach(link => {
+            if (link) link.classList.add("hidden"); //
+        });
     }
-}
+} 
 
 function handleLogin() {
     const username = document

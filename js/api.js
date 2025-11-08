@@ -42,12 +42,19 @@ function processVoteData(voteData) {
         let upvote = 0;
         let downvote = 0;
         const userVotes = latestVotes[postId];
+        const usersMap = {};
         for (const author in userVotes) {
             const latestType = userVotes[author].type;
+            
             if (latestType === "upvote") upvote++;
             else if (latestType === "downvote") downvote++;
+            
+            if (latestType) {
+                // NOVO: Armazena o tipo de voto final para o usuário
+                usersMap[author] = latestType; 
+            }
         }
-        finalCounts[postId] = { upvote, downvote };
+        finalCounts[postId] = { upvote, downvote, users: usersMap };
     }
     return finalCounts;
 }
