@@ -260,7 +260,7 @@ if (e.target.classList.contains("author-name")) {
     const btn = e.target.closest('button[data-action="unblock"]');
     if (btn) {
         const targetUser = btn.dataset.user;
-        if (targetUser && currentPage === "profile") { // Ação apenas na página de perfil
+        if (targetUser /*&& currentPage === "profile"*/) { // Ação apenas na página de perfil
             // Confirmação simples
             if (confirm(`Tem certeza que deseja desbloquear @${targetUser}?`)) {
                 sendUnblock(targetUser);

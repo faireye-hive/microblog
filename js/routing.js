@@ -231,21 +231,29 @@ if (tagMatch) {
             return isMyPost && isReply;
         });
         
-    } else if (path === "/my-replies" && loggedInUser) { // NOVO: Replies aos Meus Posts
+    } else if (path === "/my-replies" && loggedInUser) { // CORREÇÃO: Respostas aos Meus Posts
         title = "↩️ Respostas aos Meus Posts";
         newPage = "my-replies";
         
-        // Encontra os IDs de todos os posts principais do usuário
-        const myOriginalPostIds = new Set(
+        // 1. Encontra os IDs de TODOS os posts do usuário logado (top-level e replies).
+        // Usamos String(p.id) para garantir a consistência do tipo.
+        const myPostIds = new Set(
             allPosts
-                .filter(p => p.required_posting_auths?.[0] === loggedInUser && !parseEmbeddedJson(p.json)?.reply_to)
-                .map(p => p.id)
+                .filter(p => p.required_posting_auths?.[0] === loggedInUser) // Filtrar por autor logado
+                .map(p => Number(p.id)) 
         );
         
-        // Filtra todos os posts que respondem a um post principal do usuário
+        // 2. Filtra todos os posts que são respostas de outros usuários aos meus posts.
         postsToRender = allPosts.filter(p => {
+            const isMyPost = p.required_posting_auths?.[0] === loggedInUser;
             const replyTo = parseEmbeddedJson(p.json)?.reply_to;
-            return replyTo && myOriginalPostIds.has(String(replyTo));
+
+            // É uma resposta válida se:
+            // a) O autor NÃO sou eu (!isMyPost)
+            // b) O post é uma resposta (replyTo é truthy)
+            // c) O ID do post pai está na lista de TODOS os meus posts (myPostIds).
+
+            return !isMyPost && replyTo && myPostIds.has(Number(replyTo));
         });
 
     }  else if (path === "/trending") {
