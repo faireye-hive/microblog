@@ -339,12 +339,28 @@ setupInitialDOM();
 // 2. Configura a Lógica de Autenticação e seus Listeners
 // Nota: Seu código tinha este bloco duplicado, mantenha apenas um
 setAuthCallbacks(
-    (user) => { // On Login
-        setLoggedInUser(user);
+    async (user) => { // On Login Success (Agora 'user' recebe o username)
+        
+        // 1. CORREÇÃO: ATUALIZA O ESTADO loggedInUser IMEDIATAMENTE
+        setLoggedInUser(user); 
+        
+        // 2. Força a recarga de TODOS os dados (usa o novo usuário no estado)
+        await fetchData(); 
+        
+        // 3. Reseta o hash e processa a nova rota
+        window.location.hash = "#/"; 
         handleRoute();
     }, 
-    () => { // On Logout
+    async () => { // On Logout Success
+        
+        // 1. MELHORIA: Limpa o estado loggedInUser IMEDIATAMENTE
         setLoggedInUser(null);
+        
+        // 2. Força a recarga de TODOS os dados (agora para usuário deslogado)
+        await fetchData(); 
+        
+        // 3. Reseta o hash e processa a nova rota
+        window.location.hash = "#/"; 
         handleRoute();
     }
 );

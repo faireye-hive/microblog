@@ -12,7 +12,7 @@ export const NavbarHTML = `
         
       <div id="main-nav" class="flex items-center gap-4">
           <a href="#/" class="nav-link text-red-600 font-bold text-sm">Home</a>
-          <a href="#/followed" class="nav-link small-muted text-sm">Seguindo</a>
+          <a href="#/followed" id="navFollowedLink" class="nav-link small-muted text-sm">Seguindo</a>
           <a href="#/trending" class="nav-link small-muted text-sm">Trending</a>
           <a href="#/active" class="nav-link small-muted text-sm">Active</a>
           <a href="#/muted" class="nav-link small-muted text-sm">Mural</a> 

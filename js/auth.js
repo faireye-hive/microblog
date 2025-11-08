@@ -16,16 +16,20 @@ export function updateLoginUI() {
     const btnLogout = document.getElementById("menuLogout");
     const linkProfile = document.getElementById("menuProfile");
 
+    const linkFollowed = document.getElementById("navFollowedLink");
+
     if (user) {
         label.textContent = "@" + user;
         btnLogin.classList.add("hidden");
         btnLogout.classList.remove("hidden");
         if (linkProfile) linkProfile.classList.remove("hidden");
+        if (linkFollowed) linkFollowed.classList.remove("hidden");
     } else {
         label.textContent = "Login";
         btnLogin.classList.remove("hidden");
         btnLogout.classList.add("hidden");
         if (linkProfile) linkProfile.classList.add("hidden");
+        if (linkFollowed) linkFollowed.classList.add("hidden");
     }
 }
 
@@ -47,7 +51,7 @@ function handleLogin() {
                 document.getElementById("loginModal").classList.add("hidden");
                 updateLoginUI();
                 showNotification("✅ Login bem-sucedido como @" + username, true);
-                onLoginSuccessCallback(); // Chama o callback no app.js
+                onLoginSuccessCallback(username); // Chama o callback no app.js
             } else {
                 showNotification("❌ Falha no login via Keychain.", false);
             }
