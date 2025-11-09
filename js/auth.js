@@ -1,5 +1,16 @@
 // /js/auth.js
 
+import { showNotification } from "./utils.js";
+
+function toggleModal(modalId, show = true) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        // Usa .toggle para adicionar/remover a classe "hidden"
+        modal.classList.toggle("hidden", !show); 
+    }
+}
+//
+
 // Função de Callback (será fornecida pelo app.js)
 let onLoginSuccessCallback = () => {};
 let onLogoutSuccessCallback = () => {};
@@ -55,7 +66,7 @@ function handleLogin() {
         (res) => {
             if (res.success) {
                 localStorage.setItem("hiveUser", username);
-                document.getElementById("loginModal").classList.add("hidden");
+                toggleModal("loginModal", false);
                 updateLoginUI();
                 showNotification("✅ Login bem-sucedido como @" + username, true);
                 onLoginSuccessCallback(username); // Chama o callback no app.js
@@ -66,9 +77,8 @@ function handleLogin() {
     );
 }
 function handleLogoutConfirmation() {
-    document.getElementById("userMenuDropdown").classList.add("hidden");
-    // ID 'logoutConfirmModal' deve ser o container do seu novo modal no HTML
-    document.getElementById("logoutConfirmModal").classList.remove("hidden");
+    toggleModal("userMenuDropdown", false);
+    toggleModal("logoutConfirmModal", true);
 }
 
 // NOVO: Essa função executa o logout definitivo.
@@ -76,98 +86,73 @@ function finalizeLogout() {
     localStorage.removeItem("hiveUser");
     updateLoginUI();
     onLogoutSuccessCallback(); // Chama o callback no app.js
-    document.getElementById("logoutConfirmModal").classList.add("hidden");
+    toggleModal("logoutConfirmModal", false);
 }
-export function setupAuthListeners() {
-    // Dropdown
+
+// Opcional: Abstrai a lógica de dropdown do menu principal
+function setupDropdownListeners() {
+    const menuDropdown = document.getElementById("userMenuDropdown");
+    
     document.getElementById("btnMenu").addEventListener("click", () => {
-        document.getElementById("userMenuDropdown").classList.toggle("hidden");
+        menuDropdown.classList.toggle("hidden");
     });
     document.addEventListener("click", (e) => {
         if (
             !e.target.closest("#btnMenu") &&
             !e.target.closest("#userMenuDropdown")
         ) {
-            document.getElementById("userMenuDropdown").classList.add("hidden");
+            menuDropdown.classList.add("hidden");
         }
     });
+}
 
-    // Login/Logout Buttons
+function setupLoginModalListeners() {
     document.getElementById("menuLogin").addEventListener("click", () => {
-        document.getElementById("loginModal").classList.remove("hidden");
-        document.getElementById("userMenuDropdown").classList.add("hidden");
+        toggleModal("loginModal", true);
+        toggleModal("userMenuDropdown", false); // Garante que o dropdown feche
     });
 
-    document.getElementById("menuLogout").addEventListener("click", handleLogoutConfirmation);
-
-    // Modal
-    document
-        .getElementById("closeLoginModal")
-        .addEventListener("click", () => {
-            document.getElementById("loginModal").classList.add("hidden");
-        });
+    document.getElementById("closeLoginModal").addEventListener("click", () => {
+        toggleModal("loginModal", false);
+    });
 
     document
         .getElementById("confirmLogin")
         .addEventListener("click", handleLogin);
-    // NOVO: Listeners para o Modal de Confirmação de Logout
+}
+
+function setupLogoutModalListeners() {
+    document.getElementById("menuLogout").addEventListener("click", handleLogoutConfirmation);
+
     const logoutModal = document.getElementById("logoutConfirmModal");
     
-    // ATUALIZADO: Botão 'Sair' do modal chama a lógica final
     if (document.getElementById("confirmLogout")) {
         document.getElementById("confirmLogout").addEventListener("click", finalizeLogout);
     }
     
-    // ATUALIZADO: Botão 'Cancelar' do modal o esconde
     if (document.getElementById("cancelLogout")) {
         document.getElementById("cancelLogout").addEventListener("click", () => {
-            if (logoutModal) logoutModal.classList.add("hidden");
+            toggleModal("logoutConfirmModal", false);
         });
     }
     
-    // Opcional: Fechar o modal de logout ao clicar fora
+    // Opcional: Fechar o modal de logout ao clicar fora (já implementado, mas usando o helper)
     if (logoutModal) {
         logoutModal.addEventListener('click', (e) => {
             if (e.target.id === 'logoutConfirmModal') {
-                logoutModal.classList.add("hidden");
+                toggleModal("logoutConfirmModal", false);
             }
         });
     }
-
-    updateLoginUI();
 }
 
-export function showNotification(message, isSuccess = true) {
-    // 1. Cria o container (se não existir)
-    let container = document.getElementById('notification-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'notification-container';
-        // Estilos para o container (posiciona no canto superior direito)
-        container.className = 'fixed top-4 right-4 z-[90] flex flex-col gap-2';
-        document.body.appendChild(container);
-    }
+
+// /js/auth.js (Função principal de Setup mais limpa)
+
+export function setupAuthListeners() {
+    setupDropdownListeners();
+    setupLoginModalListeners();
+    setupLogoutModalListeners();
     
-    // 2. Cria a notificação
-    const notification = document.createElement('div');
-    const baseClasses = 'p-3 rounded-lg shadow-lg text-sm transition-opacity duration-300';
-    
-    if (isSuccess) {
-        notification.className = `${baseClasses} bg-green-500 text-white`;
-    } else {
-        notification.className = `${baseClasses} bg-red-600 text-white`;
-    }
-    
-    notification.textContent = message;
-    container.appendChild(notification);
-    
-    // 3. Oculta após 4 segundos
-    setTimeout(() => {
-        notification.classList.remove('opacity-100');
-        notification.classList.add('opacity-0');
-        // Remove do DOM após a transição
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 4000);
+    updateLoginUI();
 }

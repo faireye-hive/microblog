@@ -6,9 +6,8 @@ import {
      ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID,
       USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID 
 } from "./config.js";
-import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText } from "./utils.js";
+import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
 import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts, setBlockedUsers,loggedInUser,setFollowedUsers } from "./state.js";
-import { showNotification } from "./auth.js";
 
 // Processa os dados de voto brutos da API
 function processVoteData(voteData) {
@@ -59,23 +58,51 @@ function processVoteData(voteData) {
     return finalCounts;
 }
 
-function processMutedData(muteData) {
-    const currentlyMuted = new Set();
-    
-    // Ordena por data (mais antigo primeiro) para que o último estado (mute/unmute) prevaleça
-    muteData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+// NOVO: Função para abstrair a lógica de busca condicional
+async function conditionalFetch(urlTemplate, customId, defaultValue = []) {
+    if (!loggedInUser) {
+        return defaultValue;
+    }
+    try {
+        // Substitui o placeholder no template se necessário
+        const url = urlTemplate
+            .replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`)
+            .replace('{user}', loggedInUser); 
+            
+        const res = await fetch(url);
+        return res.json();
+    } catch (e) {
+        console.error(`Erro ao buscar dados para ${customId}:`, e);
+        return defaultValue;
+    }
+}
 
-    muteData.forEach(op => {
+function processUserTargetOps(opData) {
+    const finalSet = new Set();
+    
+    if (!Array.isArray(opData)) return finalSet;
+    
+    // Filtra apenas operações do usuário logado (o Custom ID garante que sejam block/follow)
+    const relevantOps = opData.filter(op => 
+        op.required_posting_auths?.[0] === loggedInUser
+    );
+
+    // Ordena por data (mais antigo primeiro) para que o último estado prevaleça
+    relevantOps.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    relevantOps.forEach(op => {
         const json = parseEmbeddedJson(op.json);
-        if (json.content_id) {
-            if (json.type === "mute") {
-                currentlyMuted.add(json.content_id);
-            } else if (json.type === "unmute") {
-                currentlyMuted.delete(json.content_id);
+        const type = json.type;
+
+        if (json.target_user) {
+            if (type === "block" || type === "follow") {
+                finalSet.add(json.target_user);
+            } else if (type === "unblock" || type === "unfollow") {
+                finalSet.delete(json.target_user);
             }
         }
     });
-    return currentlyMuted;
+    return finalSet;
 }
 
 // Função principal para buscar todos os dados (Posts e Votos)
@@ -86,18 +113,19 @@ export async function fetchData() {
     try {
         const resPromise = fetch(API_URL).then((res) => res.json());
         const voteResPromise = fetch(VOTE_API_URL).then((res) => res.json());
-        const muteResPromise = fetch(ADMIN_POST_MUTE_API_URL).then((res) => res.json()); // NOVO
-                // NOVO: Adicione a busca por bloqueios ao Promise.all
-        const blockResPromise = loggedInUser 
-            ? fetch(USER_BLOCK_API_URL.replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`)).then((res) => res.json())
-            : Promise.resolve([]); // Se não logado, resolve para um array vazio
-            
-        const followResPromise = loggedInUser 
-            ? fetch(USER_FOLLOW_API_URL.replace('{user}', loggedInUser)).then((res) => res.json()) // NOVO
-            : Promise.resolve([]);
-            
-        const [data, voteDataRaw, muteDataRaw, blockDataRaw, followDataRaw] = await Promise.all([resPromise, voteResPromise, muteResPromise, blockResPromise, followResPromise]);
+        const muteResPromise = fetch(ADMIN_POST_MUTE_API_URL).then((res) => res.json());
 
+        // Usa o novo helper para buscas condicionais e com substituição de URL
+        const blockResPromise = conditionalFetch(USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID);
+        const followResPromise = conditionalFetch(USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID);
+            
+        const [data, voteDataRaw, muteDataRaw, blockDataRaw, followDataRaw] = await Promise.all([
+            resPromise, 
+            voteResPromise, 
+            muteResPromise, 
+            blockResPromise, 
+            followResPromise
+        ]);
 
 
         // Processa Posts
@@ -111,14 +139,12 @@ export async function fetchData() {
         const counts = processVoteData(voteDataRaw || []);
         setVoteCounts(counts); // Atualiza o estado
 
-        const mutedIds = processMutedData(muteDataRaw || []);
-        setMutedPostIds(mutedIds);
         const mutedPostMap = processMuteData(muteDataRaw.rows || muteDataRaw); 
         setMutedPostIds(mutedPostMap); // Esta função deve ser alterada no state.js para aceitar um Map
         // NOVO: Processa Bloqueios
-        const blockedSet = processBlockedData(blockDataRaw || []);
+        const blockedSet = processUserTargetOps(blockDataRaw || []);
         setBlockedUsers(blockedSet);
-        const followedSet = processFollowData(followDataRaw || []);
+        const followedSet = processUserTargetOps(followDataRaw || []);
         setFollowedUsers(followedSet);
 
         updateTags(); // Atualiza a UI da sidebar
@@ -128,6 +154,20 @@ export async function fetchData() {
         document.getElementById("feed").innerHTML =
             '<div class="card p-4 text-center text-red-600">Erro ao carregar dados. Tente atualizar a página.</div>';
         throw e; // Lança o erro para o handleRoute
+    }
+}
+
+function handlePostKeychainResponse(res, actionText) {
+    if (res.success) {
+        showNotification(`✅ ${actionText} enviado com sucesso!`, true);
+        
+        // Lógica única do post
+        document.getElementById("newPostContent").value = "";
+        document.getElementById("charCount").textContent = "Characters: 0 / 512";
+        window.location.hash = ""; // Volta ao feed
+        
+    } else {
+        showNotification(`❌ Erro ao ${actionText.toLowerCase().split(' ')[0]}!`, false);
     }
 }
 
@@ -143,106 +183,17 @@ export function sendPost(content, replyTo = null) {
         content, reply_to: replyTo, mentions, tags,
     });
 
+    const actionText = replyTo ? "Responder" : "Postar";
+
     if (window.hive_keychain) {
         window.hive_keychain.requestCustomJson(
-            username, APP_ID, "Posting", json,
-            replyTo ? "Responder" : "Postar",
-            (res) => {
-                if (res.success) {
-                    showNotification("✅ Enviado com sucesso!", true);
-                    document.getElementById("newPostContent").value = "";
-                    document.getElementById("charCount").textContent = "Characters: 0 / 512";
-                    // Após postar, volta ao feed (que recarrega os dados)
-                    window.location.hash = ""; 
-                } else {
-                    showNotification("❌ Erro ao enviar!",false);
-                }
-            }
+            username, APP_ID, "Posting", json, actionText,
+            (res) => handlePostKeychainResponse(res, actionText)
         );
     } else {
         showNotification("Hive Keychain não detectado!",false);
     }
 }
-
-// Envia um Voto
-export function sendVote(contentId, voteType) {
-    const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("Faça login primeiro!",false);
-
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: voteType, content_id: contentId,
-    });
-
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, VOTE_CUSTOM_ID, "Posting", json, "Votar",
-            (res) => {
-                if (res.success) {
-                    showNotification(`✅ Voto '${voteType}' enviado com sucesso!`, true);
-                    // Recarrega os dados e a view atual
-                    fetchData().then(() => {
-                        window.dispatchEvent(new Event('hashchange'));
-                    });
-                } else {
-                    showNotification("❌ Erro ao enviar voto!",false);
-                }
-            }
-        );
-    } else {
-        showNotification("Hive Keychain não detectado!",false);
-    }
-}
-
-export function sendMute(contentId, cause) {
-    const username = localStorage.getItem("hiveUser");
-    if (username !== ADMIN) return showNotification("Apenas administradores podem mutar posts.", false);
-
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "mute",
-        cause: cause,
-        content_id: contentId,
-    });
-
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, ADMIN_PMUTE_CUSTOM_ID, "Posting", json, "Mutar Post",
-            (res) => {
-                if (res.success) {
-                    showNotification("✅ Post mutado com sucesso!", true);
-                    fetchData().then(() => window.dispatchEvent(new Event('hashchange')));
-                } else {
-                    showNotification("❌ Erro ao mutar post!",false);
-                }
-            }
-        );
-    }
-}
-
-// NOVO: Envia um Unmute
-export function sendUnmute(contentId) {
-    const username = localStorage.getItem("hiveUser");
-    if (username !== ADMIN) return showNotification("Apenas administradores podem desmutar posts.",false);
-
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "unmute",
-        content_id: contentId,
-    });
-
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, ADMIN_PMUTE_CUSTOM_ID, "Posting", json, "Desmutar Post",
-            (res) => {
-                if (res.success) {
-                    showNotification("✅ Post desmutado com sucesso!", true);
-                    fetchData().then(() => window.dispatchEvent(new Event('hashchange')));
-                } else {
-                    showNotification("❌ Erro ao desmutar post!",false);
-                }
-            }
-        );
-    }
-}
-
 
 function processMuteData(muteData) {
     // Retorna um Map: Map<postId, {cause: string, admin: string}>
@@ -274,194 +225,119 @@ function processMuteData(muteData) {
     return finalMutes;
 }
 
-// Processa os dados de bloqueio brutos da API
-function processBlockedData(blockData) {
-    const currentlyBlocked = new Set();
-    
-    if (!Array.isArray(blockData)) return currentlyBlocked;
-    
-    // Filtra apenas operações de bloco personalizadas
-    const relevantOps = blockData.filter(op => {
-        const json = parseEmbeddedJson(op.json);
-        // Verifica se a operação foi feita pelo usuário logado e se é uma ação de block/unblock
-        return op.required_posting_auths?.[0] === loggedInUser && (json.type === 'block' || json.type === 'unblock');
-    });
+/// Nova Logica
 
-    // Ordena por data (mais antigo primeiro) para que o último estado (block/unblock) prevaleça
-    relevantOps.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    relevantOps.forEach(op => {
-        const json = parseEmbeddedJson(op.json);
-        if (json.target_user) {
-            if (json.type === "block") {
-                currentlyBlocked.add(json.target_user);
-            } else if (json.type === "unblock") {
-                currentlyBlocked.delete(json.target_user);
-            }
-        }
-    });
-    return currentlyBlocked;
-}
-
-// NOVO: Função para buscar a lista de usuários bloqueados
-export async function fetchBlockedUsers() {
-    if (!loggedInUser) {
-        setBlockedUsers(new Set()); // Limpa se deslogado
-        return;
-    }
-    try {
-        const blockRes = await fetch(USER_BLOCK_API_URL.replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`));
-        const blockData = await blockRes.json();
-        
-        const blockedUsersSet = processBlockedData(blockData || []);
-        setBlockedUsers(blockedUsersSet);
-        
-    } catch (e) {
-        console.error("Erro ao carregar lista de bloqueios:", e);
-        // Não lança o erro, apenas registra e continua
-    }
-}
-
-// NOVO: Envia Ação de Bloqueio
-export function sendBlock(targetUser) {
+function sendCustomJsonAction(type, targetUser, actionText) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Faça login para bloquear usuários.", false);
+    if (!username) return showNotification("🔒 Faça login para realizar esta ação.", false);
 
     const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "block", target_user: targetUser,
+        app: APP_ID, v: 1, type: type, target_user: targetUser,
     });
 
-    // Usa o Custom ID específico do usuário logado
-    const customId = `${APP_ID}.${username}.block`; 
-
+    let customId;
+    if (type === 'block' || type === 'unblock') {
+        customId = `${APP_ID}.${username}.block`;
+    } else if (type === 'follow' || type === 'unfollow') {
+        customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username);
+    } else {
+        return showNotification("Erro interno: Ação desconhecida.", false);
+    }
+    
     if (window.hive_keychain) {
         window.hive_keychain.requestCustomJson(
-            username, customId, "Posting", json, "Bloquear Usuário",
+            username, customId, "Posting", json, actionText,
             (res) => {
                 if (res.success) {
-                    showNotification(`✅ Usuário @${targetUser} bloqueado!`, true);
+                    showNotification(`✅ Sucesso! ${actionText}`, true);
                     // Recarrega os dados e a view atual
                     fetchData().then(() => {
                         window.dispatchEvent(new Event('hashchange'));
                     });
                 } else {
-                    showNotification("❌ Erro ao bloquear usuário!", false);
+                    showNotification(`❌ Erro ao ${type}!`, false);
                 }
             }
         );
+    } else {
+        showNotification("Hive Keychain não detectado!", false);
     }
+}
+
+
+// NOVO: Envia Ação de Bloqueio
+export function sendBlock(targetUser) {
+    sendCustomJsonAction('block', targetUser, "Bloquear Usuário");
 }
 
 // NOVO: Envia Ação de Desbloqueio
 export function sendUnblock(targetUser) {
-    const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Faça login para desbloquear usuários.", false);
-
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "unblock", target_user: targetUser,
-    });
-
-    const customId = `${APP_ID}.${username}.block`;
-
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, customId, "Posting", json, "Desbloquear Usuário",
-            (res) => {
-                if (res.success) {
-                    showNotification(`✅ Usuário @${targetUser} desbloqueado!`, true);
-                    fetchData().then(() => {
-                        window.dispatchEvent(new Event('hashchange'));
-                    });
-                } else {
-                    showNotification("❌ Erro ao desbloquear usuário!", false);
-                }
-            }
-        );
-    }
-}
-
-// Processa os dados de follow brutos da API
-function processFollowData(followData) {
-    const currentlyFollowed = new Set();
-    
-    if (!Array.isArray(followData)) return currentlyFollowed;
-    
-    // Filtra e ordena as operações
-    const relevantOps = followData.filter(op => {
-        const json = parseEmbeddedJson(op.json);
-        return op.required_posting_auths?.[0] === loggedInUser && (json.type === 'follow' || json.type === 'unfollow');
-    });
-
-    // Ordena por data (mais antigo primeiro) para que o último estado prevaleça
-    relevantOps.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    relevantOps.forEach(op => {
-        const json = parseEmbeddedJson(op.json);
-        if (json.target_user) {
-            if (json.type === "follow") {
-                currentlyFollowed.add(json.target_user);
-            } else if (json.type === "unfollow") {
-                currentlyFollowed.delete(json.target_user);
-            }
-        }
-    });
-    return currentlyFollowed;
+    sendCustomJsonAction('unblock', targetUser, "Desbloquear Usuário");
 }
 
 // NOVO: Envia Ação de Follow
 export function sendFollow(targetUser) {
+    sendCustomJsonAction('follow', targetUser, "Seguir Usuário");
+}
+
+// NOVO: Envia Ação de Unfollow
+export function sendUnfollow(targetUser) {
+    sendCustomJsonAction('unfollow', targetUser, "Deixar de Seguir");
+}
+
+// NOVO: Helper para enviar custom_json para ações de dado (Vote, Mute)
+function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Faça login para seguir usuários.", false);
-
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "follow", target_user: targetUser,
-    });
-
-    // Substitui o placeholder {user} pelo usuário logado
-    const customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username); 
-
+    if (!username) return showNotification("🔒 Faça login para realizar esta ação.", false);
+    
+    if (requiresAdmin && username !== ADMIN) {
+        return showNotification("Apenas administradores podem realizar esta ação.", false);
+    }
+    
     if (window.hive_keychain) {
         window.hive_keychain.requestCustomJson(
-            username, customId, "Posting", json, "Seguir Usuário",
+            username, customId, "Posting", jsonPayload, actionText,
             (res) => {
                 if (res.success) {
-                    showNotification(`✅ Você está seguindo @${targetUser}!`, true);
+                    showNotification(`✅ ${actionText} enviado com sucesso!`, true);
                     // Recarrega os dados e a view atual
                     fetchData().then(() => {
                         window.dispatchEvent(new Event('hashchange'));
                     });
                 } else {
-                    showNotification("❌ Erro ao seguir usuário!", false);
+                    showNotification(`❌ Erro ao ${actionText.toLowerCase().split(' ')[0]}!`, false);
                 }
             }
         );
+    } else {
+        showNotification("Hive Keychain não detectado!", false);
     }
 }
 
-// NOVO: Envia Ação de Unfollow
-export function sendUnfollow(targetUser) {
-    const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Faça login para deixar de seguir.", false);
+// ----------------------------------------------------
+// Substituições:
+// ----------------------------------------------------
 
+export function sendVote(contentId, voteType) {
     const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "unfollow", target_user: targetUser,
+        app: APP_ID, v: 1, type: voteType, content_id: contentId,
     });
-
-    const customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username);
-
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, customId, "Posting", json, "Deixar de Seguir",
-            (res) => {
-                if (res.success) {
-                    showNotification(`✅ Você deixou de seguir @${targetUser}.`, true);
-                    fetchData().then(() => {
-                        window.dispatchEvent(new Event('hashchange'));
-                    });
-                } else {
-                    showNotification("❌ Erro ao deixar de seguir!", false);
-                }
-            }
-        );
-    }
+    sendDataAction(VOTE_CUSTOM_ID, json, "Votar");
 }
+
+export function sendMute(contentId, cause) {
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "mute", cause: cause, content_id: contentId,
+    });
+    // O último argumento true indica que é necessária a autoridade de ADMIN
+    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Mutar Post", true); 
+}
+
+export function sendUnmute(contentId) {
+    const json = JSON.stringify({
+        app: APP_ID, v: 1, type: "unmute", content_id: contentId,
+    });
+    // O último argumento true indica que é necessária a autoridade de ADMIN
+    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Desmutar Post", true);
+}
+

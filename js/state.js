@@ -67,7 +67,12 @@ export function renderNextBatch() {
     const feed = document.getElementById("feed");
 
     const currentList = allPostsToRender.length > 0 ? allPostsToRender : allPosts;
-    const next = currentList.slice(renderedCount, renderedCount + BATCH_SIZE);
+
+    const filteredList = currentList.filter(p => 
+        !blockedUsers.has(p.required_posting_auths?.[0])
+    );
+
+    const next = filteredList.slice(renderedCount, renderedCount + BATCH_SIZE);
 
     if (next.length === 0 && renderedCount === 0) {
         feed.innerHTML = '<div class="card p-4 text-center small-muted">Nenhum post encontrado.</div>';
@@ -81,17 +86,23 @@ export function renderNextBatch() {
     
     document
         .getElementById("loadingIndicator")
-        .classList.toggle("hidden", renderedCount >= currentList.length);
+        .classList.toggle("hidden", renderedCount >= filteredList.length);
 }
 
 // Atualiza a lista de tags na sidebar
 export function updateTags() {
     const map = new Map();
-    allPosts.forEach((p) => {
+
+    const visiblePosts = allPosts.filter(p => 
+        !blockedUsers.has(p.required_posting_auths?.[0])
+    );
+
+    visiblePosts.forEach((p) => {
         const js = parseEmbeddedJson(p.json);
         const tags = js?.tags || [];
         tags.forEach((t) => map.set(t, (map.get(t) || 0) + 1));
     });
+    
     const sorted = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
     const tList = document.getElementById("trendingList");
     tList.innerHTML = "";

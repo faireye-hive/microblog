@@ -1,4 +1,4 @@
-//import { loggedInUser } from "./state.js";
+// /js/config.js
 
 export const APP_ID = "micro.fair";
 export const ADMIN = "faireye";
@@ -8,10 +8,19 @@ export const BLOCK_USER_CUSTOM_ID = `${APP_ID}.{user}.block`;
 export const FOLLOW_USER_CUSTOM_ID = `${APP_ID}.{user}.follow`;
 
 
-const API = "https://hafsql-api.mahdiyari.info/operations/custom_json";
+const API_BASE = "https://hafsql-api.mahdiyari.info/operations/custom_json"; // RENOMEADA
 
-export const API_URL = `${API}/${APP_ID}?limit=1000`;
-export const VOTE_API_URL = `${API}/${VOTE_CUSTOM_ID}?limit=1000`; // NOVO: URL da API de votos
-export const ADMIN_POST_MUTE_API_URL = `${API}/${ADMIN_PMUTE_CUSTOM_ID}?limit=1000`;
-export const USER_BLOCK_API_URL = `${API}/${BLOCK_USER_CUSTOM_ID}?limit=1000`;
-export const USER_FOLLOW_API_URL = `${API}/${FOLLOW_USER_CUSTOM_ID}?limit=1000`;
+// NOVO: Função para construir a URL da API
+function buildApiUrl(customId) {
+    // Retorna a URL completa com o limite padrão
+    return `${API_BASE}/${customId}?limit=1000`;
+}
+
+// URLs FINAIS: Usando a função helper
+export const API_URL = buildApiUrl(APP_ID);
+export const VOTE_API_URL = buildApiUrl(VOTE_CUSTOM_ID);
+export const ADMIN_POST_MUTE_API_URL = buildApiUrl(ADMIN_PMUTE_CUSTOM_ID);
+
+// URLs com parâmetros variáveis (mantidas para clareza, mas poderiam ser construídas)
+export const USER_BLOCK_API_URL = buildApiUrl(BLOCK_USER_CUSTOM_ID);
+export const USER_FOLLOW_API_URL = buildApiUrl(FOLLOW_USER_CUSTOM_ID);

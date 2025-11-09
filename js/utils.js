@@ -1,13 +1,23 @@
-// A URL agora usa a constante importada
+//utils.js
 
 
 // Funções Helpers
 export function parseEmbeddedJson(str) {
-  if (!str) return null;
+  if (!str) return null; // Retorna null se não houver string para evitar problemas
+
+  // Se o JSON for um objeto/array, apenas retorna
+  if (typeof str !== "string") {
+      return str;
+  }
+  
   try {
-    return typeof str === "string" ? JSON.parse(str) : str;
+    // Tenta fazer o parse
+    return JSON.parse(str);
   } catch {
-    return { content: str };
+    // Se falhar, retorna um objeto com o conteúdo original
+    // Garante que 'content' é uma string vazia se 'str' for problemático, 
+    // embora o 'if (!str)' acima já minimize isso.
+    return { content: str || "" };
   }
 }
 
@@ -28,18 +38,24 @@ export function escapeHtml(str = "") {
 // CORRIGIDA: Remoção do bloco de imagem Markdown
 export function stripMarkdown(txt = "") {
   let result = txt
-    // Remove Markdown de imagem: ![alt text](<URL>) -> Usa [^)]+ para capturar a URL até o fim
-    .replace(/!\[.*?\]\(([^)]+)\)/g, "") 
-    // Remove links de imagem crus (URL que termina com extensão)
+    // 1. Substitui imagens Markdown e links crus por um ÚNICO ESPAÇO,
+    // garantindo que as palavras não fiquem coladas.
+    .replace(/!\[.*?\]\(([^)]+)\)/g, " ") 
     .replace(
       /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp))(?=\s|$)/gi,
-      "" 
+      " " 
     );
 
-  return result
-    .replace(/\[([^\]]+)\]\(.*?\)/g, "$1") // Remove links de texto: [texto](url) -> texto
-    .replace(/[*_`]/g, "") // Remove formatação (bold, italic, code)
-    .trim();
+  // Remove links de texto e formatação (sem alteração)
+  result = result
+    .replace(/\[([^\]]+)\]\(.*?\)/g, "$1") 
+    .replace(/[*_`]/g, ""); 
+    
+  // 2. Otimização: Reduz qualquer sequência de espaços múltiplos para um único espaço.
+  result = result.replace(/\s\s+/g, ' ');
+
+  // 3. Limpa espaços nas extremidades
+  return result.trim();
 }
 
 // CORRIGIDA: Extração de URLs do Markdown e links crus
@@ -83,13 +99,15 @@ export function fmtDate(iso) {
 }
 
 export function extractTagsFromText(text) {
+  // \b garante que a tag começa num limite de palavra (opcional)
   return Array.from(
-    new Set((text.match(/#(\w+)/g) || []).map((t) => t.slice(1).toLowerCase()))
+    new Set((text.match(/#([a-z0-9_-]+)/gi) || []).map((t) => t.slice(1).toLowerCase()))
   );
 }
 export function extractMentionsFromText(text) {
+  // Regex mais específica para nomes de usuário
   return Array.from(
-    new Set((text.match(/@(\w+)/g) || []).map((t) => t.slice(1).toLowerCase()))
+    new Set((text.match(/@([a-z0-9-._]+)/gi) || []).map((t) => t.slice(1).toLowerCase()))
   );
 }
 
@@ -113,4 +131,39 @@ export function linkifyText(text) {
     });
     
     return linkedText;
+}
+
+export function showNotification(message, isSuccess = true) {
+    // 1. Cria o container (se não existir)
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        // Estilos para o container (posiciona no canto superior direito)
+        container.className = 'fixed top-4 right-4 z-[90] flex flex-col gap-2';
+        document.body.appendChild(container);
+    }
+    
+    // 2. Cria a notificação
+    const notification = document.createElement('div');
+    const baseClasses = 'p-3 rounded-lg shadow-lg text-sm transition-opacity duration-300';
+    
+    if (isSuccess) {
+        notification.className = `${baseClasses} bg-green-500 text-white`;
+    } else {
+        notification.className = `${baseClasses} bg-red-600 text-white`;
+    }
+    
+    notification.textContent = message;
+    container.appendChild(notification);
+    
+    // 3. Oculta após 4 segundos
+    setTimeout(() => {
+        notification.classList.remove('opacity-100');
+        notification.classList.add('opacity-0');
+        // Remove do DOM após a transição
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 4000);
 }

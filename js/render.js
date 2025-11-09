@@ -43,13 +43,13 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1) {
     if (replies.length === 0) return "";
     return replies
         .map((r) => {
+            const author = r.required_posting_auths?.[0] || "user";
             const rj = parseEmbeddedJson(r.json);
             const nestedHTML = buildRepliesRecursive(r.id, allPosts, depth + 1);
+            const replyContentHtml = linkifyText(escapeHtml(rj.content || "")).replace(/\n/g, "<br>");
             return `
-            <div class="reply-box nested small-muted">
-                <strong>@${
-                    r.required_posting_auths?.[0] || "user"
-                }:</strong> ${escapeHtml(rj.content || "")}
+            <div class="reply-box nested small-muted" data-depth="${depth}">
+                <strong>@${author}:</strong> ${replyContentHtml} 
                 <div class="flex gap-2 mt-1">
                     <button class="px-2 py-1 border rounded small-muted reply-btn" data-id="${
                         r.id
@@ -64,26 +64,25 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1) {
 export function buildThreadAbove(post, allPosts) {
     const parsed = parseEmbeddedJson(post.json);
     
-    // 1. Verifica se o post atual é uma resposta
     if (!parsed?.reply_to) return ""; 
-
-    // 2. Busca o post PARENTAL imediato
     const parent = findPost(parsed.reply_to, allPosts);
-    
-    // 3. Se não encontrar o pai, ou se o pai não tiver conteúdo
     if (!parent) return ""; 
-    
     const pj = parseEmbeddedJson(parent.json);
+    const author = parent.required_posting_auths?.[0] || "user";
 
-    // 4. Retorna o HTML APENAS para o pai imediato
+    const maxSlice = 120; // NOVO: Define o limite
+    const originalContent = pj.content || ""; // NOVO: Captura o conteúdo original
+    const snippetText = originalContent.slice(0, maxSlice); // Slice incondicional
+    
+    // NOVO: Verifica se o texto original foi cortado
+    const ellipsis = originalContent.length > maxSlice ? '...' : ''; 
+    
+    const contentHtml = linkifyText(escapeHtml(snippetText)).replace(/\n/g, "<br>");
+    
     return `
         <div class="reply-box small-muted">
-            <em class="view-thread" data-id="${parent.id}">Em resposta a @${
-                parent.required_posting_auths?.[0] || "user"
-            }</em><br>
-            ${escapeHtml(pj.content?.slice(0, 120) || "")}...
-        </div>`;
-    // Nota: O loop 'while' e o uso de 'threadHTML' para empilhar foram removidos
+            <em class="view-thread" data-id="${parent.id}">Em resposta a @${author}</em><br>
+            ${contentHtml}${ellipsis} </div>`; // Usa o ellipsis condicional
 }
 
 // /js/render.js (Função buildPostCard REESTRUTURADA)
@@ -91,16 +90,19 @@ export function buildThreadAbove(post, allPosts) {
 export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new Map()) {
     const author =
         (p.required_posting_auths && p.required_posting_auths[0]) || "unknown";
-    const parsed = parseEmbeddedJson(p.json); //
-    const content = parsed?.content || ""; //
-    let text = stripMarkdown(content); //
-    const imgs = extractImages(content); //
 
+    const parsed = parseEmbeddedJson(p.json); //
+
+    const content = parsed?.content || ""; 
+    let text = stripMarkdown(content); // Apenas uma chamada
+    const imgs = extractImages(content); 
+
+    // Se o texto, após stripping, for apenas a URL da imagem (caso em que stripMarkdown falhou 
+    // em remover a URL bruta, mas a imagem foi capturada), limpamos.
     if (imgs.length === 1 && text.trim() === imgs[0]) {
-        text = ''; // Se o texto for idêntico à única imagem extraída, limpa o texto para evitar duplicidade.
-    } else {
-        text = stripMarkdown(content); // Se for conteúdo misto, mantém a lógica original
+        text = ''; 
     }
+
     const replies = allPosts.filter(
         (r) => parseEmbeddedJson(r.json)?.reply_to == p.id
     ); //
@@ -117,7 +119,6 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
     const isMuted = !!muteInfo;
     const muteCause = muteInfo ? escapeHtml(muteInfo.cause) : ''; // Motivo do mute
     const muteAdmin = muteInfo ? muteInfo.admin : 'Admin'; // Administrador
-    const loggedInUser = localStorage.getItem("hiveUser");
     const isAdmin = loggedInUser === ADMIN;
     const isBlocked = blockedUsers.has(author);
 
@@ -125,7 +126,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
          return document.createElement('div'); // Retorna um elemento vazio
     }
 
-let muteBannerHTML = '';
+    let muteBannerHTML = '';
     if (isMuted) {
         muteBannerHTML = `
             <div class="mt-2 p-3 bg-red-50 border border-red-300 rounded text-sm text-red-700">
@@ -139,6 +140,11 @@ let muteBannerHTML = '';
     const el = document.createElement("article");
     el.className = `card p-4 ${isMuted ? 'opacity-70 bg-gray-50' : ''}`; 
     el.setAttribute('data-id', p.id);
+
+    const mainContentHtml = linkifyText(escapeHtml(text)).replace( 
+        /\n/g,
+        "<br>"
+    );
 
     el.innerHTML = `
         <div class="flex gap-3">
@@ -162,12 +168,7 @@ let muteBannerHTML = '';
                 ${parsed?.reply_to ? buildThreadAbove(p, allPosts) : ""}
                 
                 ${muteBannerHTML} 
-                <div class="mt-3 text-sm">${
-                    linkifyText(escapeHtml(text)).replace( 
-                        /\n/g,
-                        "<br>"
-                    )
-                }</div>
+                <div class="mt-3 text-sm">${mainContentHtml}</div>
                 ${
                     imgs.length
                         ? `<div class="mt-3 grid gap-3 ${
