@@ -25,6 +25,7 @@ import {
   sendUnblock,
   sendFollow,
   sendUnfollow,
+  clearAllCaches,
 } from "./api.js";
 import {
   handleRoute,
@@ -109,10 +110,19 @@ function showMuteReasonModal(contentId) {
 function setupScrollListeners() {
     // Scroll infinito
     window.addEventListener("scroll", () => {
-        if (loading) return;
+        // 1. Se estiver carregando (renderizando), ignore
+        if (loading) return; 
+
+        // 2. Verifica se chegou perto do fim da página
         const nearBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
-        if (nearBottom) renderNextBatch();
+            window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+
+        if (nearBottom) {
+            // AQUI: Apenas chama renderNextBatch()
+            // Isso renderiza o próximo lote de posts que JÁ ESTÃO no 'allPosts'
+            // O 'allPosts' agora tem todos os dados, graças ao fetchData e ao cache.
+            renderNextBatch();
+        }
     });
 }
 
@@ -278,6 +288,14 @@ function setupStaticControls() {
     document.getElementById("btnRefresh").addEventListener("click", refreshCurrentView);
     document.getElementById("btnRefreshTags").addEventListener("click", updateTags);
 
+    const clearCacheBtn = document.getElementById("clearCacheButton");
+    if (clearCacheBtn) {
+        clearCacheBtn.addEventListener("click", (e) => {
+            e.preventDefault(); // Impede qualquer ação padrão do botão/link
+            clearAllCaches(); // Chama a função importada
+        });
+    }
+
     // Contador de caracteres
     document.getElementById("newPostContent").addEventListener("input", (e) => {
         const len = e.target.value.length;
@@ -307,6 +325,7 @@ function setupInitialDOM() {
   document.getElementById("header-root").innerHTML = FeedHeaderHTML;
   document.getElementById("new-post-root").innerHTML = NewPostSectionHTML;
   document.getElementById("sidebar-root").innerHTML = SidebarHTML;
+  
 }
 
 // NOVO: Função mestre que chama todos os listeners menores

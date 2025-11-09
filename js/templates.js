@@ -74,6 +74,12 @@ export const NavbarHTML = `
             >
               ↩️ Minhas Respostas
             </a>
+            <button 
+                id="clearCacheButton" 
+                class="w-full text-left px-3 py-2 hover:bg-gray-100" 
+                ">
+                Limpar Cache
+            </button>
               <button
                 id="menuLogin"
                 class="w-full text-left px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded"

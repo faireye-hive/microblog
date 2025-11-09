@@ -21,7 +21,8 @@ export let followedUsers = new Set(); // Armazena os nomes de usuários seguidos
 // ---------- Funções de Mutação de Estado ----------
 
 export function setAllPosts(posts) {
-    allPosts = posts;
+    allPosts = posts; // Substitui o array completo
+    renderedCount = 0; // Garante que a renderização do feed comece do topo
 }
 
 export function setVoteCounts(counts) {

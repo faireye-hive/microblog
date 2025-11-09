@@ -6,6 +6,8 @@ export const VOTE_CUSTOM_ID = `${APP_ID}.interation`;
 export const ADMIN_PMUTE_CUSTOM_ID = `${APP_ID}.adpmuted`;
 export const BLOCK_USER_CUSTOM_ID = `${APP_ID}.{user}.block`;
 export const FOLLOW_USER_CUSTOM_ID = `${APP_ID}.{user}.follow`;
+export const LIMIT = 1000;
+
 
 
 const API_BASE = "https://hafsql-api.mahdiyari.info/operations/custom_json"; // RENOMEADA
@@ -13,7 +15,7 @@ const API_BASE = "https://hafsql-api.mahdiyari.info/operations/custom_json"; // 
 // NOVO: Função para construir a URL da API
 function buildApiUrl(customId) {
     // Retorna a URL completa com o limite padrão
-    return `${API_BASE}/${customId}?limit=1000`;
+    return `${API_BASE}/${customId}?limit=${LIMIT}`;
 }
 
 // URLs FINAIS: Usando a função helper

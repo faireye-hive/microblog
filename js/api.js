@@ -4,7 +4,7 @@ import {
     APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
     ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL,
      ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID,
-      USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID 
+      USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID, LIMIT, 
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
 import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts, setBlockedUsers,loggedInUser,setFollowedUsers } from "./state.js";
@@ -105,56 +105,278 @@ function processUserTargetOps(opData) {
     return finalSet;
 }
 
-// Função principal para buscar todos os dados (Posts e Votos)
+const LOCAL_STORAGE_KEY = 'hiveAppPostsCache';
+const API_LIMIT = 1000; 
+const MAX_OPS_TO_FETCH = 20000; // Limite alto para garantir completude dos votos, mutes, etc.
+
+
+const POSTS_CACHE_KEY = 'hiveAppPostsCache';
+const VOTES_CACHE_KEY = 'hiveAppVotesCache';
+const MUTES_CACHE_KEY = 'hiveAppMutesCache';
+// Opcional, dependendo da necessidade de cache para Blocks/Follows
+const BLOCKS_CACHE_KEY = 'hiveAppBlocksCache'; 
+const FOLLOWS_CACHE_KEY = 'hiveAppFollowsCache'; 
+
+
+// /js/api.js
+
+async function syncAndGetTargetOps(baseCacheKey, urlTemplate, customId) {
+    // É crucial checar o login aqui
+    if (!loggedInUser) {
+        return []; 
+    }
+    
+    // 1. Constrói a CHAVE DE CACHE EXCLUSIVA PARA ESTE USUÁRIO
+    const userSpecificCacheKey = `${baseCacheKey}.${loggedInUser}`;
+
+    // 2. Constrói a URL para a API
+    const finalUrl = urlTemplate
+        .replace('{user}', loggedInUser); 
+        
+    // 3. Chama a lógica de cache e sincronização com a chave específica
+    try {
+        // Passamos a chave específica do usuário
+        const data = await syncAndGetAuxData(userSpecificCacheKey, finalUrl); 
+        return data;
+    } catch (e) {
+        console.error(`Erro ao sincronizar target ops para ${customId}:`, e);
+        return [];
+    }
+}
+
+/**
+ * Carrega dados auxiliares do cache, sincroniza apenas os novos (limit=-1000)
+ * e retorna o conjunto consolidado.
+ * @param {string} cacheKey - Chave de LocalStorage (VOTES_CACHE_KEY, etc.)
+ * @param {string} apiUrl - URL da API (VOTE_API_URL, ADMIN_POST_MUTE_API_URL, etc.)
+ * @returns {Promise<Array<Object>>} - Dados auxiliares consolidados
+ */
+async function syncAndGetAuxData(cacheKey, apiUrl) {
+    let cachedData = [];
+    let startIdForSync = null;
+
+    // 1. Tenta carregar do cache
+    try {
+        const cachedJson = localStorage.getItem(cacheKey);
+        if (cachedJson) {
+            cachedData = JSON.parse(cachedJson);
+            // O registro mais novo está no índice 0
+            if (cachedData.length > 0) {
+                startIdForSync = cachedData[0].id;
+            }
+        }
+    } catch (e) {
+        console.error(`Erro ao carregar cache ${cacheKey}:`, e);
+    }
+
+    let allUpdatedData = [...cachedData];
+    let syncApiUrl = apiUrl; 
+
+    try {
+        // 2. Constrói a URL para Sincronização
+        if (startIdForSync) {
+            // Se o cache existir, faz a busca reversa (sync)
+            const url = new URL(apiUrl);
+            url.searchParams.delete('limit');
+            url.searchParams.set('limit', '-1000'); // Busca reversa rápida
+            url.searchParams.set('start', startIdForSync);
+            syncApiUrl = url.toString();
+        } 
+        // Se startIdForSync for null (primeira carga), syncApiUrl usa a URL padrão (limit=1000)
+
+        const res = await fetch(syncApiUrl);
+        const syncDataRaw = await res.json();
+        
+        const newRecords = (Array.isArray(syncDataRaw) ? syncDataRaw : syncDataRaw.rows || []);
+
+        // 3. Consolidação
+        if (newRecords.length > 0) {
+            // Concatena os novos (mais recentes) na frente do cache antigo
+            allUpdatedData = newRecords.concat(cachedData);
+            
+            // Limita o tamanho total do cache (ex: 20000 operações de voto/mute)
+            allUpdatedData = allUpdatedData.slice(0, 20000); 
+            
+            // Salva o novo cache
+            localStorage.setItem(cacheKey, JSON.stringify(allUpdatedData));
+        } else if (!startIdForSync) {
+             // Se não havia cache e não vieram dados, salvamos um array vazio para o futuro
+             localStorage.setItem(cacheKey, JSON.stringify([]));
+        }
+
+    } catch (e) {
+        console.error(`Erro ao sincronizar dados auxiliares para ${cacheKey}:`, e);
+        // Em caso de falha, retorna os dados cacheados (se existirem)
+    }
+
+    return allUpdatedData;
+}
+/**
+ * Helper genérico para buscar TODOS os registros de um custom_json em loop.
+ * @param {string} baseUrl - URL da API base (ex: VOTE_API_URL).
+ */
+async function fetchDataInLoopGeneric(baseUrl) {
+    let hasMore = true;
+    let startId = null;
+    const allFetchedData = [];
+    
+    do {
+        let apiUrl = baseUrl;
+        if (startId) {
+            // A URL base já contém o limite (ex: ?limit=1000)
+            apiUrl = `${baseUrl.replace(`limit=${API_LIMIT}`, `limit=${API_LIMIT}`)}&start=${startId}`;
+        }
+        
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+        
+        const newRows = (Array.isArray(data) ? data : data.rows || []);
+        
+        const currentBatchCount = newRows.length;
+        
+        if (currentBatchCount > 0) {
+            allFetchedData.push(...newRows);
+            // Usa o 'id' do último registro (mais antigo) para a próxima paginação
+            startId = newRows[newRows.length - 1].id; 
+        }
+
+        hasMore = currentBatchCount === API_LIMIT && allFetchedData.length < MAX_OPS_TO_FETCH;
+        
+        if (hasMore) await new Promise(resolve => setTimeout(resolve, 50)); 
+        
+    } while (hasMore);
+    
+    return allFetchedData;
+}
+
+
+// A função fetchDataInLoop é agora uma versão especializada da genérica para posts
+async function fetchDataInLoop() {
+    // Usamos a função genérica e filtramos apenas os custom_id corretos
+    const allRawPosts = await fetchDataInLoopGeneric(API_URL);
+    return allRawPosts.filter((x) => x.custom_id === APP_ID);
+}
+/**
+ * Função principal para buscar todos os dados (Posts e Votos).
+ * Utiliza cache local e busca reversa (limit=-1000) para sincronizar posts novos.
+ */
+
+// /js/api.js (Apenas o bloco fetchData)
+
 export async function fetchData() {
     document.getElementById("feed").innerHTML =
         '<div class="card p-4 text-center small-muted">Carregando...</div>';
 
+    // 1. CARGA IMEDIATA DO CACHE DE POSTS (SÍNCRONA) - INALTERADO
+    let cachedPosts = [];
+    let startIdForSync = null;
+
     try {
-        const resPromise = fetch(API_URL).then((res) => res.json());
-        const voteResPromise = fetch(VOTE_API_URL).then((res) => res.json());
-        const muteResPromise = fetch(ADMIN_POST_MUTE_API_URL).then((res) => res.json());
+        const cachedData = localStorage.getItem(POSTS_CACHE_KEY); // Usa nova chave
+        if (cachedData) {
+            cachedPosts = JSON.parse(cachedData);
+            if (cachedPosts.length > 0) {
+                startIdForSync = cachedPosts[0].id; 
+                setAllPosts(cachedPosts); 
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao carregar cache de posts:", e);
+    }
+    
+    // 2. PREPARA AS PROMESSE DE SINCRONIZAÇÃO COMPLETA (PARALELO)
+    
+    // 2a. Sincronização de Posts (Mantendo a lógica de busca em loop na 1ª carga)
+    let postSyncPromise;
+    let isCacheHit = !!startIdForSync;
 
-        // Usa o novo helper para buscas condicionais e com substituição de URL
-        const blockResPromise = conditionalFetch(USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID);
-        const followResPromise = conditionalFetch(USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID);
-            
-        const [data, voteDataRaw, muteDataRaw, blockDataRaw, followDataRaw] = await Promise.all([
-            resPromise, 
-            voteResPromise, 
-            muteResPromise, 
-            blockResPromise, 
-            followResPromise
-        ]);
-
-
-        // Processa Posts
-        const posts = (Array.isArray(data) ? data : data.rows || [])
-            .filter((x) => x.custom_id === APP_ID)
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    if (isCacheHit) {
+        // Cache Cheio: Busca reversa (max 1000)
+        const url = new URL(API_URL);
+        url.searchParams.delete('limit');
+        url.searchParams.set('limit', '-1000');
+        url.searchParams.set('start', startIdForSync);
         
-        setAllPosts(posts); // Atualiza o estado
+        postSyncPromise = fetch(url.toString()).then(res => res.json());
+        
+    } else {
+        // Cache Vazio: Busca completa em loop (mantida para a 1ª carga)
+        postSyncPromise = fetchDataInLoop();
+    }
 
-        // Processa Votos
+    // 2b. Sincronização de Dados Auxiliares (USANDO O NOVO HELPER)
+    const voteResPromise = syncAndGetAuxData(VOTES_CACHE_KEY, VOTE_API_URL);
+    const muteResPromise = syncAndGetAuxData(MUTES_CACHE_KEY, ADMIN_POST_MUTE_API_URL);
+    
+    // Blocos e Follows (Podem ser simples fetch ou o novo helper, dependendo do volume)
+    // Usaremos o novo helper para consistência (embora o conditionalFetch original pudesse ser mantido se fosse mais leve)
+    const blockResPromise = syncAndGetTargetOps(BLOCKS_CACHE_KEY, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID);
+    const followResPromise = syncAndGetTargetOps(FOLLOWS_CACHE_KEY, USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID);
+    
+    
+    // 3. AGUARDA E PROCESSA TUDO
+    
+    const [
+        syncDataRaw, 
+        voteDataRaw, 
+        muteDataRaw, 
+        blockDataRaw, 
+        followDataRaw
+    ] = await Promise.all([
+        postSyncPromise,
+        voteResPromise, // Agora é o array de dados completo
+        muteResPromise, // Agora é o array de dados completo
+        blockResPromise, // Agora é o array de dados completo
+        followResPromise // Agora é o array de dados completo
+    ]);
+    
+    // --- INÍCIO DO PROCESSAMENTO DE ESTADO ---
+    
+    // 3a. Processa Posts (Consolidação) - Lógica inalterada
+    let finalPosts = cachedPosts;
+    let newPostsCount = 0;
+    
+    if (isCacheHit) {
+        // ... (Lógica de concatenação dos posts)
+        const newPosts = (Array.isArray(syncDataRaw) ? syncDataRaw : syncDataRaw.rows || [])
+            .filter((x) => x.custom_id === APP_ID);
+        
+        newPostsCount = newPosts.length;
+        finalPosts = newPosts.concat(cachedPosts);
+    } else {
+        // ... (Lógica de primeira carga)
+        finalPosts = syncDataRaw;
+        newPostsCount = finalPosts.length;
+    }
+    
+    finalPosts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    finalPosts = finalPosts.slice(0, 2000); 
+    
+    setAllPosts(finalPosts); 
+    localStorage.setItem(POSTS_CACHE_KEY, JSON.stringify(finalPosts)); // Usa nova chave
+
+    // 3b. Processa Auxiliares (voteDataRaw, muteDataRaw, etc. são os arrays completos consolidados)
+    try {
         const counts = processVoteData(voteDataRaw || []);
-        setVoteCounts(counts); // Atualiza o estado
-
-        const mutedPostMap = processMuteData(muteDataRaw.rows || muteDataRaw); 
-        setMutedPostIds(mutedPostMap); // Esta função deve ser alterada no state.js para aceitar um Map
-        // NOVO: Processa Bloqueios
-        const blockedSet = processUserTargetOps(blockDataRaw || []);
+        setVoteCounts(counts);
+        
+        const mutedPostMap = processMuteData(muteDataRaw || []); // Não precisa mais de .rows
+        setMutedPostIds(mutedPostMap); 
+        
+        const blockedSet = processUserTargetOps(blockDataRaw || []); // Não precisa mais de .rows
         setBlockedUsers(blockedSet);
-        const followedSet = processUserTargetOps(followDataRaw || []);
+        const followedSet = processUserTargetOps(followDataRaw || []); // Não precisa mais de .rows
         setFollowedUsers(followedSet);
 
-        updateTags(); // Atualiza a UI da sidebar
+        updateTags(); 
         
     } catch (e) {
-        console.error("Erro ao carregar dados:", e);
-        document.getElementById("feed").innerHTML =
-            '<div class="card p-4 text-center text-red-600">Erro ao carregar dados. Tente atualizar a página.</div>';
-        throw e; // Lança o erro para o handleRoute
+        console.error("Erro ao processar dados auxiliares pós-sincronização:", e);
     }
+    
+    // 4. FINALIZAÇÃO
+    window.dispatchEvent(new Event('hashchange'));
+    showNotification(`✅ Dados carregados e sincronizados com sucesso. (${newPostsCount} novos posts)`, true);
 }
 
 function handlePostKeychainResponse(res, actionText) {
@@ -341,3 +563,32 @@ export function sendUnmute(contentId) {
     sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Desmutar Post", true);
 }
 
+
+export function clearAllCaches() {
+    // 1. Chaves de Cache Globais
+    localStorage.removeItem(POSTS_CACHE_KEY);
+    localStorage.removeItem(VOTES_CACHE_KEY);
+    localStorage.removeItem(MUTES_CACHE_KEY);
+
+    // 2. Chaves de Cache de Usuário (Block/Follow)
+    // O cache de Block/Follow usa a chave de cache + o nome do usuário logado.
+    // É necessário remover o cache específico do usuário logado.
+    if (loggedInUser) {
+        localStorage.removeItem(`${BLOCKS_CACHE_KEY}.${loggedInUser}`);
+        localStorage.removeItem(`${FOLLOWS_CACHE_KEY}.${loggedInUser}`);
+    } else {
+        // Se o usuário não está logado, remove chaves antigas que podem ter sido geradas sem o sufixo.
+        localStorage.removeItem(BLOCKS_CACHE_KEY);
+        localStorage.removeItem(FOLLOWS_CACHE_KEY);
+    }
+
+    // 3. Feedback e Recarga
+    showNotification("🗑️ Todos os caches foram limpos! Recarregando dados...", true);
+    
+    // Força a recarga completa dos dados na próxima chamada de fetchData()
+    // Como os caches estão vazios, ele fará o loop completo (primeira carga).
+    fetchData(); 
+    
+    // Opcional: Recarrega a página inteira para garantir que o estado in-memory também seja limpo
+    // window.location.reload(); 
+}
