@@ -3,36 +3,44 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>micro.feed — threads + Hive Keychain</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>micro.feed — Hive • Share • Build</title>
+    <meta name="description" content="Microblogging decentralized app with threads and Hive Keychain authentication." />
+    <meta property="og:title" content="micro.feed — Hive • Share • Build" />
+    <meta property="og:description" content="Microblogging decentralized app with threads and Hive Keychain authentication." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css" />
   </head>
   
   <body>
-    <div id="navbar-root"></div> 
+    <!-- Top Header Navbar -->
+    <div id="top-nav-root"></div>
 
-    <div class="bg-[#f5f6fa] pt-[4.5rem] sm:pt-[5rem] lg:pt-[5.5rem]">
-      <div id="modal-root"></div>
-      <div id="logout-root"></div>
-      
-      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <main id="mainArea" class="lg:col-span-2 space-y-6">
-          
-          <div id="header-root"></div>
-          
-          <div id="new-post-root"></div>
-          
-          <section id="feed" class="space-y-4"></section>
-          <div id="loadingIndicator" class="text-center small-muted py-4 hidden">
-            Carregando mais posts...
-          </div>
-        </main>
+    <!-- 3-Column Layout Container -->
+    <div class="app-layout">
+      <!-- Left Sidebar Navigation -->
+      <aside id="left-sidebar-root" class="left-sidebar"></aside>
 
-        <aside id="sidebar-root" class="space-y-4"></aside>
+      <!-- Center Feed Column -->
+      <main id="mainArea" class="main-content">
+        <div id="feed-header-root"></div>
+        <div id="composer-root"></div>
+        <div id="feed-filters-root"></div>
+        <section id="feed" class="feed-container"></section>
+        <div id="loadingIndicator" class="loading-state hidden">
+          Carregando mais posts...
+        </div>
+      </main>
 
-      </div>
+      <!-- Right Sidebar Widget Area -->
+      <aside id="right-sidebar-root" class="right-sidebar"></aside>
     </div>
+
+    <!-- Modals & Dialogs -->
+    <div id="modal-root"></div>
+    <div id="logout-root"></div>
+    <div id="extra-modal-root"></div>
 
     <script type="module" src="./js/app.js"></script>
   </body>

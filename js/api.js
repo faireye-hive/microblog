@@ -4,10 +4,16 @@ import {
     APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
     ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL,
      ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID,
-      USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID, LIMIT, 
+      USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID, LIMIT,
+      CHANNELS_CUSTOM_ID, CHANNELS_API_URL
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
-import { setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, allPosts, setBlockedUsers,loggedInUser,setFollowedUsers } from "./state.js";
+import { 
+    setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, 
+    allPosts, setBlockedUsers, loggedInUser, setFollowedUsers,
+    setChannels, addChannelLocally, channels, activeChannel,
+    setChannelPosts, getChannelPosts, addChannelPostLocally, updateChannelsUI
+} from "./state.js";
 
 // Processa os dados de voto brutos da API
 function processVoteData(voteData) {
@@ -116,6 +122,40 @@ const MUTES_CACHE_KEY = 'hiveAppMutesCache';
 // Opcional, dependendo da necessidade de cache para Blocks/Follows
 const BLOCKS_CACHE_KEY = 'hiveAppBlocksCache'; 
 const FOLLOWS_CACHE_KEY = 'hiveAppFollowsCache'; 
+const CHANNELS_CACHE_KEY = 'hiveAppChannelsCache';
+
+// Processa os canais descobertos na Hive via Custom JSON (sem canais demonstrativos fictícios)
+export function processChannelsData(channelsData) {
+    const channelMap = new Map();
+
+    if (Array.isArray(channelsData)) {
+        // Ordena por timestamp crescente para que criações e atualizações prevaleçam
+        const sorted = [...channelsData].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+        sorted.forEach((op) => {
+            const creator = op.required_posting_auths?.[0] || op.required_auths?.[0] || "user";
+            const json = parseEmbeddedJson(op.json);
+            if (!json) return;
+
+            // Extrai id e nome conforme o formato do Custom JSON
+            const rawId = json.id || json.channel_id || "";
+            const id = rawId.toString().toLowerCase().trim().replace(/[^a-z0-9_-]/g, "");
+            const name = (json.name || json.channel_name || id).toString().trim();
+            const description = (json.description || json.desc || `Canal #${id} registrado na Hive`).toString().trim();
+
+            if (id && name) {
+                channelMap.set(id, {
+                    id,
+                    name,
+                    description,
+                    creator,
+                    timestamp: op.timestamp || json.created_at || new Date().toISOString()
+                });
+            }
+        });
+    }
+
+    return Array.from(channelMap.values());
+} 
 
 
 // /js/api.js
@@ -307,6 +347,7 @@ export async function fetchData() {
     // 2b. Sincronização de Dados Auxiliares (USANDO O NOVO HELPER)
     const voteResPromise = syncAndGetAuxData(VOTES_CACHE_KEY, VOTE_API_URL);
     const muteResPromise = syncAndGetAuxData(MUTES_CACHE_KEY, ADMIN_POST_MUTE_API_URL);
+    const channelResPromise = syncAndGetAuxData(CHANNELS_CACHE_KEY, CHANNELS_API_URL);
     
     // Blocos e Follows (Podem ser simples fetch ou o novo helper, dependendo do volume)
     // Usaremos o novo helper para consistência (embora o conditionalFetch original pudesse ser mantido se fosse mais leve)
@@ -321,13 +362,15 @@ export async function fetchData() {
         voteDataRaw, 
         muteDataRaw, 
         blockDataRaw, 
-        followDataRaw
+        followDataRaw,
+        channelsDataRaw
     ] = await Promise.all([
         postSyncPromise,
         voteResPromise, // Agora é o array de dados completo
         muteResPromise, // Agora é o array de dados completo
         blockResPromise, // Agora é o array de dados completo
-        followResPromise // Agora é o array de dados completo
+        followResPromise, // Agora é o array de dados completo
+        channelResPromise // Sincronização de Canais
     ]);
     
     // --- INÍCIO DO PROCESSAMENTO DE ESTADO ---
@@ -368,6 +411,9 @@ export async function fetchData() {
         const followedSet = processUserTargetOps(followDataRaw || []); // Não precisa mais de .rows
         setFollowedUsers(followedSet);
 
+        const processedChannels = processChannelsData(channelsDataRaw || []);
+        setChannels(processedChannels);
+
         updateTags(); 
         
     } catch (e) {
@@ -379,41 +425,134 @@ export async function fetchData() {
     showNotification(`✅ Dados carregados e sincronizados com sucesso. (${newPostsCount} novos posts)`, true);
 }
 
-function handlePostKeychainResponse(res, actionText) {
-    if (res.success) {
-        showNotification(`✅ ${actionText} enviado com sucesso!`, true);
-        
-        // Lógica única do post
-        document.getElementById("newPostContent").value = "";
-        document.getElementById("charCount").textContent = "Characters: 0 / 512";
-        window.location.hash = ""; // Volta ao feed
-        
-    } else {
-        showNotification(`❌ Erro ao ${actionText.toLowerCase().split(' ')[0]}!`, false);
+// Busca posts de um canal específico na Hive blockchain
+export async function fetchChannelPosts(channelId) {
+    const cleanId = (channelId || "").toLowerCase().trim();
+    if (!cleanId) return [];
+
+    const cacheKey = `hiveAppChannelPosts_${cleanId}`;
+    let cached = [];
+    try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) cached = JSON.parse(raw);
+    } catch (e) {}
+
+    if (cached.length > 0) {
+        setChannelPosts(cleanId, cached);
+    }
+
+    try {
+        const url = `https://rpc.mahdiyari.info/hafsql/operations/custom_json/${cleanId}?limit=1000`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const rows = Array.isArray(data) ? data : (data.rows || []);
+
+        // Filtra estritamente operações onde o Custom JSON ID é exatamente o ID do canal
+        const validOps = rows.filter(op => (op.custom_id || "").toLowerCase() === cleanId);
+
+        // Mescla com posts locais recentes para evitar perdas enquanto o indexador processa
+        const map = new Map();
+        validOps.forEach(p => map.set(p.id, p));
+        cached.forEach(p => {
+            if (!map.has(p.id)) map.set(p.id, p);
+        });
+
+        const sorted = Array.from(map.values()).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+        setChannelPosts(cleanId, sorted);
+        try {
+            localStorage.setItem(cacheKey, JSON.stringify(sorted.slice(0, 1000)));
+        } catch (e) {}
+        return sorted;
+    } catch (err) {
+        console.error(`Erro ao buscar posts do canal ${cleanId}:`, err);
+        return getChannelPosts(cleanId);
     }
 }
 
-// Envia um novo Post ou Reply
-export function sendPost(content, replyTo = null) {
+// Envia um novo Post ou Reply (para o canal ativo ou para o canal principal 'micro.fair')
+export function sendPost(content, replyTo = null, channelOverride = null) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("Faça login primeiro!", false);
+    if (!username) return showNotification("🔒 Conecte sua conta via Hive Keychain primeiro!", false);
+
+    // Se estiver navegando em um canal específico, o Custom JSON é emitido DIRETAMENTE para o ID do canal!
+    // Exemplo: se estiver no canal 'fairmemes', o custom_id do blockchain Hive será 'fairmemes'.
+    // Se for o canal principal, usa APP_ID ('micro.fair').
+    const targetChannel = channelOverride !== null ? channelOverride : activeChannel;
+    const customId = (targetChannel && targetChannel !== APP_ID) ? targetChannel : APP_ID;
 
     const tags = extractTagsFromText(content);
     const mentions = extractMentionsFromText(content);
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: replyTo ? "reply" : "post",
-        content, reply_to: replyTo, mentions, tags,
-    });
 
-    const actionText = replyTo ? "Responder" : "Postar";
+    // Se estiver num canal específico, garante que a tag esteja indexada no json
+    if (customId !== APP_ID && !tags.includes(customId)) {
+        tags.unshift(customId);
+    }
+
+    const payload = {
+        app: APP_ID,
+        v: 1,
+        type: replyTo ? "reply" : "post",
+        channel: customId,
+        content,
+        reply_to: replyTo,
+        mentions,
+        tags,
+    };
+    const json = JSON.stringify(payload);
+
+    const actionText = customId === APP_ID
+        ? (replyTo ? "Responder no Feed Principal" : "Postar no Feed Principal")
+        : (replyTo ? `Responder em #${customId}` : `Postar em #${customId}`);
 
     if (window.hive_keychain) {
         window.hive_keychain.requestCustomJson(
-            username, APP_ID, "Posting", json, actionText,
-            (res) => handlePostKeychainResponse(res, actionText)
+            username,
+            customId, // <=== ID DO CANAL NA BLOCKCHAIN HIVE!
+            "Posting",
+            json,
+            actionText,
+            (res) => {
+                if (res.success) {
+                    showNotification(`✅ Publicado com sucesso no canal #${customId}!`, true);
+
+                    const textarea = document.getElementById("newPostContent");
+                    if (textarea) textarea.value = "";
+                    const charCount = document.getElementById("charCount");
+                    if (charCount) charCount.textContent = "0 / 2048";
+
+                    // Cria objeto de post local imediato
+                    const localPost = {
+                        id: `local_${Date.now()}`,
+                        custom_id: customId,
+                        timestamp: new Date().toISOString(),
+                        required_posting_auths: [username],
+                        json: json
+                    };
+
+                    if (customId === APP_ID) {
+                        allPosts.unshift(localPost);
+                        try {
+                            localStorage.setItem(POSTS_CACHE_KEY, JSON.stringify(allPosts.slice(0, 1000)));
+                        } catch (e) {}
+                        if (!activeChannel) {
+                            renderFeed(allPosts);
+                        }
+                    } else {
+                        addChannelPostLocally(customId, localPost);
+                        if (activeChannel === customId) {
+                            renderFeed(getChannelPosts(customId));
+                        }
+                    }
+
+                    updateChannelsUI();
+                    updateTags();
+                } else {
+                    showNotification(`❌ Erro ao postar: ${res.message || "Operação cancelada"}`, false);
+                }
+            }
         );
     } else {
-        showNotification("Hive Keychain não detectado!",false);
+        showNotification("❌ Hive Keychain não detectado!", false);
     }
 }
 
@@ -563,12 +702,101 @@ export function sendUnmute(contentId) {
     sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Desmutar Post", true);
 }
 
+// Cria um novo canal transmitindo Custom JSON para CHANNELS_CUSTOM_ID
+export function sendCreateChannel(channelId, channelName, description = "") {
+    const username = localStorage.getItem("hiveUser");
+    if (!username) {
+        showNotification("🔒 Conecte sua conta via Hive Keychain para criar um canal!", false);
+        document.getElementById("loginModal")?.classList.remove("hidden");
+        return;
+    }
+
+    const cleanId = (channelId || "").toLowerCase().trim().replace(/[^a-z0-9_-]/g, "");
+    if (!cleanId) {
+        showNotification("⚠️ O ID do canal é obrigatório (apenas letras minúsculas, números e hífen)!", false);
+        return;
+    }
+
+    const cleanName = (channelName || cleanId).trim();
+    if (!cleanName) {
+        showNotification("⚠️ O nome do canal é obrigatório!", false);
+        return;
+    }
+
+    const cleanDesc = (description || `Canal #${cleanId} criado na blockchain Hive por @${username}`).trim();
+
+    const payload = {
+        app: APP_ID,
+        v: 1,
+        type: "create_channel",
+        action: "create_channel",
+        id: cleanId,
+        name: cleanName,
+        description: cleanDesc,
+        created_at: new Date().toISOString()
+    };
+
+    const actionText = `Criar Canal #${cleanId}`;
+
+    if (!window.hive_keychain) {
+        showNotification("❌ Hive Keychain não detectado no navegador!", false);
+        return;
+    }
+
+    window.hive_keychain.requestCustomJson(
+        username,
+        CHANNELS_CUSTOM_ID,
+        "Posting",
+        JSON.stringify(payload),
+        actionText,
+        (res) => {
+            if (res.success) {
+                showNotification(`✅ Canal #${cleanId} ("${cleanName}") registrado na blockchain Hive!`, true);
+
+                const newChannelObj = {
+                    id: cleanId,
+                    name: cleanName,
+                    description: cleanDesc,
+                    creator: username,
+                    timestamp: new Date().toISOString()
+                };
+
+                addChannelLocally(newChannelObj);
+
+                try {
+                    const cached = JSON.parse(localStorage.getItem(CHANNELS_CACHE_KEY) || "[]");
+                    cached.unshift({
+                        id: Date.now().toString(),
+                        timestamp: new Date().toISOString(),
+                        required_posting_auths: [username],
+                        custom_id: CHANNELS_CUSTOM_ID,
+                        json: JSON.stringify(payload)
+                    });
+                    localStorage.setItem(CHANNELS_CACHE_KEY, JSON.stringify(cached));
+                } catch (e) {
+                    console.error("Erro ao salvar cache de canais:", e);
+                }
+
+                document.getElementById("createChannelModal")?.classList.add("hidden");
+                window.location.hash = `#/channel/${cleanId}`;
+            } else {
+                showNotification(`❌ Falha ao criar canal: ${res.message || "Operação cancelada"}`, false);
+            }
+        }
+    );
+}
 
 export function clearAllCaches() {
     // 1. Chaves de Cache Globais
     localStorage.removeItem(POSTS_CACHE_KEY);
     localStorage.removeItem(VOTES_CACHE_KEY);
     localStorage.removeItem(MUTES_CACHE_KEY);
+    localStorage.removeItem(CHANNELS_CACHE_KEY);
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith("hiveAppChannelPosts_")) {
+            localStorage.removeItem(key);
+        }
+    });
 
     // 2. Chaves de Cache de Usuário (Block/Follow)
     // O cache de Block/Follow usa a chave de cache + o nome do usuário logado.

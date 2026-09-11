@@ -1,29 +1,25 @@
 //utils.js
 
 
-// Funções Helpers
-export function parseEmbeddedJson(str) {
-  if (!str) return null; // Retorna null se não houver string para evitar problemas
+// utils.js - Helpers & Strong XSS Protection Engine
 
-  // Se o JSON for um objeto/array, apenas retorna
-  if (typeof str !== "string") {
-      return str;
-  }
-  
+// Funções Helpers de Parse seguro
+export function parseEmbeddedJson(str) {
+  if (!str) return null;
+  if (typeof str !== "string") return str;
   try {
-    // Tenta fazer o parse
     return JSON.parse(str);
   } catch {
-    // Se falhar, retorna um objeto com o conteúdo original
-    // Garante que 'content' é uma string vazia se 'str' for problemático, 
-    // embora o 'if (!str)' acima já minimize isso.
     return { content: str || "" };
   }
 }
 
+// 1. ESCAPAMENTO ROBUSTO DE HTML
 export function escapeHtml(str = "") {
-  return str.replace(
-    /[&<>"']/g,
+  if (str === null || str === undefined) return "";
+  const s = String(str);
+  return s.replace(
+    /[&<>"'`/]/g,
     (m) =>
       ({
         "&": "&amp;",
@@ -31,67 +27,186 @@ export function escapeHtml(str = "") {
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#39;",
+        "`": "&#96;",
+        "/": "&#x2F;",
       }[m])
   );
 }
 
-// CORRIGIDA: Remoção do bloco de imagem Markdown
+// 2. ESCAPAMENTO DE ATRIBUTOS HTML
+export function escapeAttr(str = "") {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove caracteres de controle
+    .replace(/[&<>"'`]/g, (m) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+        "`": "&#96;",
+      }[m])
+    );
+}
+
+// 3. SANITIZAÇÃO ESTRITA DE URLS (Defesa contra javascript:, data:, vbscript:)
+export function sanitizeUrl(url = "") {
+  if (!url || typeof url !== "string") return "";
+  
+  // Remove espaços, caracteres nulos e de controle
+  const trimmed = url.trim().replace(/[\u0000-\u001F\u007F-\u009F\s]/g, "");
+  
+  // Permite âncoras relativas do app (ex: #/channel/...)
+  if (trimmed.startsWith("#") || trimmed.startsWith("/")) {
+    return escapeAttr(trimmed);
+  }
+
+  // Decodifica tentativas de ofuscação (ex: jav&#x61;script:)
+  try {
+    const decoded = decodeURIComponent(trimmed).toLowerCase();
+    if (
+      decoded.includes("javascript:") ||
+      decoded.includes("data:") ||
+      decoded.includes("vbscript:") ||
+      decoded.includes("file:") ||
+      decoded.includes("blob:")
+    ) {
+      return "";
+    }
+  } catch (e) {
+    // Se URI malformada, pode ser tentativa de bypass
+    if (/(?:javascript|data|vbscript|file|blob)\s*:/i.test(trimmed)) {
+      return "";
+    }
+  }
+
+  // Validação estrita via parser de URL
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return escapeAttr(trimmed);
+    }
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+// 4. SANITIZAÇÃO DE NOMES DE USUÁRIO HIVE
+export function cleanUsername(username = "") {
+  if (!username) return "user";
+  return String(username)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_.-]/g, "")
+    .slice(0, 24) || "user";
+}
+
+// 5. SANITIZAÇÃO E VALIDAÇÃO DE ID DE CANAL (Suporta IDs com pontos como micro.feed e micro.fair)
+export function cleanChannelId(channelId = "") {
+  if (!channelId) return "";
+  return String(channelId)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_.-]/g, "") // Permite letras, números, hífen, underscore e ponto (.)
+    .replace(/^\.+|\.+$/g, "")    // Remove pontos soltos nas pontas
+    .slice(0, 36);
+}
+
+// 6. SANITIZADOR DOM DE HTML PARA PREVENÇÃO DE XSS AVANÇADO
+export function sanitizeSafeHtml(htmlStr = "") {
+  if (!htmlStr) return "";
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlStr, "text/html");
+    
+    // Lista branca de tags permitidas para exibição no feed
+    const ALLOWED_TAGS = new Set(["SPAN", "BR", "STRONG", "B", "EM", "I", "CODE", "P", "A"]);
+    const ALLOWED_ATTRS = new Set(["class", "data-tag", "data-user", "data-author", "href", "title"]);
+
+    // Varre recursivamente os elementos
+    const allElements = doc.body.querySelectorAll("*");
+    allElements.forEach((el) => {
+      // Se tag não permitida, substitui por texto puro escapado
+      if (!ALLOWED_TAGS.has(el.tagName)) {
+        const textNode = document.createTextNode(el.textContent);
+        el.parentNode ? el.parentNode.replaceChild(textNode, el) : el.remove();
+        return;
+      }
+
+      // Remove qualquer atributo que comece com 'on' (onclick, onerror, onload, etc.)
+      const attrs = Array.from(el.attributes);
+      attrs.forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        if (name.startsWith("on") || !ALLOWED_ATTRS.has(name)) {
+          el.removeAttribute(attr.name);
+        } else if (name === "href") {
+          const safeHref = sanitizeUrl(attr.value);
+          if (!safeHref) {
+            el.removeAttribute("href");
+          } else {
+            el.setAttribute("href", safeHref);
+            el.setAttribute("rel", "noopener noreferrer");
+          }
+        }
+      });
+    });
+
+    return doc.body.innerHTML;
+  } catch (e) {
+    // Fallback à prova de falhas: se DOMParser falhar, escapa tudo
+    return escapeHtml(htmlStr);
+  }
+}
+
+// Remoção do bloco de imagem Markdown
 export function stripMarkdown(txt = "") {
-  let result = txt
-    // 1. Substitui imagens Markdown e links crus por um ÚNICO ESPAÇO,
-    // garantindo que as palavras não fiquem coladas.
+  let result = (txt || "")
     .replace(/!\[.*?\]\(([^)]+)\)/g, " ") 
     .replace(
       /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp))(?=\s|$)/gi,
       " " 
     );
 
-  // Remove links de texto e formatação (sem alteração)
   result = result
     .replace(/\[([^\]]+)\]\(.*?\)/g, "$1") 
     .replace(/[*_`]/g, ""); 
     
-  // 2. Otimização: Reduz qualquer sequência de espaços múltiplos para um único espaço.
   result = result.replace(/\s\s+/g, ' ');
-
-  // 3. Limpa espaços nas extremidades
   return result.trim();
 }
 
-// CORRIGIDA: Extração de URLs do Markdown e links crus
+// Extração de URLs do Markdown e links de imagens com validação de segurança
 export function extractImages(txt = "") {
   const imgs = [];
   let m;
 
-  // Regex 1: Captura o formato Markdown, capturando TUDO dentro dos parenteses
-  // [^)]+ garante a URL completa, independentemente de http(s)
+  // Regex 1: Formato Markdown
   const markdownR = /!\[.*?\]\(([^)]+)\)/g; 
   while ((m = markdownR.exec(txt)) !== null) {
-      // Adiciona apenas se o link extraído do Markdown começar com http(s)
-      if (m[1].startsWith('http')) {
-          imgs.push(m[1]);
-      }
+    const rawUrl = (m[1] || "").trim();
+    const safe = sanitizeUrl(rawUrl);
+    if (safe && (safe.startsWith("http://") || safe.startsWith("https://"))) {
+      imgs.push(safe);
+    }
   }
 
-  // Regex 2: Captura links de imagem crus
-  const rawUrlR = /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp))(?=\s|$)/gi;
-  
-  const rawMatches = [];
+  // Regex 2: Links de imagem crus com extensões comuns
+  const rawUrlR = /(https?:\/\/[^\s<>"')]+?\.(?:png|jpe?g|gif|webp|bmp))(?=\s|$)/gi;
   while ((m = rawUrlR.exec(txt)) !== null) {
-      rawMatches.push(m[1]);
+    const safe = sanitizeUrl(m[1]);
+    if (safe && !imgs.includes(safe)) {
+      imgs.push(safe);
+    }
   }
-  
-  // Combina todos os resultados, garantindo que não haja duplicatas
-  rawMatches.forEach(url => {
-      if (!imgs.includes(url)) {
-          imgs.push(url);
-      }
-  });
+
   return imgs;
 }
 
 export function fmtDate(iso) {
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "agora";
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(
     d.getMonth() + 1
@@ -99,71 +214,63 @@ export function fmtDate(iso) {
 }
 
 export function extractTagsFromText(text) {
-  // \b garante que a tag começa num limite de palavra (opcional)
   return Array.from(
-    new Set((text.match(/#([a-z0-9_-]+)/gi) || []).map((t) => t.slice(1).toLowerCase()))
-  );
+    new Set(((text || "").match(/#([a-z0-9_.-]+)/gi) || []).map((t) => cleanChannelId(t.slice(1))))
+  ).filter(Boolean);
 }
+
 export function extractMentionsFromText(text) {
-  // Regex mais específica para nomes de usuário
   return Array.from(
-    new Set((text.match(/@([a-z0-9-._]+)/gi) || []).map((t) => t.slice(1).toLowerCase()))
-  );
+    new Set(((text || "").match(/@([a-z0-9_.-]+)/gi) || []).map((t) => cleanUsername(t.slice(1))))
+  ).filter(Boolean);
 }
 
 export function linkifyText(text) {
-    if (!text) return "";
-    
-    // 1. Linkify Hashtags
-    // Regex: /(^|\s)#[a-z0-9]+/gi
-    // Transforma #tag em <a href="/hashtag/tag" class="tag-link" data-tag="tag">#tag</a>
-    let linkedText = text.replace(/(^|\s)#[a-z0-9]+/gi, (match) => {
-        const tag = match.trim().substring(1); // Remove '#' e espaços
-        return `${match.startsWith(' ') ? ' ' : ''}<span class="text-red-600 font-medium cursor-pointer tag-link" data-tag="${tag}">#${tag}</span>`;
-    });
-    
-    // 2. Linkify Mentions (Opcional, mas útil)
-    // Regex: /(^|\s)@[a-z0-9]+/gi
-    // Transforma @user em <a href="/user/user">@user</a> (apenas texto por enquanto, sem função de clique)
-    linkedText = linkedText.replace(/(^|\s)@[a-z0-9]+/gi, (match) => {
-        const user = match.trim().substring(1); 
-        return `${match.startsWith(' ') ? ' ' : ''}<span class="text-red-600 font-medium cursor-pointer" data-user="${user}">@${user}</span>`;
-    });
-    
-    return linkedText;
+  if (!text) return "";
+  
+  // Transforma hashtags com segurança (apenas caracteres limpos)
+  let linkedText = text.replace(/(^|\s)#([a-z0-9_.-]+)/gi, (match, prefix, tag) => {
+    const cleanTag = cleanChannelId(tag);
+    if (!cleanTag) return match;
+    return `${prefix}<span class="text-red-600 font-medium cursor-pointer tag-link" data-tag="${escapeAttr(cleanTag)}">#${escapeHtml(cleanTag)}</span>`;
+  });
+  
+  // Transforma menções com segurança
+  linkedText = linkedText.replace(/(^|\s)@([a-z0-9_.-]+)/gi, (match, prefix, user) => {
+    const cleanUser = cleanUsername(user);
+    if (!cleanUser) return match;
+    return `${prefix}<span class="text-red-600 font-medium cursor-pointer" data-user="${escapeAttr(cleanUser)}">@${escapeHtml(cleanUser)}</span>`;
+  });
+  
+  return sanitizeSafeHtml(linkedText);
 }
 
 export function showNotification(message, isSuccess = true) {
-    // 1. Cria o container (se não existir)
-    let container = document.getElementById('notification-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'notification-container';
-        // Estilos para o container (posiciona no canto superior direito)
-        container.className = 'fixed top-4 right-4 z-[90] flex flex-col gap-2';
-        document.body.appendChild(container);
-    }
-    
-    // 2. Cria a notificação
-    const notification = document.createElement('div');
-    const baseClasses = 'p-3 rounded-lg shadow-lg text-sm transition-opacity duration-300';
-    
-    if (isSuccess) {
-        notification.className = `${baseClasses} bg-green-500 text-white`;
-    } else {
-        notification.className = `${baseClasses} bg-red-600 text-white`;
-    }
-    
-    notification.textContent = message;
-    container.appendChild(notification);
-    
-    // 3. Oculta após 4 segundos
+  let container = document.getElementById('notification-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'notification-container';
+    container.className = 'fixed top-4 right-4 z-[90] flex flex-col gap-2';
+    document.body.appendChild(container);
+  }
+  
+  const notification = document.createElement('div');
+  const baseClasses = 'p-3 rounded-lg shadow-lg text-sm transition-opacity duration-300';
+  
+  if (isSuccess) {
+    notification.className = `${baseClasses} bg-green-500 text-white`;
+  } else {
+    notification.className = `${baseClasses} bg-red-600 text-white`;
+  }
+  
+  notification.textContent = String(message || "");
+  container.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.classList.remove('opacity-100');
+    notification.classList.add('opacity-0');
     setTimeout(() => {
-        notification.classList.remove('opacity-100');
-        notification.classList.add('opacity-0');
-        // Remove do DOM após a transição
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 4000);
+      notification.remove();
+    }, 300);
+  }, 4000);
 }
