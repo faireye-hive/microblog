@@ -10,7 +10,7 @@ export const LIMIT = 1000;
 
 
 
-const API_BASE = "https://hafsql-api.mahdiyari.info/operations/custom_json"; // RENOMEADA
+const API_BASE = "https://rpc.mahdiyari.info/hafsql/operations/custom_json"; // RENOMEADA
 
 // NOVO: Função para construir a URL da API
 function buildApiUrl(customId) {
