@@ -1,6 +1,7 @@
 // /js/render.js
 import { parseEmbeddedJson, escapeHtml, escapeAttr, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
 import { safeExternalUrl, safeHiveUsername, hiveAvatarUrl, safeTag } from "./security/safe-values.js";
+import { proxiedImageUrl } from "./security/media-url.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { getPostById, getDirectReplies, countDirectReplies } from "./data/post-index.js";
 import { 
@@ -194,7 +195,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
 
     previewBoxHtml = `
       <a href="${escapeAttr(firstUrl)}" target="_blank" rel="noopener noreferrer" class="preview-box">
-        <img src="${previewThumb}" alt="Preview" class="preview-thumb" data-hide-on-error="true">
+        <img src="${escapeAttr(proxiedImageUrl(previewThumb))}" alt="Preview" class="preview-thumb" data-hide-on-error="true">
         <div class="preview-content">
           <div class="preview-title">${escapeHtml(previewTitle)}</div>
           <div class="preview-desc">${escapeHtml(previewDesc)}</div>
@@ -213,7 +214,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
     imagesHtml = `
       <div class="post-image-grid" style="${imgs.length > 1 ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
         ${imgs.map(u => `
-          <img src="${escapeAttr(u)}" class="post-inline-image post-image" data-full-src="${escapeAttr(u)}" loading="lazy" alt="Post attachment">
+          <img src="${escapeAttr(proxiedImageUrl(u))}" class="post-inline-image post-image" data-full-src="${escapeAttr(proxiedImageUrl(u))}" loading="lazy" alt="Post attachment">
         `).join('')}
       </div>
     `;
@@ -222,7 +223,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   el.innerHTML = `
     <!-- User Avatar -->
     <img 
-      src="${escapeAttr(hiveAvatarUrl(author))}" 
+      src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(author)))}" 
       alt="@${escapeAttr(author)}" 
       class="post-card-avatar post-avatar"
       data-avatar-fallback="user"
@@ -344,7 +345,7 @@ function buildUserListHTML(usersSet, type) {
   return users.map(user => `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="${escapeAttr(hiveAvatarUrl(user))}" style="width: 28px; height: 28px; border-radius: 50%;" data-hide-on-error="true">
+        <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}" style="width: 28px; height: 28px; border-radius: 50%;" data-hide-on-error="true">
         <span style="font-weight: 600; font-size: 0.9rem;">@${escapeHtml(user)}</span>
       </div>
       ${actionButton(user)}
@@ -374,7 +375,7 @@ export function buildProfilePage() {
       <div class="composer-card" style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1.25rem;">
           <img 
-            src="${escapeAttr(hiveAvatarUrl(profileUser))}" 
+            src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(profileUser)))}" 
             alt="@${escapeAttr(profileUser)}" 
             style="width: 68px; height: 68px; border-radius: 50%; border: 2px solid var(--border);"
             data-avatar-fallback="hive"
