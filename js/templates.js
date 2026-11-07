@@ -224,7 +224,7 @@ export const ComposerHTML = `
   <div class="composer-top" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
     <div style="display: flex; align-items: center; gap: 0.75rem;">
       <img id="composerAvatar" class="composer-avatar" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="Avatar" data-avatar-fallback="user">
-      <h3 class="composer-title" style="margin: 0;">Create Post</h3>
+      <h3 class="composer-title" style="margin: 0;">Nova publicação</h3>
     </div>
     <div id="composerChannelBadge" class="hidden" style="display: flex; align-items: center; gap: 0.35rem; background: rgba(227, 19, 55, 0.08); border: 1px solid rgba(227, 19, 55, 0.2); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: #e31337;">
       <span>Canal:</span>
@@ -234,28 +234,28 @@ export const ComposerHTML = `
   </div>
 
   <div class="composer-textarea-wrap">
-    <textarea id="newPostContent" class="composer-textarea" rows="3" placeholder="What's on your mind? (Canal Principal micro.fair)"></textarea>
+    <textarea id="newPostContent" class="composer-textarea" rows="3" placeholder="O que você quer compartilhar?"></textarea>
   </div>
 
   <div class="composer-bottom">
     <div class="composer-tools">
-      <button class="tool-pill active" data-mode="text" title="Text post">
+      <button class="tool-pill active" data-mode="text" title="Escrever texto">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
         </svg>
-        <span>Text</span>
+        <span>Texto</span>
       </button>
 
-      <button class="tool-pill" data-mode="image" title="Add image URL">
+      <button class="tool-pill" data-mode="image" title="Inserir imagem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
           <circle cx="8.5" cy="8.5" r="1.5"></circle>
           <polyline points="21 15 16 10 5 21"></polyline>
         </svg>
-        <span>Image</span>
+        <span>Imagem</span>
       </button>
 
-      <button class="tool-pill" data-mode="link" title="Add link">
+      <button class="tool-pill" data-mode="link" title="Inserir link">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
@@ -263,22 +263,26 @@ export const ComposerHTML = `
         <span>Link</span>
       </button>
 
-      <button class="tool-pill" data-mode="video" title="Video link">
+      <details class="composer-extra">
+        <summary class="composer-extra-trigger" aria-label="Mais ferramentas" title="Mais ferramentas">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+          <span>Mais</span>
+        </summary>
+        <div class="composer-extra-menu">
+      <button class="tool-pill" data-mode="video" title="Inserir vídeo">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="23 7 16 12 23 17 23 7"></polygon>
           <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
         </svg>
-        <span>Video</span>
+        <span>Vídeo</span>
       </button>
-
-      <button class="tool-pill" data-mode="file" title="Attach file">
+      <button class="tool-pill" data-mode="file" title="Inserir arquivo">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
           <polyline points="13 2 13 9 20 9"></polyline>
         </svg>
-        <span>File</span>
+        <span>Arquivo</span>
       </button>
-
       <button class="tool-pill" data-mode="json" title="Hive Custom JSON">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="16 18 22 12 16 6"></polyline>
@@ -286,6 +290,8 @@ export const ComposerHTML = `
         </svg>
         <span>Custom JSON</span>
       </button>
+        </div>
+      </details>
     </div>
 
     <div class="composer-actions-right">
@@ -295,7 +301,7 @@ export const ComposerHTML = `
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
         </svg>
-        <span>Post</span>
+        <span>Publicar</span>
       </button>
     </div>
   </div>
@@ -305,16 +311,16 @@ export const ComposerHTML = `
 export const FeedFiltersHTML = `
 <div class="feed-filters-bar">
   <div class="filter-tabs" id="feedFilterTabs">
-    <button class="filter-pill active" data-filter="all">All</button>
-    <button class="filter-pill" data-filter="text">Text</button>
-    <button class="filter-pill" data-filter="media">Media</button>
+    <button class="filter-pill active" data-filter="all">Todos</button>
+    <button class="filter-pill" data-filter="text">Texto</button>
+    <button class="filter-pill" data-filter="media">Mídia</button>
     <button class="filter-pill" data-filter="links">Links</button>
-    <button class="filter-pill" data-filter="long">Long Posts</button>
+    <button class="filter-pill" data-filter="long">Longos</button>
   </div>
 
   <div class="sort-select-wrap">
-    <button id="sortDropdownBtn" class="sort-select-btn">
-      <span id="currentSortLabel">Recent</span>
+    <button id="sortDropdownBtn" class="sort-select-btn" aria-label="Alterar ordenação" title="Alterar ordenação">
+      <span id="currentSortLabel">Recentes</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9"></polyline>
       </svg>
@@ -341,9 +347,9 @@ export const RightSidebarHTML = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
       </svg>
-      <span>Trending Tags</span>
+      <span>Em alta</span>
     </h4>
-    <button id="btnRefreshTags" class="sidebar-header-link">Refresh</button>
+    <button id="btnRefreshTags" class="sidebar-header-link">Atualizar</button>
   </div>
 
   <div id="trendingList" class="trending-tags-list">
@@ -363,9 +369,12 @@ export const RightSidebarHTML = `
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
       </svg>
-      <span>Channels</span>
+      <span>Canais</span>
     </h4>
-    <a href="#/channels" class="sidebar-header-link">View all</a>
+    <div class="sidebar-channel-actions">
+      <a href="#/channels" class="sidebar-header-link">Ver todos</a>
+      <button class="sidebar-add-btn" id="btnCreateChannelTrigger" type="button" aria-label="Criar canal" title="Criar canal">+</button>
+    </div>
   </div>
 
   <div class="channels-card-list" id="sidebarChannelsList">
@@ -373,51 +382,6 @@ export const RightSidebarHTML = `
   </div>
 </div>
 
-<!-- Create Channel Card -->
-<div class="sidebar-card">
-  <div class="create-channel-box">
-    <div class="create-channel-left">
-      <span class="create-channel-plus-icon">+</span>
-      <div>
-        <h5 class="create-channel-title">Create Channel</h5>
-        <p class="create-channel-subtitle">Create a channel for your community, project or topic.</p>
-      </div>
-    </div>
-    <button class="btn-outline-small" id="btnCreateChannelTrigger">Create Channel</button>
-  </div>
-</div>
-
-<!-- Quick Actions Card -->
-<div class="sidebar-card">
-  <div class="sidebar-card-header" style="margin-bottom: 0.75rem;">
-    <h4 class="sidebar-card-title">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      <span>Quick Actions</span>
-    </h4>
-  </div>
-
-  <div class="quick-actions-grid">
-    <div class="quick-action-item" data-action="new-post">
-      <span class="quick-action-icon">📝</span>
-      <span class="quick-action-label">New Post</span>
-    </div>
-    <div class="quick-action-item" data-action="new-channel">
-      <span class="quick-action-icon">#️⃣</span>
-      <span class="quick-action-label">New Channel</span>
-    </div>
-    <div class="quick-action-item" data-action="custom-json">
-      <span class="quick-action-icon">&lt;/&gt;</span>
-      <span class="quick-action-label">Custom JSON</span>
-    </div>
-    <div class="quick-action-item" data-action="settings">
-      <span class="quick-action-icon">⚙️</span>
-      <span class="quick-action-label">Settings</span>
-    </div>
-  </div>
-</div>
 `;
 
 export const LoginModalHTML = `
