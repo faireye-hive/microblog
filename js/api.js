@@ -29,13 +29,16 @@ import {
     buildUserActionPayload, buildChannelCreatePayload
 } from "./hive/protocol.js";
 import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
+import { readPostCache, writePostCache, clearPostCaches } from "./data/post-cache.js";
+import { mergePostSnapshots } from "./data/post-merge.js";
 import { processChannelsData } from "./helpers/channels.js";
 export { processChannelsData } from "./helpers/channels.js";
 import { 
     setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, 
     allPosts, setBlockedUsers, loggedInUser, setFollowedUsers,
     setChannels, addChannelLocally, channels, activeChannel,
-    setChannelPosts, getChannelPosts, addChannelPostLocally, updateChannelsUI
+    setChannelPosts, getChannelPosts, addChannelPostLocally, updateChannelsUI,
+    channelPostsMap
 } from "./state.js";
 
 // Processa os dados de voto brutos da API
@@ -132,22 +135,10 @@ export async function fetchData() {
     document.getElementById("feed").innerHTML =
         '<div class="card p-4 text-center small-muted">Carregando...</div>';
 
-    // 1. CARGA IMEDIATA DO CACHE DE POSTS (SÍNCRONA) - INALTERADO
-    let cachedPosts = [];
-    let startIdForSync = null;
-
-    try {
-        const cachedData = localStorage.getItem(POSTS_CACHE_KEY); // Usa nova chave
-        if (cachedData) {
-            cachedPosts = JSON.parse(cachedData);
-            if (cachedPosts.length > 0) {
-                startIdForSync = cachedPosts[0].id; 
-                setAllPosts(cachedPosts); 
-            }
-        }
-    } catch (e) {
-        console.error("Erro ao carregar cache de posts:", e);
-    }
+    // 1. Lê IndexedDB; na primeira execução importa o cache antigo do localStorage.
+    const cachedPosts = await readPostCache(APP_ID);
+    const startIdForSync = cachedPosts[0]?.id ?? null;
+    if (cachedPosts.length > 0) setAllPosts(cachedPosts);
     
     // 2. PREPARA AS PROMESSE DE SINCRONIZAÇÃO COMPLETA (PARALELO)
     
@@ -156,13 +147,10 @@ export async function fetchData() {
     let isCacheHit = !!startIdForSync;
 
     if (isCacheHit) {
-        // Cache Cheio: Busca reversa (max 1000)
-        const url = new URL(API_URL);
-        url.searchParams.delete('limit');
-        url.searchParams.set('limit', '-1000');
-        url.searchParams.set('start', startIdForSync);
-        
-        postSyncPromise = fetchHafsqlPayload(url.toString());
+        // Cache existente: consulta reversa para obter apenas as novas operações.
+        postSyncPromise = fetchHafsqlPayload(
+            withHafsqlCursor(API_URL, { limit: -PAGE_SIZE, start: startIdForSync })
+        );
         
     } else {
         // Cache Vazio: Busca completa em loop (mantida para a 1ª carga)
@@ -182,6 +170,14 @@ export async function fetchData() {
     
     // 3. AGUARDA E PROCESSA TUDO
     
+    // A conexão pode cair: continue exibindo os dados já persistidos.
+    let networkAvailable = true;
+    const safePostSync = postSyncPromise.catch(error => {
+        networkAvailable = false;
+        console.warn("HAFSQL indisponível; utilizando publicações em cache.", error);
+        return [];
+    });
+
     const [
         syncDataRaw, 
         voteDataRaw, 
@@ -190,7 +186,7 @@ export async function fetchData() {
         followDataRaw,
         channelsDataRaw
     ] = await Promise.all([
-        postSyncPromise,
+        safePostSync,
         voteResPromise, // Agora é o array de dados completo
         muteResPromise, // Agora é o array de dados completo
         blockResPromise, // Agora é o array de dados completo
@@ -200,28 +196,15 @@ export async function fetchData() {
     
     // --- INÍCIO DO PROCESSAMENTO DE ESTADO ---
     
-    // 3a. Processa Posts (Consolidação) - Lógica inalterada
-    let finalPosts = cachedPosts;
-    let newPostsCount = 0;
-    
-    if (isCacheHit) {
-        // ... (Lógica de concatenação dos posts)
-        const newPosts = getHafsqlRows(syncDataRaw)
-            .filter((x) => x.custom_id === APP_ID);
-        
-        newPostsCount = newPosts.length;
-        finalPosts = newPosts.concat(cachedPosts);
-    } else {
-        // ... (Lógica de primeira carga)
-        finalPosts = syncDataRaw;
-        newPostsCount = finalPosts.length;
-    }
-    
-    finalPosts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    finalPosts = finalPosts.slice(0, 2000); 
-    
-    setAllPosts(finalPosts); 
-    localStorage.setItem(POSTS_CACHE_KEY, JSON.stringify(finalPosts)); // Usa nova chave
+    // 3a. Consolida e remove duplicatas de páginas sobrepostas.
+    const newPosts = getHafsqlRows(syncDataRaw)
+        .filter(op => op.custom_id === APP_ID);
+    const knownIds = new Set(cachedPosts.map(p => String(p.id)));
+    const newPostsCount = newPosts.filter(p => !knownIds.has(String(p.id))).length;
+    const finalPosts = mergePostSnapshots(newPosts, cachedPosts, { limit: 2000 });
+
+    setAllPosts(finalPosts);
+    await writePostCache(APP_ID, finalPosts);
 
     // 3b. Processa Auxiliares (voteDataRaw, muteDataRaw, etc. são os arrays completos consolidados)
     try {
@@ -247,7 +230,12 @@ export async function fetchData() {
     
     // 4. FINALIZAÇÃO
     window.dispatchEvent(new Event('hashchange'));
-    showNotification(`✅ Dados carregados e sincronizados com sucesso. (${newPostsCount} novos posts)`, true);
+    showNotification(
+        networkAvailable
+          ? `✅ Dados carregados e sincronizados. (${newPostsCount} novos posts)`
+          : "⚠️ Sem conexão com a HAFSQL. Exibindo o cache disponível.",
+        networkAvailable
+    );
 }
 
 // Busca posts de um canal específico na Hive blockchain
@@ -255,12 +243,7 @@ export async function fetchChannelPosts(channelId) {
     const cleanId = parseChannelCustomId(channelId);
     if (!cleanId) return [];
 
-    const cacheKey = getChannelPostsCacheKey(cleanId);
-    let cached = [];
-    try {
-        const raw = localStorage.getItem(cacheKey);
-        if (raw) cached = JSON.parse(raw);
-    } catch (e) {}
+    const cached = await readPostCache(cleanId);
 
     if (cached.length > 0) {
         setChannelPosts(cleanId, cached);
@@ -274,18 +257,9 @@ export async function fetchChannelPosts(channelId) {
         // Filtra estritamente operações onde o Custom JSON ID é exatamente o ID do canal
         const validOps = rows.filter(op => (op.custom_id || "").toLowerCase() === cleanId);
 
-        // Mescla com posts locais recentes para evitar perdas enquanto o indexador processa
-        const map = new Map();
-        validOps.forEach(p => map.set(p.id, p));
-        cached.forEach(p => {
-            if (!map.has(p.id)) map.set(p.id, p);
-        });
-
-        const sorted = Array.from(map.values()).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+        const sorted = mergePostSnapshots(validOps, cached, { limit: 1000 });
         setChannelPosts(cleanId, sorted);
-        try {
-            localStorage.setItem(cacheKey, JSON.stringify(sorted.slice(0, 1000)));
-        } catch (e) {}
+        await writePostCache(cleanId, sorted);
         return sorted;
     } catch (err) {
         console.error(`Erro ao buscar posts do canal ${cleanId}:`, err);
@@ -350,9 +324,8 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
 
                     if (customId === APP_ID) {
                         allPosts.unshift(localPost);
-                        try {
-                            localStorage.setItem(POSTS_CACHE_KEY, JSON.stringify(allPosts.slice(0, 1000)));
-                        } catch (e) {}
+                        // The UI updates immediately; persistent cache runs asynchronously.
+                        void writePostCache(APP_ID, allPosts.slice(0, 2000));
                         if (!activeChannel) {
                             renderFeed(allPosts);
                         }
@@ -590,37 +563,30 @@ export function sendCreateChannel(channelId, channelName, description = "") {
     );
 }
 
-export function clearAllCaches() {
-    // 1. Chaves de Cache Globais
-    localStorage.removeItem(POSTS_CACHE_KEY);
+export async function clearAllCaches() {
+    // Wait for IndexedDB deletion before any refresh, avoiding stale snapshots.
+    const idbCleared = await clearPostCaches();
     localStorage.removeItem(VOTES_CACHE_KEY);
     localStorage.removeItem(MUTES_CACHE_KEY);
     localStorage.removeItem(CHANNELS_CACHE_KEY);
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith("hiveAppChannelPosts_")) {
-            localStorage.removeItem(key);
-        }
-    });
 
-    // 2. Chaves de Cache de Usuário (Block/Follow)
-    // O cache de Block/Follow usa a chave de cache + o nome do usuário logado.
-    // É necessário remover o cache específico do usuário logado.
     if (loggedInUser) {
         localStorage.removeItem(`${BLOCKS_CACHE_KEY}.${loggedInUser}`);
         localStorage.removeItem(`${FOLLOWS_CACHE_KEY}.${loggedInUser}`);
     } else {
-        // Se o usuário não está logado, remove chaves antigas que podem ter sido geradas sem o sufixo.
         localStorage.removeItem(BLOCKS_CACHE_KEY);
         localStorage.removeItem(FOLLOWS_CACHE_KEY);
     }
 
-    // 3. Feedback e Recarga
-    showNotification("🗑️ Todos os caches foram limpos! Recarregando dados...", true);
-    
-    // Força a recarga completa dos dados na próxima chamada de fetchData()
-    // Como os caches estão vazios, ele fará o loop completo (primeira carga).
-    fetchData(); 
-    
-    // Opcional: Recarrega a página inteira para garantir que o estado in-memory também seja limpo
-    // window.location.reload(); 
+    // Do not keep the previous data in memory after deleting the persistent cache.
+    channelPostsMap.clear();
+    setAllPosts([]);
+
+    showNotification(
+        idbCleared || !globalThis.indexedDB
+            ? "🗑️ Cache limpo! Recarregando dados..."
+            : "⚠️ Cache local limpo; o IndexedDB está bloqueado ou indisponível.",
+        idbCleared || !globalThis.indexedDB
+    );
+    await fetchData();
 }
