@@ -33,8 +33,8 @@ function getDomain(urlStr) {
 }
 
 // Popover do Autor
-function buildUserPopover(author, isBlocked) {
-  if (!loggedInUser || author === loggedInUser) return '';
+function buildUserPopover(author, isBlocked, postId) {
+  if (!loggedInUser || author === loggedInUser) return "";
 
   const isFollowing = followedUsers.has(author);
   const followText = isFollowing ? "Unfollow" : "Follow";
@@ -43,13 +43,13 @@ function buildUserPopover(author, isBlocked) {
   const blockType = isBlocked ? "unblock" : "block";
 
   return `
-    <div data-author="${escapeAttr(author)}" class="user-popover-menu hidden">
-      <button data-action="${followType}" data-user="${escapeAttr(author)}" class="dropdown-link" style="font-size: 0.825rem;">
-        ${followText}
-      </button>
-      <button data-action="${blockType}" data-user="${escapeAttr(author)}" class="dropdown-link" style="font-size: 0.825rem; color: #dc2626;">
-        ${blockText}
-      </button>
+    <div id="author-popover-${escapeAttr(postId)}" data-author="${escapeAttr(author)}"
+         class="user-popover-menu hidden" aria-label="Actions for @${escapeAttr(author)}">
+      <span class="author-popover-label">ACCOUNT ACTIONS</span>
+      <button type="button" data-action="${followType}" data-user="${escapeAttr(author)}"
+              class="dropdown-link author-popover-follow">${followText}</button>
+      <button type="button" data-action="${blockType}" data-user="${escapeAttr(author)}"
+              class="dropdown-link author-popover-block">${blockText}</button>
     </div>
   `;
 }
@@ -68,17 +68,21 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1, seen = new 
       const nestedHTML = buildRepliesRecursive(r.id, allPosts, depth + 1, seen);
       const replyContentHtml = linkifyText(escapeHtml(typeof rj?.content === "string" ? rj.content : "")).replace(/\n/g, "<br>");
       return `
-        <div class="reply-thread-item" data-depth="${depth}">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem;">
-            <span class="reply-author author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
-            <span style="font-size: 0.75rem; color: var(--text-faint);">${fmtDate(r.timestamp)}</span>
+        <div class="reply-thread-item" data-depth="${Math.min(depth, 6)}">
+          <div class="reply-heading">
+            <span class="reply-mini-avatar" aria-hidden="true">@</span>
+            <span class="reply-author">@${escapeHtml(author)}</span>
+            <time class="reply-time" datetime="${escapeAttr(r.timestamp || "")}">${fmtDate(r.timestamp)}</time>
           </div>
           <div class="reply-body">${replyContentHtml}</div>
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
-            <button class="post-action-btn reply-btn" data-id="${escapeAttr(r.id)}" style="padding: 0.2rem 0.5rem; font-size: 0.775rem;">
-              Reply
-            </button>
-          </div>
+          <button type="button" class="reply-inline-action reply-btn"
+                  data-id="${escapeAttr(r.id)}" aria-label="Reply to @${escapeAttr(author)}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="m10 8-5 4 5 4M5 12h9a5 5 0 0 1 5 5"/>
+            </svg>
+            Reply
+          </button>
           ${nestedHTML}
         </div>`;
     })
@@ -102,12 +106,16 @@ export function buildThreadAbove(post, allPosts) {
   const contentHtml = linkifyText(escapeHtml(snippetText)).replace(/\n/g, "<br>");
   
   return `
-    <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.65rem; font-size: 0.85rem;">
-      <span class="view-thread" data-id="${escapeAttr(parent.id)}" style="font-weight: 700; color: #0284c7; cursor: pointer;">
-        ↳ Replying to @${escapeHtml(author)}
-      </span>: 
-      <span style="color: var(--text-muted);">${contentHtml}${ellipsis}</span>
+    <div class="post-parent-context">
+      <span class="post-context-mark" aria-hidden="true">↳</span>
+      <div class="post-context-content">
+        <button type="button" class="view-thread post-context-author" data-id="${escapeAttr(parent.id)}">
+          In reply to @${escapeHtml(author)}
+        </button>
+        <span class="post-context-snippet">${contentHtml}${escapeHtml(ellipsis)}</span>
+      </div>
     </div>`;
+
 }
 
 export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new Map()) {
@@ -149,14 +157,14 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
     return document.createElement('div');
   }
 
-  let muteBannerHTML = '';
+  let muteBannerHTML = "";
   if (isMuted) {
     muteBannerHTML = `
-      <div style="margin: 0.5rem 0; padding: 0.75rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; font-size: 0.85rem; color: #b91c1c;">
-        <strong>Post muted</strong> 
-        <span style="color: #64748b;">(by @${muteAdmin})</span>:
-        <p style="margin: 0.25rem 0 0; font-weight: 600;">${muteCause}</p>
-      </div>
+      <aside class="post-moderation-note">
+        <strong>Post muted</strong>
+        <span>by @${muteAdmin}</span>
+        <p>${muteCause}</p>
+      </aside>
     `;
   }
 
@@ -175,47 +183,44 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   }
   const mainContentHtml = linkifyText(escapeHtml(bodyText)).replace(/\n/g, "<br>");
 
-  // Link Preview Box se existir URL
-  let previewBoxHtml = '';
+  // Use verified link data only. No unrelated stock images or fabricated previews.
+  let previewBoxHtml = "";
   if (firstUrl && !imgs.includes(firstUrl)) {
     const domain = getDomain(firstUrl);
-    let previewThumb = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&auto=format&fit=crop&q=60';
-    let previewTitle = `${domain}`;
-    let previewDesc = 'Click to explore content on Hive network.';
-
-    if (domain.includes('hive.blog') || domain.includes('peakd.com') || domain.includes('ecency.com')) {
-      previewTitle = 'Hive Blockchain Community';
-      previewDesc = 'Decentralized blogging and social ecosystem powered by Hive.';
-      previewThumb = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&auto=format&fit=crop&q=60';
-    } else if (domain.includes('hive-engine')) {
-      previewTitle = 'MEME Price & Market Chart';
-      previewDesc = 'Live price, volume and market data on Hive Engine.';
-      previewThumb = 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=300&auto=format&fit=crop&q=60';
-    }
-
     previewBoxHtml = `
-      <a href="${escapeAttr(firstUrl)}" target="_blank" rel="noopener noreferrer" class="preview-box">
-        <img src="${escapeAttr(proxiedImageUrl(previewThumb))}" alt="Preview" class="preview-thumb" data-hide-on-error="true">
-        <div class="preview-content">
-          <div class="preview-title">${escapeHtml(previewTitle)}</div>
-          <div class="preview-desc">${escapeHtml(previewDesc)}</div>
-          <div class="preview-domain">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            <span>${escapeHtml(firstUrl)}</span>
-          </div>
-        </div>
+      <a href="${escapeAttr(firstUrl)}" target="_blank" rel="noopener noreferrer"
+         class="preview-box post-external-link" aria-label="Open link on ${escapeAttr(domain)} in a new tab">
+        <span class="post-external-symbol" aria-hidden="true">
+          <svg width="25" height="25" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 4h6v6M20 4l-9 9"/>
+            <path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
+          </svg>
+        </span>
+        <span class="post-external-content">
+          <span class="post-external-eyebrow">EXTERNAL LINK</span>
+          <strong class="post-external-domain">${escapeHtml(domain)}</strong>
+          <span class="post-external-url">${escapeHtml(firstUrl)}</span>
+        </span>
+        <span class="post-external-arrow" aria-hidden="true">↗</span>
       </a>
     `;
   }
 
-  // Imagens
-  let imagesHtml = '';
+  // Image controls are native buttons, so mobile and keyboard users can expand them.
+  let imagesHtml = "";
   if (imgs.length) {
     imagesHtml = `
-      <div class="post-image-grid" style="${imgs.length > 1 ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
-        ${imgs.map(u => `
-          <img src="${escapeAttr(proxiedImageUrl(u))}" class="post-inline-image post-image" data-full-src="${escapeAttr(proxiedImageUrl(u))}" loading="lazy" alt="Post attachment">
-        `).join('')}
+      <div class="post-image-grid ${imgs.length === 1 ? "post-image-grid-single" : "post-image-grid-multi"}">
+        ${imgs.map((url, index) => `
+          <button type="button" class="post-image-trigger"
+                  aria-label="Open image ${index + 1} of ${imgs.length}">
+            <img src="${escapeAttr(proxiedImageUrl(url))}"
+                 class="post-inline-image post-image"
+                 data-full-src="${escapeAttr(proxiedImageUrl(url))}"
+                 loading="lazy" alt="Post attachment ${index + 1}">
+          </button>
+        `).join("")}
       </div>
     `;
   }
@@ -234,17 +239,19 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       <!-- Header Meta -->
       <div class="post-card-header post-meta">
         <div class="post-author-row">
-          <span class="post-author-name author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
-          <span class="post-timestamp">• ${fmtDate(p.timestamp)}</span>
-          ${isMuted ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 700; margin-left: 0.25rem;">(Muted)</span>' : ''}
-          ${buildUserPopover(author, isBlocked)}
+          ${loggedInUser && author !== loggedInUser ? `
+            <button type="button" class="post-author-name author-name"
+                    data-author="${escapeAttr(author)}"
+                    aria-expanded="false" aria-controls="author-popover-${escapeAttr(p.id)}"
+                    aria-haspopup="true">@${escapeHtml(author)}</button>
+          ` : `<span class="post-author-name">@${escapeHtml(author)}</span>`}
+          <time class="post-timestamp" datetime="${escapeAttr(p.timestamp || "")}">${fmtDate(p.timestamp)}</time>
+          ${isMuted ? '<span class="post-muted-chip">Muted</span>' : ""}
+          ${buildUserPopover(author, isBlocked, p.id)}
         </div>
-
-        <a href="#/tag/${encodeURIComponent(primaryTag)}" class="post-tag-badge tag-link" data-tag="${escapeAttr(primaryTag)}">
-          <span># ${escapeHtml(primaryTag)}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
+        <a href="#/tag/${encodeURIComponent(primaryTag)}"
+           class="post-tag-badge tag-link" data-tag="${escapeAttr(primaryTag)}">
+          <span>#${escapeHtml(primaryTag)}</span>
         </a>
       </div>
 
@@ -257,64 +264,79 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       ${previewBoxHtml}
       ${imagesHtml}
 
-      <!-- Actions Footer -->
-      <div class="post-actions-row post-actions">
-        <!-- Upvote -->
-        <button class="post-action-btn vote-btn upvote-btn" data-id="${escapeAttr(p.id)}" data-vote="upvote" title="Upvote">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="18 15 12 9 6 15"></polyline>
-          </svg>
-          <span>${upvoteCount}</span>
-        </button>
-
-        <!-- Downvote -->
-        <button class="post-action-btn vote-btn downvote-btn" data-id="${escapeAttr(p.id)}" data-vote="downvote" title="Downvote">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-          <span>${downvoteCount}</span>
-        </button>
-
-        <!-- Comments / Thread -->
-        <button class="post-action-btn thread-btn" data-id="${escapeAttr(p.id)}" title="Comments">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
-          <span>${replyCount}</span>
-        </button>
-
-        <!-- Bookmark -->
-        <button class="post-action-btn bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" data-id="${escapeAttr(p.id)}" title="Bookmark">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="${isBookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
-          </svg>
-        </button>
-
-        <!-- Reply Button -->
-        <button class="post-action-btn reply-btn" data-id="${escapeAttr(p.id)}" title="Reply to post">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 17 4 12 9 7"></polyline>
-            <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
-          </svg>
-          <span>Reply</span>
-        </button>
-
-        ${isAdmin ? `
-          ${isMuted ? `
-            <button class="post-action-btn mute-btn" style="color: #16a34a;" data-id="${escapeAttr(p.id)}" data-type="unmute">Unmute</button>
-          ` : `
-            <button class="post-action-btn mute-btn" style="color: #dc2626;" data-id="${escapeAttr(p.id)}" data-type="mute">Mute</button>
-          `}
-        ` : ''}
-
-        <!-- More Options -->
-        <button class="post-action-btn post-more-btn" data-id="${escapeAttr(p.id)}" title="More options">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="1"></circle>
-            <circle cx="19" cy="12" r="1"></circle>
-            <circle cx="5" cy="12" r="1"></circle>
-          </svg>
-        </button>
+      <!-- Clear groups: votes and conversation first, save/share to the right. -->
+      <div class="post-actions-row post-actions" role="group" aria-label="Post actions">
+        <div class="post-actions-primary">
+          <div class="post-vote-group" role="group" aria-label="Vote on this post">
+            <button type="button" class="post-action-btn vote-btn upvote-btn"
+                    data-id="${escapeAttr(p.id)}" data-vote="upvote"
+                    title="Upvote" aria-label="Upvote: ${upvoteCount} votes">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m7 14 5-5 5 5"/>
+              </svg>
+              <span>${upvoteCount}</span>
+            </button>
+            <span class="post-vote-divider" aria-hidden="true"></span>
+            <button type="button" class="post-action-btn vote-btn downvote-btn"
+                    data-id="${escapeAttr(p.id)}" data-vote="downvote"
+                    title="Downvote" aria-label="Downvote: ${downvoteCount} votes">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m17 10-5 5-5-5"/>
+              </svg>
+              <span>${downvoteCount}</span>
+            </button>
+          </div>
+          <button type="button" class="post-action-btn thread-btn"
+                  data-id="${escapeAttr(p.id)}"
+                  title="View replies" aria-label="View replies: ${replyCount}"
+                  aria-expanded="false" aria-controls="thread-${escapeAttr(p.id)}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 11.5c0 4.2-3.6 7.5-8 7.5-1.1 0-2.1-.2-3-.5L4 20l1.5-4C4.5 14.8 4 13.2 4 11.5 4 7.4 7.6 4 12 4s8 3.4 8 7.5z"/>
+            </svg>
+            <span>${replyCount}</span>
+          </button>
+          <button type="button" class="post-action-btn reply-btn post-reply-cta"
+                  data-id="${escapeAttr(p.id)}" title="Write a reply">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m9 9-5 4 5 4M4 13h10a5 5 0 0 1 5 5"/>
+            </svg>
+            <span>Reply</span>
+          </button>
+        </div>
+        <div class="post-actions-secondary">
+          <button type="button" class="post-action-btn bookmark-btn ${isBookmarked ? "bookmarked" : ""}"
+                  data-id="${escapeAttr(p.id)}" title="${isBookmarked ? "Remove bookmark" : "Save post"}"
+                  aria-label="${isBookmarked ? "Remove bookmark" : "Save post"}"
+                  aria-pressed="${Boolean(isBookmarked)}">
+            <svg width="18" height="18" viewBox="0 0 24 24"
+                 fill="${isBookmarked ? "currentColor" : "none"}" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v19l-6-4-6 4z"/>
+            </svg>
+          </button>
+          ${/^\d+$/.test(String(p.id)) ? `
+            <button type="button" class="post-action-btn post-share-btn"
+                    data-id="${escapeAttr(p.id)}" title="Share post" aria-label="Share post">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="1.8"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 16V3m-4 4 4-4 4 4"/>
+                <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>
+              </svg>
+            </button>
+          ` : ""}
+          ${isAdmin ? `
+            <button type="button" class="post-action-btn mute-btn"
+                    data-id="${escapeAttr(p.id)}" data-type="${isMuted ? "unmute" : "mute"}"
+                    title="${isMuted ? "Unmute post" : "Mute post"}">
+              ${isMuted ? "Unmute" : "Mute"}
+            </button>
+          ` : ""}
+        </div>
       </div>
 
       <!-- Thread Container -->
