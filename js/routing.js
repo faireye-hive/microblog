@@ -28,8 +28,12 @@ import { rankPostsByVotes, rankPostsByComments } from "./helpers/ranking.js";
 import { ADMIN } from "./config.js";
 import { getDiscoveryResults, normalizeDiscoveryQuery, discoveryPostPool } from "./helpers/discovery.js";
 import { buildExploreOverview, buildSearchOverview } from "./ui/discovery.js";
+import { safeHiveUsername } from "./security/safe-values.js";
+import { fetchPublicHiveAccount } from "./hive/public-profile.js";
+import { buildPublicProfilePage, collectPublicProfilePosts } from "./ui/public-profile.js";
 
 export let currentPage = "feed";
+let publicProfileRenderVersion = 0;
 
 // Atualiza a seleção visual das abas do topo e da barra lateral
 export function updateNavSelection(newPage) {
@@ -360,6 +364,57 @@ window.addEventListener("refreshChannelsPage", () => {
   }
 });
 
+/**
+ * Public account pages are intentionally independent from the logged-in
+ * /profile settings screen. Posts come from the already loaded feed and
+ * communities; public account metadata comes from the authorized Hive RPC.
+ */
+export function showPublicUserProfile(rawUser, tab = "posts") {
+  const renderVersion = ++publicProfileRenderVersion;
+  const user = safeHiveUsername(rawUser);
+  const feed = document.getElementById("feed");
+  if (!feed) return;
+  const activeTab = tab === "replies" ? "replies" : "posts";
+  const allLoaded = discoveryPostPool(
+    allPosts, [...channelPostsMap.values()].flat(), new Set(), mutedPostIds);
+  const activity = collectPublicProfilePosts(user, allLoaded);
+  const isBlocked = blockedUsers.has(user);
+  const visible = isBlocked ? [] : (activeTab === "replies" ? activity.replies : activity.topLevel);
+  // A user's posts can appear in multiple loaded community namespaces.
+  renderFeed(visible, allLoaded);
+  if (!visible.length) feed.querySelector(".community-empty-state")?.remove();
+
+  const options = {
+    username:user, status:"loading",
+    allCount:activity.posts.length,
+    postsCount:activity.topLevel.length,
+    repliesCount:activity.replies.length,
+    tab:activeTab,
+    isSelf:Boolean(loggedInUser && loggedInUser === user),
+    signedIn:Boolean(loggedInUser),
+    isFollowing:followedUsers.has(user),
+    isBlocked
+  };
+  feed.insertAdjacentHTML("afterbegin", buildPublicProfilePage(options));
+
+  document.getElementById("feedHeaderBar")?.classList.add("hidden");
+  document.getElementById("newPostSection")?.classList.add("hidden");
+  document.getElementById("feed-filters-root")?.classList.add("hidden");
+  updateNavSelection("public-user");
+  window.scrollTo(0, 0);
+
+  // Never let a late response from one profile overwrite another route.
+  const routeHash = window.location.hash;
+  void fetchPublicHiveAccount(user).then(result => {
+    if (window.location.hash !== routeHash || renderVersion !== publicProfileRenderVersion) return;
+    const shell = document.querySelector(".public-profile-page");
+    if (!shell) return;
+    shell.outerHTML = buildPublicProfilePage({
+      ...options, status:result.status, account:result.profile
+    });
+  });
+}
+
 // Lógica principal de roteamento
 export async function handleRoute() {
   if (allPosts.length === 0 && !hasFinishedFeedSync()) {
@@ -377,6 +432,7 @@ export async function handleRoute() {
   const tagMatch = path.match(/^\/(?:hashtag|tag)\/([a-z0-9._-]+)$/i);
   const channelMatch = path.match(/^\/channel\/([a-z0-9._-]+)$/i);
   const postMatch = path.match(/^\/thread\/(\d+)$/i);
+  const publicUserMatch = path.match(/^\/user\/([a-z0-9._-]+)(?:\/(replies))?$/i);
 
   const feedHeaderBar = document.getElementById("feedHeaderBar");
   const newPostSection = document.getElementById("newPostSection");
@@ -397,7 +453,10 @@ export async function handleRoute() {
     return;
   } else if (postMatch) {
     showSinglePost(postMatch[1]);
-    return; 
+    return;
+  } else if (publicUserMatch) {
+    showPublicUserProfile(publicUserMatch[1], publicUserMatch[2] || "posts");
+    return;
   }
   
   // Determina os dados da rota
