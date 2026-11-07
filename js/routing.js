@@ -20,7 +20,7 @@ import {
 import { fetchData, fetchChannelPosts } from "./api.js";
 import { parseEmbeddedJson, showNotification, escapeHtml } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
-import { getPostById } from "./data/post-index.js";
+import { getPostById, countDirectReplies } from "./data/post-index.js";
 import { buildPostCard, buildRepliesRecursive, buildProfilePage, buildChannelsPage } from "./render.js";
 import { rankPostsByVotes, rankPostsByComments } from "./helpers/ranking.js";
 import { ADMIN } from "./config.js";
@@ -103,16 +103,20 @@ export function showSinglePost(postId) {
   feed.appendChild(buildPostCard(post, pool, voteCounts, mutedPostIds));
 
   const repliesHtml = buildRepliesRecursive(post.id, pool);
-  if (repliesHtml) {
-    const repliesContainer = document.createElement("div");
-    repliesContainer.className = "composer-card";
-    repliesContainer.style.marginTop = "1rem";
-    repliesContainer.innerHTML = `
-      <h4 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem;">Replies</h4>
-      ${repliesHtml}
-    `;
-    feed.appendChild(repliesContainer);
-  }
+  const replyCount = countDirectReplies(pool, post.id);
+  const repliesContainer = document.createElement("section");
+  repliesContainer.className = "conversation-panel";
+  repliesContainer.setAttribute("aria-labelledby", "conversationRepliesTitle");
+  repliesContainer.innerHTML = `
+    <div class="conversation-panel-heading">
+      <h3 id="conversationRepliesTitle">Conversation</h3>
+      <span>${replyCount} ${replyCount === 1 ? "reply" : "replies"}</span>
+    </div>
+    <div class="conversation-panel-body">
+      ${repliesHtml || '<p class="thread-no-replies">No replies yet. Be the first to join in.</p>'}
+    </div>
+  `;
+  feed.appendChild(repliesContainer);
 
   // Atualiza UI
   const feedHeaderBar = document.getElementById("feedHeaderBar");
