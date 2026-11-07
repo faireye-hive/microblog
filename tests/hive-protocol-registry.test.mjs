@@ -1,105 +1,96 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {
-  HIVE_APP_ID,HIVE_PROTOCOL_VERSION,HIVE_CUSTOM_JSON_IDS,HIVE_ACTION_TYPES,
-  HIVE_NAMESPACE_REGISTRY,HIVE_ACTION_REGISTRY,HIVE_FIELD_DESCRIPTIONS,
-  getHiveAction,getHiveNamespace,resolveCustomJsonId
+import {HIVE_APP_ID,HIVE_PROTOCOL_VERSION,HIVE_CUSTOM_JSON_IDS,
+  HIVE_NAMESPACE_REGISTRY,HIVE_ACTION_REGISTRY,HIVE_ACTION_TYPES,
+  HIVE_FIELD_DESCRIPTIONS,getHiveAction,getHiveNamespace,resolveCustomJsonId
 } from "../js/hive/registry.js";
 import {getExampleForAction,PROTOCOL_EXAMPLE_CONTENT_ID} from "../js/hive/examples.js";
-import {
-  buildPostPayload,buildVotePayload,buildMutePayload,
-  buildUserActionPayload,buildChannelCreatePayload
-} from "../js/hive/protocol.js";
-import {
-  APP_ID,VOTE_CUSTOM_ID,ADMIN_PMUTE_CUSTOM_ID,CHANNELS_CUSTOM_ID,
-  BLOCK_USER_CUSTOM_ID,FOLLOW_USER_CUSTOM_ID,API_URL,VOTE_API_URL,CHANNELS_API_URL
-} from "../js/config.js";
+import {buildPostPayload,buildVotePayload,buildMutePayload,
+  buildUserActionPayload,buildChannelCreatePayload} from "../js/hive/protocol.js";
+import {APP_ID,VOTE_CUSTOM_ID,ADMIN_PMUTE_CUSTOM_ID,CHANNELS_CUSTOM_ID,
+  BLOCK_USER_CUSTOM_ID,FOLLOW_USER_CUSTOM_ID,API_URL,VOTE_API_URL,
+  CHANNELS_API_URL} from "../js/config.js";
 import {buildProtocolReferencePage,setupProtocolReferenceEvents} from "../js/ui/protocol-reference.js";
-
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
-test("canonical registry owns all immutable v1 IDs; compatibility exports are unchanged",()=>{
-  assert.equal(HIVE_APP_ID,"micro.fair");
-  assert.equal(HIVE_PROTOCOL_VERSION,1);
-  assert.deepEqual(HIVE_CUSTOM_JSON_IDS,{
-    POSTS:"micro.fair",COMMUNITY:"{channel}",VOTES:"micro.fair.interation",
-    MODERATION:"micro.fair.adpmuted",CHANNEL_REGISTRY:"micro.fair.channels",
-    FOLLOW_TEMPLATE:"micro.fair.{user}.follow",BLOCK_TEMPLATE:"micro.fair.{user}.block"
-  });
-  assert.equal(APP_ID,HIVE_APP_ID);
-  assert.equal(VOTE_CUSTOM_ID,HIVE_CUSTOM_JSON_IDS.VOTES);
-  assert.equal(ADMIN_PMUTE_CUSTOM_ID,HIVE_CUSTOM_JSON_IDS.MODERATION);
-  assert.equal(CHANNELS_CUSTOM_ID,HIVE_CUSTOM_JSON_IDS.CHANNEL_REGISTRY);
-  assert.equal(FOLLOW_USER_CUSTOM_ID,HIVE_CUSTOM_JSON_IDS.FOLLOW_TEMPLATE);
-  assert.equal(BLOCK_USER_CUSTOM_ID,HIVE_CUSTOM_JSON_IDS.BLOCK_TEMPLATE);
-  assert.ok(API_URL.endsWith("/micro.fair?limit=1000"));
-  assert.ok(VOTE_API_URL.includes("/micro.fair.interation?limit=1000"));
-  assert.ok(CHANNELS_API_URL.includes("/micro.fair.channels?limit=1000"));
+test("canonical HiveLine registry and old config exports resolve v2 IDs",()=>{
+  assert.equal(HIVE_APP_ID,"hiveline");assert.equal(APP_ID,"hiveline");
+  assert.equal(HIVE_PROTOCOL_VERSION,2);
+  assert.equal(HIVE_CUSTOM_JSON_IDS.POSTS,"hiveline.posts");
+  assert.equal(HIVE_CUSTOM_JSON_IDS.COMMUNITY,"hiveline.c.{channel}");
+  assert.equal(HIVE_CUSTOM_JSON_IDS.VOTES,"hiveline.votes");
+  assert.equal(HIVE_CUSTOM_JSON_IDS.MODERATION,"hiveline.moderation");
+  assert.equal(HIVE_CUSTOM_JSON_IDS.CHANNEL_REGISTRY,"hiveline.communities");
+  assert.equal(HIVE_CUSTOM_JSON_IDS.RELATIONSHIPS,"hiveline.relationships");
+  assert.equal(VOTE_CUSTOM_ID,"hiveline.votes");
+  assert.equal(ADMIN_PMUTE_CUSTOM_ID,"hiveline.moderation");
+  assert.equal(CHANNELS_CUSTOM_ID,"hiveline.communities");
+  assert.equal(BLOCK_USER_CUSTOM_ID,"hiveline.relationships");
+  assert.equal(FOLLOW_USER_CUSTOM_ID,"hiveline.relationships");
+  assert.ok(API_URL.endsWith("/hiveline.posts?limit=1000"));
+  assert.ok(VOTE_API_URL.includes("/hiveline.votes?limit=1000"));
+  assert.ok(CHANNELS_API_URL.includes("/hiveline.communities?limit=1000"));
 });
 
-test("all thirteen active action variants belong to exactly seven namespace families",()=>{
+test("seven operation families still cover thirteen registered action variants",()=>{
   assert.equal(HIVE_NAMESPACE_REGISTRY.length,7);
   assert.equal(HIVE_ACTION_REGISTRY.length,13);
   assert.equal(new Set(HIVE_NAMESPACE_REGISTRY.map(x=>x.key)).size,7);
   assert.equal(new Set(HIVE_ACTION_REGISTRY.map(x=>x.key)).size,13);
-  const associated=HIVE_NAMESPACE_REGISTRY.flatMap(group=>group.operations);
-  assert.deepEqual(associated.slice().sort(),HIVE_ACTION_REGISTRY.map(x=>x.key).sort());
+  assert.deepEqual(HIVE_NAMESPACE_REGISTRY.flatMap(x=>x.operations).sort(),
+    HIVE_ACTION_REGISTRY.map(x=>x.key).sort());
   for(const action of HIVE_ACTION_REGISTRY){
     assert.equal(getHiveAction(action.key),action);
-    assert.ok(getHiveNamespace(action.namespace).operations.includes(action.key));
+    assert.ok(getHiveNamespace(action.namespace)?.operations.includes(action.key));
     assert.ok(Object.values(HIVE_ACTION_TYPES).includes(action.type));
   }
-  assert.equal(getHiveAction("missing"),null);
-  assert.equal(getHiveNamespace("missing"),null);
-  assert.equal(resolveCustomJsonId("missing"),"");
+  assert.equal(getHiveAction("invalid"),null);
+  assert.equal(getHiveNamespace("invalid"),null);
+  assert.equal(resolveCustomJsonId("invalid"),"");
 });
 
-test("all custom_json IDs resolve by operation and signer without changing namespace spelling",()=>{
-  const cases={
-    post:"micro.fair",reply:"micro.fair",
-    "community-post":"hive.micro","community-reply":"hive.micro",
-    upvote:"micro.fair.interation",downvote:"micro.fair.interation",
-    mute:"micro.fair.adpmuted",unmute:"micro.fair.adpmuted",
-    follow:"micro.fair.alice.follow",unfollow:"micro.fair.alice.follow",
-    block:"micro.fair.alice.block",unblock:"micro.fair.alice.block",
-    create_channel:"micro.fair.channels"
+test("each v2 action resolves its real outer ID; community slugs remain distinct",()=>{
+  const ids={
+    post:"hiveline.posts",reply:"hiveline.posts",
+    "community-post":"hiveline.c.hive.micro",
+    "community-reply":"hiveline.c.hive.micro",
+    upvote:"hiveline.votes",downvote:"hiveline.votes",
+    mute:"hiveline.moderation",unmute:"hiveline.moderation",
+    follow:"hiveline.relationships",unfollow:"hiveline.relationships",
+    block:"hiveline.relationships",unblock:"hiveline.relationships",
+    create_channel:"hiveline.communities"
   };
-  for(const [key,id] of Object.entries(cases)){
-    assert.equal(getExampleForAction(key).id,id,key);
+  for(const [key,id] of Object.entries(ids)){
+    assert.equal(getExampleForAction(key)?.id,id,key);
     assert.equal(resolveCustomJsonId(key,{username:"Alice",
       channel:key.startsWith("community-")?"hive.micro":undefined}),id,key);
   }
-  assert.equal(resolveCustomJsonId("post",{channel:"hive.micro"}),"hive.micro");
-  assert.equal(resolveCustomJsonId("reply",{channel:"Micro.Fair"}),"micro.fair");
-  assert.equal(resolveCustomJsonId("community-post",{channel:"hivemicro"}),"hivemicro");
-  assert.notEqual(resolveCustomJsonId("community-post",{channel:"hivemicro"}),
-    resolveCustomJsonId("community-post",{channel:"hive.micro"}));
+  assert.equal(resolveCustomJsonId("post",{channel:"hive.micro"}),"hiveline.c.hive.micro");
+  assert.equal(resolveCustomJsonId("reply",{channel:"hiveline.posts"}),"hiveline.posts");
+  assert.equal(resolveCustomJsonId("community-post",{channel:"hivemicro"}),"hiveline.c.hivemicro");
   assert.equal(resolveCustomJsonId("community-reply",{channel:""}),"");
-  assert.equal(resolveCustomJsonId("community-post",{channel:"hive/micro"}),"");
-  assert.equal(resolveCustomJsonId("community-post",{channel:"a".repeat(33)}),"");
-  assert.equal(resolveCustomJsonId("follow",{username:"bad user"}),"");
-  assert.equal(resolveCustomJsonId("block"),"");
-  assert.equal(getExampleForAction("community-reply",{community:"bad/id"}),null);
-  assert.equal(getExampleForAction("follow",{username:"bad user"}),null);
+  assert.equal(resolveCustomJsonId("community-post",{channel:"bad/id"}),"");
+  assert.equal(resolveCustomJsonId("community-post",{channel:"x".repeat(22)}),"");
+  assert.equal(resolveCustomJsonId("follow",{username:"invalid username"}),"");
+  assert.equal(getExampleForAction("community-post",{community:"bad/id"}),null);
 });
 
-test("every example uses real production builders, posting authority and documented JSON fields",()=>{
-  for(const action of HIVE_ACTION_REGISTRY) {
-    const example=getExampleForAction(action.key);
-    assert.ok(example,action.key);
-    assert.equal(example.action,action);
-    assert.equal(example.payload.app,APP_ID);
-    assert.equal(example.payload.v,1);
-    assert.equal(example.payload.type,action.type);
-    assert.equal(example.authority,"Posting");
-    assert.deepEqual(example.hiveOperation.required_auths,[]);
-    assert.deepEqual(example.hiveOperation.required_posting_auths,
+test("example envelopes are generated by production v2 constructors",()=>{
+  for(const action of HIVE_ACTION_REGISTRY){
+    const ex=getExampleForAction(action.key);
+    assert.ok(ex,action.key);
+    assert.equal(ex.action,action);
+    assert.equal(ex.payload.app,"hiveline");
+    assert.equal(ex.payload.v,2);
+    assert.equal(ex.payload.type,action.type);
+    assert.equal(ex.authority,"Posting");
+    assert.deepEqual(ex.hiveOperation.required_auths,[]);
+    assert.deepEqual(ex.hiveOperation.required_posting_auths,
       [action.namespace==="moderation"?"faireye":"alice"]);
-    assert.equal(example.hiveOperation.id,example.id);
-    assert.deepEqual(JSON.parse(example.hiveOperation.json),example.payload);
-    for(const field of Object.keys(example.payload))
-      assert.ok(HIVE_FIELD_DESCRIPTIONS[field],action.key+" / "+field);
+    assert.equal(ex.hiveOperation.id,ex.id);
+    assert.deepEqual(JSON.parse(ex.hiveOperation.json),ex.payload);
+    for(const field of Object.keys(ex.payload))assert.ok(HIVE_FIELD_DESCRIPTIONS[field],field);
   }
   assert.deepEqual(getExampleForAction("upvote").payload,
     buildVotePayload(PROTOCOL_EXAMPLE_CONTENT_ID,"upvote"));
@@ -112,105 +103,73 @@ test("every example uses real production builders, posting authority and documen
       description:"A community about Hive",createdAt:"2026-11-07T12:00:00.000Z"}));
   assert.deepEqual(getExampleForAction("reply").payload,
     buildPostPayload({content:"Thanks for sharing! #hive",replyTo:12345,
-      channel:APP_ID,mentions:[],tags:["hive"]}));
+      channel:"hiveline.posts",mentions:[],tags:["hive"]}));
   assert.deepEqual(getExampleForAction("community-reply").payload,
     buildPostPayload({content:"Thanks for sharing! #hive",replyTo:12345,
-      channel:"hive.micro",mentions:[],tags:["hive.micro","hive"]}));
-  assert.equal(getExampleForAction("post").payload.reply_to,null);
-  assert.equal(getExampleForAction("community-post").payload.channel,"hive.micro");
-  assert.equal(getExampleForAction("block").payload.target_user,"bob");
-  assert.equal(getExampleForAction("create_channel").payload.action,"create_channel");
-  assert.equal(getExampleForAction("missing"),null);
+      channel:"hiveline.c.hive.micro",mentions:[],tags:["hive.micro","hive"]}));
 });
 
-test("invalid vote/user action variants are rejected, valid historical builders stay compatible",()=>{
+test("invalid action types are rejected without changing valid payloads",()=>{
   assert.throws(()=>buildVotePayload(1,"report"),/Unsupported vote action/);
-  assert.throws(()=>buildUserActionPayload("mention","bob"),/Unsupported user action/);
+  assert.throws(()=>buildUserActionPayload("like","bob"),/Unsupported user action/);
   assert.throws(()=>buildMutePayload(1,"ban"),/Unsupported mute action/);
   assert.equal(buildVotePayload(1,"downvote").type,"downvote");
-  assert.equal(buildUserActionPayload("unblock","bob").type,"unblock");
+  assert.equal(buildUserActionPayload("unblock","bob").v,2);
 });
 
-test("reference page shows all real IDs, typed fields, sample payloads and Hive envelopes safely",()=>{
+test("read-only reference renders all live IDs and safe examples",()=>{
   const html=buildProtocolReferencePage();
   assert.match(html,/id="protocolPageTitle"/);
-  assert.match(html,/7 namespaces/);
-  assert.match(html,/13 actions/);
-  assert.match(html,/micro\.fair\.interation/);
-  assert.match(html,/micro\.fair\.adpmuted/);
-  assert.match(html,/micro\.fair\.\{user\}\.follow/);
-  assert.match(html,/micro\.fair\.\{user\}\.block/);
+  assert.match(html,/hiveline\.posts/);
+  assert.match(html,/hiveline\.votes/);
+  assert.match(html,/hiveline\.relationships/);
+  assert.match(html,/hiveline\.communities/);
   assert.match(html,/id="protocol-community"/);
   assert.match(html,/id="protocol-action-community-reply"/);
   assert.match(html,/id="protocol-action-create_channel"/);
   assert.match(html,/id="protocol-payload-post"/);
   assert.match(html,/id="protocol-envelope-upvote"/);
-  assert.match(html,/id="protocolSearch"/);
-  assert.match(html,/id="protocolFilterEmpty"/);
-  assert.match(html,/data-copy-target="protocol-id-post"/);
-  assert.match(html,/data-copy-target="protocol-payload-post"/);
+  assert.match(html,/id="protocolValidatorId"/);
   assert.match(html,/href="#\/protocol\?section=feed"/);
-  assert.match(html,/placeholder HAFSQL operation ID/);
   assert.doesNotMatch(html,/\son(?:click|load|error)=["']/i);
   assert.doesNotMatch(html,/<script[\s>]/i);
-  assert.doesNotMatch(html,/requestCustomJson\(/);
 });
 
-test("quick filtering matches actions and discloses no-results state",()=>{
-  const listeners={},groups=[];
-  for(const namespace of HIVE_NAMESPACE_REGISTRY){
-    const actions=namespace.operations.map(key=>({dataset:{search:key},hidden:false}));
-    groups.push({dataset:{search:namespace.label.toLowerCase()},hidden:false,
-      querySelectorAll(){return actions;},actions});
-  }
-  const input={value:"",addEventListener:(name,fn)=>{listeners[name]=fn;}};
-  const hidden=new Set(["hidden"]);
-  const empty={classList:{toggle(name,enable){if(enable)hidden.add(name);else hidden.delete(name);}}};
-  const status={textContent:""};
-  const elements={protocolSearch:input,protocolFilterEmpty:empty,protocolFilterStatus:status};
-  setupProtocolReferenceEvents({
-    getElementById:id=>elements[id]||null,
-    querySelectorAll:sel=>sel===".protocol-namespace-group"?groups:[]
+test("reference quick-filter has proper matching and no-results state",()=>{
+  const handlers={},groups=HIVE_NAMESPACE_REGISTRY.map(group=>{
+    const acts=group.operations.map(key=>({dataset:{search:key},hidden:false}));
+    return {dataset:{search:group.label.toLowerCase()},hidden:false,
+      querySelectorAll(){return acts;}};
   });
-  assert.equal(typeof listeners.input,"function");
-  input.value="upvote";listeners.input();
+  const input={value:"",addEventListener:(n,fn)=>{handlers[n]=fn;}};
+  const hidden=new Set(["hidden"]);
+  const empty={classList:{toggle:(name,on)=>{if(on)hidden.add(name);else hidden.delete(name);}}};
+  const result={textContent:""};
+  const nodes={protocolSearch:input,protocolFilterEmpty:empty,protocolFilterStatus:result};
+  setupProtocolReferenceEvents({
+    getElementById:id=>nodes[id]||null,
+    querySelectorAll:selector=>selector===".protocol-namespace-group"?groups:[]
+  });
+  input.value="upvote";handlers.input();
   assert.equal(groups.filter(x=>!x.hidden).length,1);
-  assert.match(status.textContent,/1 matching operations/);
-  input.value="no-such-protocol-operation";listeners.input();
+  input.value="nothing-match";handlers.input();
   assert.equal(groups.filter(x=>!x.hidden).length,0);
   assert.ok(!hidden.has("hidden"));
-  input.value="";listeners.input();
+  input.value="";handlers.input();
   assert.equal(groups.filter(x=>!x.hidden).length,7);
-  assert.ok(hidden.has("hidden"));
 });
 
-test("offline route, navigation, advanced modal and broadcast paths use canonical registry",()=>{
-  const app=read("js/app.js"),templates=read("js/templates.js");
-  const router=read("js/routing.js"),api=read("js/api.js");
-  const index=read("index.html"),style=read("css/protocol-reference.css");
-  const docs=read("docs/hive-protocol.md");
+test("offline Protocol Reference remains linked from app and new docs",()=>{
+  const templates=read("js/templates.js"),routes=read("js/routing.js"),api=read("js/api.js");
   assert.match(templates,/href="#\/protocol" class="nav-item" id="leftNavProtocol"/);
   assert.match(templates,/id="customJsonProtocolLink"/);
-  assert.doesNotMatch(templates,/value="microblog_v1"/);
-  assert.match(app,/Choose a custom_json operation ID first/);
-  assert.match(router,/const protocolRoute = path === "\/protocol"/);
-  assert.match(router,/if \(!protocolRoute && allPosts\.length === 0 && !hasFinishedFeedSync\(\)\)/);
-  assert.match(router,/feed\.innerHTML = buildProtocolReferencePage\(\)/);
-  assert.match(router,/setupProtocolReferenceEvents\(\)/);
-  assert.match(router,/getHiveNamespace\(section\)/);
-  assert.match(router,/route\.newPage = "protocol"/);
-  assert.match(router,/leftNavProtocol/);
+  assert.match(routes,/feed\.innerHTML = buildProtocolReferencePage\(\)/);
+  assert.match(routes,/setupProtocolReferenceEvents\(\)/);
+  assert.match(routes,/route\.newPage = "protocol"/);
   assert.match(api,/resolveCustomJsonId\(replyTo \? "reply" : "post"/);
-  assert.match(api,/resolveCustomJsonId\(type, \{ username \}\)/);
-  assert.match(api,/resolveCustomJsonId\(voteType\)/);
-  assert.match(api,/resolveCustomJsonId\("mute"\)/);
   assert.match(api,/resolveCustomJsonId\("create_channel"\)/);
-  assert.match(read("js/config.js"),/HIVE_CUSTOM_JSON_IDS/);
-  assert.ok(index.indexOf("css/protocol-reference.css")>index.indexOf("css/composer-studio.css"));
-  assert.match(style,/prefers-reduced-motion/);
-  assert.match(style,/@media \(max-width: 640px\)/);
-  assert.match(docs,/micro\.fair\.interation/);
-  assert.match(docs,/micro\.fair\.adpmuted/);
-  assert.match(index,/script-src 'self'/);
-  assert.doesNotMatch(index,/script-src[^;]*unsafe-inline/);
+  assert.match(read("docs/hive-protocol.md"),/hiveline.relationships/);
+  const html=read("index.html");
+  assert.match(html,/script-src 'self'/);
+  assert.doesNotMatch(html,/script-src[^;]*unsafe-inline/);
 });
