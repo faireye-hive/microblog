@@ -10,6 +10,9 @@ O frontend continua **Vanilla JavaScript (ES Modules)**, compatível com GitHub 
 | Exemplos executáveis | `js/hive/examples.js` | Amostras do mesmo payload gerado na produção |
 | Referência visual | `js/ui/protocol-reference.js` | Página de documentação `#/protocol` (somente leitura) |
 | Protocolo Hive | `js/hive/protocol.js` | Gera payloads `custom_json` v1, sem DOM ou rede |
+| Validador Custom JSON | `js/hive/validator.js` | Identifica IDs e campos inválidos sem rede ou assinatura |
+| Planejamento v2 | `js/hive/v2-plan.js` | Prévia de nomes sem alterar transações reais |
+| Interface de validação | `js/ui/protocol-validator.js` | Formulário avançado e workbench da referência |
 | Assinatura Hive | `js/hive/keychain.js` | Envia operações via Posting Key/Keychain, sem UI |
 | Consulta HAFSQL | `js/data/hafsql.js` | Monta URLs, aplica cursor, busca JSON e normaliza respostas |
 | Cache | `js/data/cache-keys.js` | Mantém nomes históricos do `localStorage` |

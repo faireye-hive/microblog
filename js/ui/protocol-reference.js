@@ -9,6 +9,7 @@ import {
   HIVE_FIELD_DESCRIPTIONS, getHiveAction
 } from "../hive/registry.js";
 import { getExampleForAction, PROTOCOL_EXAMPLE_CONTENT_ID } from "../hive/examples.js";
+import { buildProtocolValidatorSection, setupProtocolValidatorWorkbench } from "./protocol-validator.js";
 
 function jsonCode(value) {
   return escapeHtml(JSON.stringify(value, null, 2));
@@ -132,6 +133,7 @@ export function buildProtocolReferencePage() {
              <code>micro.fair.adpmuted</code> (moderation) retain their original spelling.
              Changing either would disconnect new reads from existing Hive operations.</p></div>
       </aside>
+      ${buildProtocolValidatorSection()}
       <div class="protocol-toolbar">
         <div class="protocol-toolbar-heading">
           <span class="protocol-eyebrow">BROWSE NAMESPACES</span>
@@ -184,6 +186,7 @@ export function buildProtocolReferencePage() {
 }
 
 export function setupProtocolReferenceEvents(root = document) {
+  setupProtocolValidatorWorkbench(root);
   const input=root.getElementById("protocolSearch");
   if (!input) return;
   const groups=[...root.querySelectorAll(".protocol-namespace-group")];

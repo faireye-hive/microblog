@@ -11,6 +11,8 @@ A principal arquitetura do projeto foca em separar as responsabilidades da inter
 Todos os IDs históricos e operações de post, resposta, voto, moderação, follow/block e comunidades estão centralizados no registro [`js/hive/registry.js`](js/hive/registry.js). Os exemplos de JSON são gerados pelos mesmos builders usados para publicar.
 
 - **Página interativa no app:** navegue para `#/protocol` (menu **More → Protocol Reference**).
+- **Validador local:** a página `#/protocol` permite testar um ID e JSON, visualizar erros e simular novos namespaces sem assinar transações. O modal avançado bloqueia o envio de mensagens conhecidas inválidas.
+- **Renomeação/migração:** [Plano seguro de marca e namespaces v2](docs/protocol-v2-migration.md). Nenhum novo ID v2 está ativo; o nome da nova marca ainda precisa ser escolhido.
 - **Documento técnico:** [Hive Protocol v1 — IDs, tipos, exemplos e regras de migração](docs/hive-protocol.md).
 - **Compatibilidade:** `js/config.js` mantém os exports anteriores; os IDs `micro.fair.interation` e `micro.fair.adpmuted` são históricos e não devem ser renomeados.
 

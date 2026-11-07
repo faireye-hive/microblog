@@ -10,6 +10,7 @@ import { POST_CHARACTER_LIMIT, cleanMediaText, renderSafePostText, wrapTextSelec
 import { getDiscoveryResults, normalizeDiscoveryQuery, discoveryPostPool } from "./helpers/discovery.js";
 import { buildSearchSuggestions } from "./ui/discovery.js";
 import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
+import { setupCustomJsonModalValidator } from "./ui/protocol-validator.js";
 import { safeExternalUrl, safeHiveUsername } from "./security/safe-values.js";
 import { installImageErrorHandling } from "./security/image-errors.js";
 import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
@@ -808,10 +809,15 @@ function setupSidebarControls() {
 
   // Custom JSON Modal Handlers
   const customModal = document.getElementById("customJsonModal");
+  const customValidator = setupCustomJsonModalValidator({getSigner:()=>loggedInUser});
   document.getElementById("customJsonProtocolLink")?.addEventListener("click", () => customModal?.classList.add("hidden"));
   document.getElementById("closeCustomJsonModal")?.addEventListener("click", () => customModal?.classList.add("hidden"));
   document.getElementById("cancelCustomJson")?.addEventListener("click", () => customModal?.classList.add("hidden"));
   document.getElementById("submitCustomJson")?.addEventListener("click", () => {
+    // Never sign malformed registered operations or unacknowledged arbitrary IDs.
+    if (!customValidator?.canBroadcast()) {
+      return showNotification("Resolve the Custom JSON validation issues before signing.", false);
+    }
     const customId = document.getElementById("customJsonId")?.value.trim() || "";
     if (!customId) return showNotification("Choose a custom_json operation ID first.", false);
     const payload = document.getElementById("customJsonPayload")?.value.trim();

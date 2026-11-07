@@ -559,8 +559,14 @@ export const CustomJsonModalHTML = `
       <div class="community-field">
         <label for="customJsonPayload">JSON payload</label>
         <textarea id="customJsonPayload" class="modal-input community-input community-code-input"
-                  rows="5" spellcheck="false" placeholder='{"type": "post", "content": "Hello, Hive!"}'></textarea>
+                  rows="5" spellcheck="false" placeholder='{"app":"micro.fair","v":1,"type":"upvote","content_id":12345}'></textarea>
       </div>
+      <div id="customJsonValidationResults" class="custom-json-validation"
+           role="status" aria-live="polite">Enter a Custom JSON ID and payload to validate.</div>
+      <label id="customJsonUnregisteredWrap" class="custom-json-unregistered hidden">
+        <input type="checkbox" id="customJsonUnregisteredAck">
+        I understand this ID is not registered by Micro.fair, and I want to send a custom operation.
+      </label>
     </div>
     <p class="community-dialog-note">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -569,7 +575,7 @@ export const CustomJsonModalHTML = `
     </p>
     <div class="community-dialog-actions">
       <button id="cancelCustomJson" type="button" class="btn-outline-small community-secondary-btn">Cancel</button>
-      <button id="submitCustomJson" type="button" class="btn-post community-submit-btn">Broadcast operation</button>
+      <button id="submitCustomJson" type="button" class="btn-post community-submit-btn" disabled>Broadcast operation</button>
     </div>
   </div>
 </div>

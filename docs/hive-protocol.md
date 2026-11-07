@@ -133,6 +133,20 @@ https://rpc.mahdiyari.info/hafsql/operations/custom_json/<id>?limit=1000
 
 HAFSQL pagination and caching remain in `js/data/hafsql.js` and `js/data/sync.js`.
 
+## Validate before signing
+
+The interactive Protocol Reference (`#/protocol`) now includes an offline JSON validator.
+It checks the registered `custom_json.id`, payload version, allowed operation
+`type`, key fields and signer namespace context. The advanced Custom JSON
+dialog blocks known malformed operations before asking Keychain to sign.
+External, unregistered operations remain possible with explicit acknowledgment.
+
+Local validation **does not confirm a Hive signature, on-chain authorization,
+network acceptance or the existence of referenced HAFSQL operations**.
+For a migration to a new brand with semantic IDs, see
+[`protocol-v2-migration.md`](protocol-v2-migration.md). The v2 planner is
+read-only and no v2 writer is enabled.
+
 ## Changing the protocol safely
 
 Before changing a field name or an operation ID: update the registry, builder, examples, UI reference and tests together. If the change affects historical chain data, add dual-read support or a versioned migration before any new broadcasts. Run `npm test` and review `tests/hive-protocol-registry.test.mjs` plus the existing architecture and channel ID tests.
