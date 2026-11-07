@@ -16,6 +16,7 @@ export function getActiveMobileSection(hash = "#/") {
     case "bookmarks":
       return "bookmarks";
     case "profile":
+    case "user":
       return "profile";
     default:
       return "home";
