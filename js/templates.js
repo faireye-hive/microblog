@@ -178,6 +178,18 @@ export const LeftSidebarHTML = `
       </span>
     </summary>
     <div class="nav-more-links">
+  <a href="#/protocol" class="nav-item" id="leftNavProtocol">
+    <div class="nav-item-content">
+      <span class="nav-item-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 0 0-4h11"/>
+          <path d="M5 4v14a2 2 0 0 0 2 2M8 8h7M8 11h5"/>
+        </svg>
+      </span>
+      <span class="nav-item-text">Protocol Reference</span>
+    </div>
+  </a>
   <a href="#/custom-json" class="nav-item" id="leftNavCustomJson">
     <div class="nav-item-content">
       <span class="nav-item-icon">
@@ -524,7 +536,7 @@ export const CustomJsonModalHTML = `
      aria-describedby="customJsonDialogDescription">
   <div class="modal-dialog community-dialog community-dialog-wide">
     <button type="button" class="modal-close community-dialog-close" id="closeCustomJsonModal"
-            aria-label="Fechar janela de Custom JSON">&times;</button>
+            aria-label="Close Custom JSON dialog">&times;</button>
     <span class="community-dialog-icon" aria-hidden="true">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -535,12 +547,14 @@ export const CustomJsonModalHTML = `
     <h2 id="customJsonDialogTitle" class="modal-title community-dialog-title">Send Custom JSON</h2>
     <p id="customJsonDialogDescription" class="community-dialog-description">
       Broadcast a custom operation to the Hive blockchain with your account.
+      <a href="#/protocol" id="customJsonProtocolLink" class="protocol-modal-reference">
+        Browse registered Micro.fair IDs &amp; payload examples →</a>
     </p>
     <div class="community-dialog-form">
       <div class="community-field">
         <label for="customJsonId">Operation ID</label>
         <input type="text" id="customJsonId" class="modal-input community-input"
-               value="microblog_v1" placeholder="ex: microblog_v1" autocomplete="off">
+               placeholder="e.g. micro.fair.interation" maxlength="32" autocomplete="off">
       </div>
       <div class="community-field">
         <label for="customJsonPayload">JSON payload</label>
