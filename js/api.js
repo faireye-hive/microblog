@@ -12,6 +12,7 @@ import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { safeHiveUsername } from "./security/safe-values.js";
 import { resolveCustomJsonId, normalizeHiveLineChannel, channelFromCustomJsonId } from "./hive/registry.js";
 import { onlyHiveLinePosts, mainHiveLinePosts } from "./hive/content-scope.js";
+import { processHiveLineRelationshipOps } from "./hive/relationships.js";
 import {
     buildHafsqlCustomJsonUrl,
     withHafsqlCursor,
@@ -96,30 +97,8 @@ function processVoteData(voteData) {
     return finalCounts;
 }
 
-function processUserTargetOps(opData, family = "follow") {
-    const finalSet = new Set();
-    
-    if (!Array.isArray(opData)) return finalSet;
-    
-    // Filtra apenas operações do usuário logado (o Custom ID garante que sejam block/follow)
-    const relevantOps = opData.filter(op => 
-        op.required_posting_auths?.[0] === loggedInUser
-    );
-
-    // Ordena por data (mais antigo primeiro) para que o último estado prevaleça
-    relevantOps.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    relevantOps.forEach(op => {
-        const json = parseEmbeddedJson(op.json);
-        if (!json || typeof json !== "object" || json.app !== APP_ID || json.v !== 2) return;
-        const type = json.type;
-
-        if (typeof json.target_user !== "string") return;
-        if (type === family) finalSet.add(json.target_user);
-        else if (type === (family === "block" ? "unblock" : "unfollow"))
-            finalSet.delete(json.target_user);
-    });
-    return finalSet;
+function processUserTargetOps(opData, family="follow") {
+    return processHiveLineRelationshipOps(opData, loggedInUser, family);
 }
 
 // A função fetchDataInLoop é agora uma versão especializada da genérica para posts
