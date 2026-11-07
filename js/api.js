@@ -1,7 +1,7 @@
 // /js/api.js
 
 import { 
-    APP_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
+    APP_ID, POSTS_CUSTOM_ID, API_URL, VOTE_CUSTOM_ID, VOTE_API_URL, 
     ADMIN_PMUTE_CUSTOM_ID, ADMIN_POST_MUTE_API_URL,
      ADMIN, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID,
       USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID, LIMIT,
@@ -10,7 +10,8 @@ import {
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { safeHiveUsername } from "./security/safe-values.js";
-import { resolveCustomJsonId } from "./hive/registry.js";
+import { resolveCustomJsonId, normalizeHiveLineChannel, channelFromCustomJsonId } from "./hive/registry.js";
+import { onlyHiveLinePosts, mainHiveLinePosts } from "./hive/content-scope.js";
 import {
     buildHafsqlCustomJsonUrl,
     withHafsqlCursor,
@@ -95,7 +96,7 @@ function processVoteData(voteData) {
     return finalCounts;
 }
 
-function processUserTargetOps(opData) {
+function processUserTargetOps(opData, family = "follow") {
     const finalSet = new Set();
     
     if (!Array.isArray(opData)) return finalSet;
@@ -113,13 +114,10 @@ function processUserTargetOps(opData) {
         if (!json || typeof json !== "object") return;
         const type = json.type;
 
-        if (json.target_user) {
-            if (type === "block" || type === "follow") {
-                finalSet.add(json.target_user);
-            } else if (type === "unblock" || type === "unfollow") {
-                finalSet.delete(json.target_user);
-            }
-        }
+        if (typeof json.target_user !== "string") return;
+        if (type === family) finalSet.add(json.target_user);
+        else if (type === (family === "block" ? "unblock" : "unfollow"))
+            finalSet.delete(json.target_user);
     });
     return finalSet;
 }
@@ -128,7 +126,7 @@ function processUserTargetOps(opData) {
 async function fetchDataInLoop() {
     // Usamos a função genérica e filtramos apenas os custom_id corretos
     const allRawPosts = await fetchPaginatedOperations(API_URL);
-    return allRawPosts.filter((x) => x.custom_id === APP_ID);
+    return mainHiveLinePosts(allRawPosts);
 }
 /**
  * Função principal para buscar todos os dados (Posts e Votos).
@@ -175,7 +173,7 @@ async function syncFeedData() {
     showFeedSkeleton(document.getElementById("feed"));
 
     // Read IndexedDB, importing older localStorage data when available.
-    const cachedPosts = await readPostCache(APP_ID);
+    const cachedPosts = mainHiveLinePosts(await readPostCache(POSTS_CUSTOM_ID));
     const startIdForSync = cachedPosts[0]?.id ?? null;
     if (cachedPosts.length > 0) setAllPosts(cachedPosts);
     
@@ -203,8 +201,8 @@ async function syncFeedData() {
     
     // Blocos e Follows (Podem ser simples fetch ou o novo helper, dependendo do volume)
     // Usaremos o novo helper para consistência (embora o conditionalFetch original pudesse ser mantido se fosse mais leve)
-    const blockResPromise = syncUserTargetOps(BLOCKS_CACHE_KEY, USER_BLOCK_API_URL, loggedInUser);
-    const followResPromise = syncUserTargetOps(FOLLOWS_CACHE_KEY, USER_FOLLOW_API_URL, loggedInUser);
+    // Both actions now use the same namespace; fetch once, then split by type.
+    const relationshipResPromise = syncUserTargetOps(BLOCKS_CACHE_KEY, USER_BLOCK_API_URL, loggedInUser);
     
     
     // 3. AGUARDA E PROCESSA TUDO
@@ -221,29 +219,26 @@ async function syncFeedData() {
         syncDataRaw, 
         voteDataRaw, 
         muteDataRaw, 
-        blockDataRaw, 
-        followDataRaw,
+        relationshipDataRaw,
         channelsDataRaw
     ] = await Promise.all([
         safePostSync,
         voteResPromise, // Agora é o array de dados completo
         muteResPromise, // Agora é o array de dados completo
-        blockResPromise, // Agora é o array de dados completo
-        followResPromise, // Agora é o array de dados completo
+        relationshipResPromise,
         channelResPromise // Sincronização de Canais
     ]);
     
     // --- INÍCIO DO PROCESSAMENTO DE ESTADO ---
     
     // 3a. Consolida e remove duplicatas de páginas sobrepostas.
-    const newPosts = getHafsqlRows(syncDataRaw)
-        .filter(op => op.custom_id === APP_ID);
+    const newPosts = mainHiveLinePosts(getHafsqlRows(syncDataRaw));
     const knownIds = new Set(cachedPosts.map(p => String(p.id)));
     const newPostsCount = newPosts.filter(p => !knownIds.has(String(p.id))).length;
     const finalPosts = mergePostSnapshots(newPosts, cachedPosts, { limit: 2000 });
 
     setAllPosts(finalPosts);
-    await writePostCache(APP_ID, finalPosts);
+    await writePostCache(POSTS_CUSTOM_ID, finalPosts);
 
     // 3b. Processa Auxiliares (voteDataRaw, muteDataRaw, etc. são os arrays completos consolidados)
     try {
@@ -253,9 +248,9 @@ async function syncFeedData() {
         const mutedPostMap = processMuteData(muteDataRaw || []); // Não precisa mais de .rows
         setMutedPostIds(mutedPostMap); 
         
-        const blockedSet = processUserTargetOps(blockDataRaw || []); // Não precisa mais de .rows
+        const blockedSet = processUserTargetOps(relationshipDataRaw || [], "block"); // Não precisa mais de .rows
         setBlockedUsers(blockedSet);
-        const followedSet = processUserTargetOps(followDataRaw || []); // Não precisa mais de .rows
+        const followedSet = processUserTargetOps(relationshipDataRaw || [], "follow"); // Não precisa mais de .rows
         setFollowedUsers(followedSet);
 
         const processedChannels = processChannelsData(channelsDataRaw || []);
@@ -279,26 +274,27 @@ async function syncFeedData() {
 
 // Busca posts de um canal específico na Hive blockchain
 export async function fetchChannelPosts(channelId) {
-    const cleanId = parseChannelCustomId(channelId);
+    const cleanId = normalizeHiveLineChannel(channelId);
     if (!cleanId) return [];
+    const channelCustomId = resolveCustomJsonId("community-post", {channel:cleanId});
 
-    const cached = await readPostCache(cleanId);
+    const cached = onlyHiveLinePosts(await readPostCache(channelCustomId), cleanId);
 
     if (cached.length > 0) {
         setChannelPosts(cleanId, cached);
     }
 
     try {
-        const url = buildHafsqlCustomJsonUrl(cleanId, { limit: PAGE_SIZE });
+        const url = buildHafsqlCustomJsonUrl(channelCustomId, { limit: PAGE_SIZE });
         const data = await fetchHafsqlPayload(url);
         const rows = getHafsqlRows(data);
 
         // Filtra estritamente operações onde o Custom JSON ID é exatamente o ID do canal
-        const validOps = rows.filter(op => (op.custom_id || "").toLowerCase() === cleanId);
+        const validOps = onlyHiveLinePosts(rows,cleanId);
 
         const sorted = mergePostSnapshots(validOps, cached, { limit: 1000 });
         setChannelPosts(cleanId, sorted);
-        await writePostCache(cleanId, sorted);
+        await writePostCache(channelCustomId, sorted);
         return sorted;
     } catch (err) {
         console.error(`Failed to fetch posts from #${cleanId}:`, err);
@@ -306,7 +302,7 @@ export async function fetchChannelPosts(channelId) {
     }
 }
 
-// Envia um novo Post ou Reply (para o canal ativo ou para o canal principal 'micro.fair')
+// Send posts and replies only to HiveLine v2 namespaces.
 export function sendPost(content, replyTo = null, channelOverride = null, callbacks = {}) {
     if (typeof content !== "string" || !content.trim() || content.length > POST_CHARACTER_LIMIT) {
         showNotification("Posts must contain 1 to 2,048 characters.", false);
@@ -318,12 +314,13 @@ export function sendPost(content, replyTo = null, channelOverride = null, callba
         return false;
     }
 
-    // Se estiver navegando em um canal específico, o Custom JSON é emitido DIRETAMENTE para o ID do canal!
-    // Exemplo: se estiver no canal 'fairmemes', o custom_id do blockchain Hive será 'fairmemes'.
-    // Se for o canal principal, usa APP_ID ('micro.fair').
+    // Each HiveLine community has a fresh v2 namespace, distinct from legacy
+    // community IDs. The optional override can be a slug or a post namespace.
     const targetChannel = channelOverride !== null ? channelOverride : activeChannel;
+    const communitySlug = targetChannel
+        ? normalizeHiveLineChannel(targetChannel) : "";
     const customId = resolveCustomJsonId(replyTo ? "reply" : "post", {
-        channel: parseChannelCustomId(targetChannel || APP_ID)
+        channel: targetChannel || POSTS_CUSTOM_ID
     });
     if (!customId) {
         showNotification("⚠️ Invalid community ID. Nothing was broadcast.", false);
@@ -334,15 +331,15 @@ export function sendPost(content, replyTo = null, channelOverride = null, callba
     const mentions = extractMentionsFromText(content);
 
     // Se estiver num canal específico, garante que a tag esteja indexada no json
-    if (customId !== APP_ID && !tags.includes(customId)) {
-        tags.unshift(customId);
+    if (communitySlug && !tags.includes(communitySlug)) {
+        tags.unshift(communitySlug);
     }
 
     const json = JSON.stringify(buildPostPayload({
         content, replyTo, channel: customId, mentions, tags
     }));
 
-    const actionText = customId === APP_ID
+    const actionText = customId === POSTS_CUSTOM_ID
         ? (replyTo ? "Reply on main feed" : "Post on main feed")
         : (replyTo ? `Reply in #${customId}` : `Post in #${customId}`);
 
@@ -374,17 +371,17 @@ export function sendPost(content, replyTo = null, channelOverride = null, callba
                         json: json
                     };
 
-                    if (customId === APP_ID) {
+                    if (customId === POSTS_CUSTOM_ID) {
                         allPosts.unshift(localPost);
                         // The UI updates immediately; persistent cache runs asynchronously.
-                        void writePostCache(APP_ID, allPosts.slice(0, 2000));
+                        void writePostCache(POSTS_CUSTOM_ID, allPosts.slice(0, 2000));
                         if (!activeChannel) {
                             renderFeed(allPosts);
                         }
                     } else {
-                        addChannelPostLocally(customId, localPost);
-                        if (activeChannel === customId) {
-                            renderFeed(getChannelPosts(customId));
+                        addChannelPostLocally(communitySlug, localPost);
+                        if (activeChannel === communitySlug) {
+                            renderFeed(getChannelPosts(communitySlug));
                         }
                     }
 
@@ -521,7 +518,7 @@ export function sendCreateChannel(channelId, channelName, description = "") {
         return;
     }
 
-    const cleanId = parseChannelCustomId(channelId);
+    const cleanId = normalizeHiveLineChannel(channelId);
     if (!cleanId) {
         showNotification("⚠️ Invalid ID: use up to 32 letters, numbers, dots, hyphens, or underscores.", false);
         return;
