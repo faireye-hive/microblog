@@ -46,6 +46,7 @@ function buildUserPopover(author, isBlocked, postId) {
     <div id="author-popover-${escapeAttr(postId)}" data-author="${escapeAttr(author)}"
          class="user-popover-menu hidden" aria-label="Actions for @${escapeAttr(author)}">
       <span class="author-popover-label">ACCOUNT ACTIONS</span>
+      <a href="#/user/${encodeURIComponent(author)}" class="dropdown-link author-popover-view">View profile</a>
       <button type="button" data-action="${followType}" data-user="${escapeAttr(author)}"
               class="dropdown-link author-popover-follow">${followText}</button>
       <button type="button" data-action="${blockType}" data-user="${escapeAttr(author)}"
@@ -71,7 +72,7 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1, seen = new 
         <div class="reply-thread-item" data-depth="${Math.min(depth, 6)}">
           <div class="reply-heading">
             <span class="reply-mini-avatar" aria-hidden="true">@</span>
-            <span class="reply-author">@${escapeHtml(author)}</span>
+            <a href="#/user/${encodeURIComponent(author)}" class="reply-author reply-profile-link">@${escapeHtml(author)}</a>
             <time class="reply-time" datetime="${escapeAttr(r.timestamp || "")}">${fmtDate(r.timestamp)}</time>
           </div>
           <div class="reply-body">${replyContentHtml}</div>
@@ -226,27 +227,32 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   }
 
   el.innerHTML = `
-    <!-- User Avatar -->
-    <img 
-      src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(author)))}" 
-      alt="@${escapeAttr(author)}" 
-      class="post-card-avatar post-avatar"
-      data-avatar-fallback="user"
-    >
+    <!-- User Avatar, linked to a real, shareable public profile. -->
+    <a href="#/user/${encodeURIComponent(author)}" class="post-avatar-link"
+       aria-label="View @${escapeAttr(author)}'s profile">
+      <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(author)))}"
+           alt="" class="post-card-avatar post-avatar" data-avatar-fallback="user">
+    </a>
 
     <!-- Post Main Content -->
     <div class="post-card-main post-content">
-      <!-- Header Meta -->
       <div class="post-card-header post-meta">
         <div class="post-author-row">
-          ${loggedInUser && author !== loggedInUser ? `
-            <button type="button" class="post-author-name author-name"
-                    data-author="${escapeAttr(author)}"
-                    aria-expanded="false" aria-controls="author-popover-${escapeAttr(p.id)}"
-                    aria-haspopup="true">@${escapeHtml(author)}</button>
-          ` : `<span class="post-author-name">@${escapeHtml(author)}</span>`}
+          <a href="#/user/${encodeURIComponent(author)}"
+             class="post-author-name author-profile-link">@${escapeHtml(author)}</a>
           <time class="post-timestamp" datetime="${escapeAttr(p.timestamp || "")}">${fmtDate(p.timestamp)}</time>
           ${isMuted ? '<span class="post-muted-chip">Muted</span>' : ""}
+          ${loggedInUser && author !== loggedInUser ? `
+            <button type="button" class="author-menu-toggle author-name"
+                    data-author="${escapeAttr(author)}"
+                    aria-label="More actions for @${escapeAttr(author)}"
+                    aria-expanded="false" aria-controls="author-popover-${escapeAttr(p.id)}"
+                    aria-haspopup="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+              </svg>
+            </button>
+          ` : ""}
           ${buildUserPopover(author, isBlocked, p.id)}
         </div>
         <a href="#/tag/${encodeURIComponent(primaryTag)}"
@@ -369,12 +375,12 @@ function buildUserListHTML(usersSet, type) {
 
   return users.map(user => `
     <div class="profile-person-row">
-      <span class="profile-person-main">
+      <a class="profile-person-main" href="#/user/${encodeURIComponent(user)}">
         <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}"
              alt="" class="profile-person-avatar" loading="lazy"
              data-avatar-fallback="user">
         <span class="profile-person-name">@${escapeHtml(user)}</span>
-      </span>
+      </a>
       ${blocked ? `<button type="button" data-action="unblock"
         data-user="${escapeAttr(user)}" class="profile-unblock-btn">Unblock</button>` : ""}
     </div>
@@ -414,7 +420,7 @@ export function buildProfilePage() {
       <section class="profile-hero" aria-labelledby="profileUsername">
         <div class="profile-hero-content">
           <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(profileUser)))}"
-               alt="Avatar de @${escapeAttr(profileUser)}" class="profile-hero-avatar"
+               alt="Profile avatar for @${escapeAttr(profileUser)}" class="profile-hero-avatar"
                data-avatar-fallback="user">
           <div class="profile-identity">
             <span class="profile-eyebrow">MY PROFILE</span>
@@ -425,6 +431,10 @@ export function buildProfilePage() {
             </span>
           </div>
         </div>
+        <div class="profile-own-actions">
+          <a href="#/user/${encodeURIComponent(profileUser)}" class="profile-public-link">
+            View public profile <span aria-hidden="true">↗</span>
+          </a>
         <button type="button" id="btnProfileLogout" class="profile-logout-btn">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -433,6 +443,7 @@ export function buildProfilePage() {
           </svg>
           Sign out
         </button>
+        </div>
       </section>
 
       <div class="profile-summary" aria-label="Account connections">
