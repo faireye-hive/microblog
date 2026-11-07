@@ -175,13 +175,18 @@ export function extractImages(txt = "") {
   return imgs;
 }
 
+const postDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 export function fmtDate(iso) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "agora";
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(
-    d.getMonth() + 1
-  )}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return "Just now";
+  return postDateFormatter.format(date);
 }
 
 export function extractTagsFromText(text) {
