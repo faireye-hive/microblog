@@ -27,7 +27,7 @@ export function processMuteData(operations) {
     if (json.type === "mute") {
       result.set(id, {
         cause: typeof json.cause === "string" && json.cause.trim()
-          ? json.cause.slice(0, 500) : "Motivo não especificado",
+          ? json.cause.slice(0, 500) : "Reason not specified",
         admin: ADMIN
       });
     } else if (json.type === "unmute") {
