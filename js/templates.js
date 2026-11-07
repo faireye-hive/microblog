@@ -605,7 +605,7 @@ export const CreateChannelModalHTML = `
         <div class="community-input-prefix-wrap">
           <span class="community-input-prefix" aria-hidden="true">#</span>
           <input type="text" id="newChannelId" class="modal-input community-input"
-                 placeholder="design-technology" maxlength="32" autocomplete="off" spellcheck="false"
+                 placeholder="design-technology" maxlength="21" autocomplete="off" spellcheck="false"
                  aria-describedby="newChannelIdHelp">
         </div>
         <small id="newChannelIdHelp">Unique identifier used for posts in this community.</small>
