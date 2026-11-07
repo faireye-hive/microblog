@@ -1,3 +1,6 @@
+import { escapeAttr } from "./utils.js";
+import { proxiedImageUrl } from "./security/media-url.js";
+
 // /js/templates.js
 
 export const TopNavHTML = `
@@ -52,7 +55,7 @@ export const TopNavHTML = `
 
       <!-- User Menu Trigger -->
       <div class="user-menu-trigger" id="btnMenu">
-        <img id="navUserAvatar" class="user-avatar-sm" src="https://images.hive.blog/u/hive/avatar" alt="Avatar" data-avatar-fallback="user">
+        <img id="navUserAvatar" class="user-avatar-sm" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="Avatar" data-avatar-fallback="user">
         <svg class="chevron-down-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
@@ -237,7 +240,7 @@ export const ComposerHTML = `
 <div class="composer-card" id="newPostSection">
   <div class="composer-top" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
     <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <img id="composerAvatar" class="composer-avatar" src="https://images.hive.blog/u/hive/avatar" alt="Avatar" data-avatar-fallback="user">
+      <img id="composerAvatar" class="composer-avatar" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="Avatar" data-avatar-fallback="user">
       <h3 class="composer-title" style="margin: 0;">Create Post</h3>
     </div>
     <div id="composerChannelBadge" class="hidden" style="display: flex; align-items: center; gap: 0.35rem; background: rgba(227, 19, 55, 0.08); border: 1px solid rgba(227, 19, 55, 0.2); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: #e31337;">
