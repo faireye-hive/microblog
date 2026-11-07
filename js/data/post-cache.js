@@ -1,19 +1,19 @@
 /**
  * Persistent cache for public posts and channel feeds.
  *
- * IndexedDB is preferred for large snapshots; legacy localStorage is read once
+ * IndexedDB is preferred for large snapshots; same-version fallback localStorage is read once
  * and migrated only after a successful IndexedDB write. No Hive credentials or
  * private user data are stored here.
  */
-import { APP_ID } from "../config.js";
+import { POSTS_CUSTOM_ID } from "../config.js";
 import { POSTS_CACHE_KEY, getChannelPostsCacheKey } from "./cache-keys.js";
 
-export const POST_CACHE_DB_NAME = "micro-fair-posts";
+export const POST_CACHE_DB_NAME = "hiveline-v2-posts";
 export const POST_CACHE_DB_VERSION = 1;
 export const POST_CACHE_STORE = "feeds";
 
 export function getLegacyPostCacheKey(namespace) {
-  return namespace === APP_ID
+  return namespace === POSTS_CUSTOM_ID
     ? POSTS_CACHE_KEY
     : getChannelPostsCacheKey(namespace);
 }
@@ -188,7 +188,7 @@ export async function clearPostCaches(
   try {
     storage?.removeItem(POSTS_CACHE_KEY);
     for (const key of Object.keys(storage || {})) {
-      if (key.startsWith("hiveAppChannelPosts_")) storage.removeItem(key);
+      if (key.startsWith("hivelineV2ChannelPosts_")) storage.removeItem(key);
     }
   } catch { /* Best effort when browser disallows localStorage. */ }
   return indexedCleared;
