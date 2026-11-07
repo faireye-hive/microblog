@@ -112,7 +112,7 @@ export function buildProtocolReferencePage() {
         <div class="protocol-hero-text">
           <span class="protocol-eyebrow"><span aria-hidden="true">◈</span> DEVELOPER REFERENCE · HIVE</span>
           <h1 id="protocolPageTitle">One protocol.<br><em>Every operation.</em></h1>
-          <p>The actual custom_json IDs and payloads used by Micro.fair.
+          <p>The actual custom_json IDs and payloads used by HiveLine.
             Generated directly from the app's v${HIVE_PROTOCOL_VERSION} registry
             and production payload builders.</p>
           <div class="protocol-hero-pills">
@@ -128,10 +128,10 @@ export function buildProtocolReferencePage() {
       </header>
       <aside class="protocol-note" role="note">
         <span class="protocol-note-symbol" aria-hidden="true">!</span>
-        <div><strong>Historical IDs must not be renamed.</strong>
+        <div><strong>Historical Micro.fair data is preserved but hidden from HiveLine.</strong>
           <p><code>micro.fair.interation</code> (votes) and
              <code>micro.fair.adpmuted</code> (moderation) retain their original spelling.
-             Changing either would disconnect new reads from existing Hive operations.</p></div>
+             HiveLine instead uses hiveline.votes and hiveline.moderation; old records remain on-chain.</p></div>
       </aside>
       ${buildProtocolValidatorSection()}
       <div class="protocol-toolbar">
@@ -166,11 +166,11 @@ export function buildProtocolReferencePage() {
             post. The <code>type</code> is <code>reply</code> and <code>reply_to</code>
             points to the numeric HAFSQL operation ID.</p>
           <p><strong>Communities:</strong> creation is sent to
-            <code>micro.fair.channels</code>, but community posts use the
-            community's own ID, such as <code>hive.micro</code>.</p>
-          <p><strong>Account-scoped IDs:</strong> replace <code>{user}</code>
-            with the signing account (e.g. <code>alice</code>), not the followed or
-            blocked account. The target appears inside <code>target_user</code>.</p>
+            <code>hiveline.communities</code>; posts use fresh per-community
+            IDs like <code>hiveline.c.dev</code>.</p>
+          <p><strong>Relationships:</strong> follow and block share
+            <code>hiveline.relationships</code>; their signer is identified by
+            <code>required_posting_auths</code>.</p>
           <p><strong>Transport:</strong> Keychain uses <code>Posting</code> authority;
             <code>json</code> is a serialized string. This reference never
             broadcasts transactions or requests keys.</p>
@@ -178,7 +178,7 @@ export function buildProtocolReferencePage() {
             is a placeholder HAFSQL operation ID, not a real post.
             Production IDs are assigned to recorded custom_json operations.</p>
           <p><strong>Manual Custom JSON:</strong> the advanced tool can broadcast
-            arbitrary IDs. It is not a Micro.fair protocol operation unless it
+            arbitrary IDs. It is not a HiveLine protocol operation unless it
             follows one of the registered formats above.</p>
         </div>
       </footer>
