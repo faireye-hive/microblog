@@ -37,9 +37,9 @@ function buildUserPopover(author, isBlocked) {
   if (!loggedInUser || author === loggedInUser) return '';
 
   const isFollowing = followedUsers.has(author);
-  const followText = isFollowing ? "💔 Deixar de Seguir" : "⭐ Seguir";
+  const followText = isFollowing ? "Unfollow" : "Follow";
   const followType = isFollowing ? "unfollow" : "follow";
-  const blockText = isBlocked ? "✅ Desbloquear" : "🚫 Bloquear";
+  const blockText = isBlocked ? "Unblock" : "Block";
   const blockType = isBlocked ? "unblock" : "block";
 
   return `
@@ -104,7 +104,7 @@ export function buildThreadAbove(post, allPosts) {
   return `
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.65rem; font-size: 0.85rem;">
       <span class="view-thread" data-id="${escapeAttr(parent.id)}" style="font-weight: 700; color: #0284c7; cursor: pointer;">
-        ↳ Em resposta a @${escapeHtml(author)}
+        ↳ Replying to @${escapeHtml(author)}
       </span>: 
       <span style="color: var(--text-muted);">${contentHtml}${ellipsis}</span>
     </div>`;
@@ -153,8 +153,8 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   if (isMuted) {
     muteBannerHTML = `
       <div style="margin: 0.5rem 0; padding: 0.75rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; font-size: 0.85rem; color: #b91c1c;">
-        <strong>🚨 Post Mutado</strong> 
-        <span style="color: #64748b;">(por @${muteAdmin})</span>:
+        <strong>Post muted</strong> 
+        <span style="color: #64748b;">(by @${muteAdmin})</span>:
         <p style="margin: 0.25rem 0 0; font-weight: 600;">${muteCause}</p>
       </div>
     `;
@@ -236,7 +236,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
         <div class="post-author-row">
           <span class="post-author-name author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
           <span class="post-timestamp">• ${fmtDate(p.timestamp)}</span>
-          ${isMuted ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 700; margin-left: 0.25rem;">(Mutado)</span>' : ''}
+          ${isMuted ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 700; margin-left: 0.25rem;">(Muted)</span>' : ''}
           ${buildUserPopover(author, isBlocked)}
         </div>
 
@@ -337,10 +337,10 @@ function buildUserListHTML(usersSet, type) {
         <span class="profile-list-empty-icon" aria-hidden="true">
           ${blocked ? "✓" : "＋"}
         </span>
-        <strong>${blocked ? "Nenhuma conta bloqueada" : "Você ainda não segue ninguém"}</strong>
+        <strong>${blocked ? "No blocked accounts" : "You're not following anyone yet"}</strong>
         <p>${blocked
-          ? "Suas contas bloqueadas aparecerão aqui."
-          : "Encontre pessoas interessantes nas conversas e siga seus perfis."}</p>
+          ? "Accounts you block will appear here."
+          : "Explore conversations and follow people you want to hear from."}</p>
       </div>
     `;
   }
@@ -354,7 +354,7 @@ function buildUserListHTML(usersSet, type) {
         <span class="profile-person-name">@${escapeHtml(user)}</span>
       </span>
       ${blocked ? `<button type="button" data-action="unblock"
-        data-user="${escapeAttr(user)}" class="profile-unblock-btn">Desbloquear</button>` : ""}
+        data-user="${escapeAttr(user)}" class="profile-unblock-btn">Unblock</button>` : ""}
     </div>
   `).join("");
 }
@@ -369,13 +369,13 @@ export function buildProfilePage() {
             <circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>
           </svg>
         </div>
-        <span class="profile-eyebrow">SEU ESPAÇO NA HIVE</span>
-        <h2>Seu perfil começa aqui</h2>
-        <p>Entre com sua conta Hive para acompanhar as pessoas que você segue e gerenciar suas preferências.</p>
-        <button type="button" id="btnProfileLogin" class="btn-post profile-primary-action">Entrar com Keychain
+        <span class="profile-eyebrow">YOUR SPACE ON HIVE</span>
+        <h2>Your profile starts here</h2>
+        <p>Sign in with Hive Keychain to manage your follows and preferences.</p>
+        <button type="button" id="btnProfileLogin" class="btn-post profile-primary-action">Sign in with Keychain
           <span aria-hidden="true">→</span>
         </button>
-        <span class="profile-guest-footnote">A autenticação é feita pela extensão Hive Keychain.</span>
+        <span class="profile-guest-footnote">Authentication is handled securely by the Hive Keychain extension.</span>
       </section>
     `;
   }
@@ -395,11 +395,11 @@ export function buildProfilePage() {
                alt="Avatar de @${escapeAttr(profileUser)}" class="profile-hero-avatar"
                data-avatar-fallback="user">
           <div class="profile-identity">
-            <span class="profile-eyebrow">MEU PERFIL</span>
+            <span class="profile-eyebrow">MY PROFILE</span>
             <h1 id="profileUsername">@${escapeHtml(profileUser)}</h1>
             <span class="profile-connected">
               <span class="profile-status-dot" aria-hidden="true"></span>
-              Conectado com Hive Keychain
+              Connected with Hive Keychain
             </span>
           </div>
         </div>
@@ -409,19 +409,19 @@ export function buildProfilePage() {
             <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/>
             <path d="M9 12h10m-4-4 4 4-4 4"/>
           </svg>
-          Sair
+          Sign out
         </button>
       </section>
 
-      <div class="profile-summary" aria-label="Resumo das conexões">
+      <div class="profile-summary" aria-label="Account connections">
         <div class="profile-stat">
           <strong>${followedCount}</strong>
-          <span>Seguindo</span>
+          <span>Following</span>
         </div>
         <span class="profile-summary-divider" aria-hidden="true"></span>
         <div class="profile-stat">
           <strong>${blockedCount}</strong>
-          <span>Bloqueados</span>
+          <span>Blocked</span>
         </div>
       </div>
 
@@ -429,8 +429,8 @@ export function buildProfilePage() {
         <section class="profile-panel" aria-labelledby="profileFollowingTitle">
           <div class="profile-panel-head">
             <div>
-              <span class="profile-panel-kicker">CONEXÕES</span>
-              <h2 id="profileFollowingTitle">Pessoas que você segue</h2>
+              <span class="profile-panel-kicker">CONNECTIONS</span>
+              <h2 id="profileFollowingTitle">People you follow</h2>
             </div>
             <span class="profile-count-badge">${followedCount}</span>
           </div>
@@ -442,12 +442,12 @@ export function buildProfilePage() {
         <section class="profile-panel" aria-labelledby="profileBlockedTitle">
           <div class="profile-panel-head">
             <div>
-              <span class="profile-panel-kicker">PRIVACIDADE</span>
-              <h2 id="profileBlockedTitle">Contas bloqueadas</h2>
+              <span class="profile-panel-kicker">PRIVACY</span>
+              <h2 id="profileBlockedTitle">Blocked accounts</h2>
             </div>
             <span class="profile-count-badge">${blockedCount}</span>
           </div>
-          <p class="profile-panel-description">Publicações das contas bloqueadas ficam ocultas do seu feed.</p>
+          <p class="profile-panel-description">Posts from blocked accounts are hidden from your feed.</p>
           <div id="blockedUsersList" class="profile-people-list">
             ${blockedListHtml}
           </div>
@@ -457,7 +457,7 @@ export function buildProfilePage() {
   `;
 }
 
-// Diretório de canais: layout simplificado, sem placeholders de canais fictícios.
+// Community directory: layout simplificado, sem placeholders de canais fictícios.
 export function buildChannelsPage(searchFilter = "") {
   const query = (searchFilter || "").toLowerCase().trim();
   const directId = parseChannelCustomId(query.replace(/^#/, ""));
@@ -488,33 +488,33 @@ export function buildChannelsPage(searchFilter = "") {
         <div class="channel-tile-main">
           <a href="${escapeAttr(path)}" class="channel-tile-title">${escapeHtml(channel.name || channel.id)}</a>
           <span class="channel-tile-tag">#${escapeHtml(channel.id)}</span>
-          <p class="channel-tile-description">${escapeHtml(channel.description || "Espaço público para conversas na Hive.")}</p>
+          <p class="channel-tile-description">${escapeHtml(channel.description || "A public space for conversations on Hive.")}</p>
         </div>
         <div class="channel-tile-meta">
-          <span>${creator === "unknown" ? "Comunidade Hive" : `Criado por @${escapeHtml(creator)}`}</span>
-          <span>${count} ${count === 1 ? "publicação" : "publicações"}</span>
+          <span>${creator === "unknown" ? "Hive community" : `Created by @${escapeHtml(creator)}`}</span>
+          <span>${count} ${count === 1 ? "post" : "posts"}</span>
         </div>
         <div class="channel-tile-actions">
-          <a href="${escapeAttr(path)}" class="btn-outline-small channel-open-btn">Explorar</a>
-          <button type="button" class="btn-post btn-post-in-channel" data-channel="${escapeAttr(channel.id)}">Publicar</button>
+          <a href="${escapeAttr(path)}" class="btn-outline-small channel-open-btn">Explore</a>
+          <button type="button" class="btn-post btn-post-in-channel" data-channel="${escapeAttr(channel.id)}">Post</button>
         </div>
       </article>
     `;
   }).join("");
 
   return `
-    <section class="channels-page" aria-label="Diretório de canais">
+    <section class="channels-page" aria-label="Community directory">
       <div class="channels-hero">
         <div class="channels-hero-top">
           <div>
-            <span class="channels-eyebrow">COMUNIDADES NA HIVE</span>
-            <h1>Encontre seu espaço <span class="channels-total">${channels.length}</span></h1>
-            <p>Explore conversas por assunto e participe dos canais que mais combinam com você.</p>
+            <span class="channels-eyebrow">COMMUNITIES ON HIVE</span>
+            <h1>Find your people <span class="channels-total">${channels.length}</span></h1>
+            <p>Find conversations you care about and join communities built around your interests.</p>
           </div>
           <button id="btnCreateChannelFromPage" type="button" class="btn-post channels-create-btn">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Criar canal
+            Create community
           </button>
         </div>
         <div class="channels-search">
@@ -523,7 +523,7 @@ export function buildChannelsPage(searchFilter = "") {
             <circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>
           </svg>
           <input type="search" id="channelsDirectorySearch" class="channels-search-input"
-                 placeholder="Buscar por nome, tag ou criador" aria-label="Buscar canais"
+                 placeholder="Search by name, tag or creator" aria-label="Search communities"
                  value="${escapeAttr(searchFilter)}" autocomplete="off" spellcheck="false">
         </div>
       </div>
@@ -535,16 +535,16 @@ export function buildChannelsPage(searchFilter = "") {
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>
             </span>
-            <h2>${query ? "Nenhum canal encontrado" : "Seja o primeiro a criar um canal"}</h2>
-            <p>${query ? `Não encontramos canais para “${escapeHtml(searchFilter)}”. Tente outro termo ou explore um ID válido.`
-                        : "Quando os primeiros canais forem publicados, eles aparecerão aqui."}</p>
+            <h2>${query ? "No communities found" : "Start the first community"}</h2>
+            <p>${query ? `No communities matched “${escapeHtml(searchFilter)}”. Try another search or open a valid community ID.`
+                        : "New communities will appear here as soon as they are created."}</p>
             <div class="community-empty-actions">
               ${directId ? `
                 <button type="button" id="btnOpenChannelById" class="btn-outline-small">
-                  Abrir #${escapeHtml(directId)}
+                  Open #${escapeHtml(directId)}
                 </button>
               ` : ""}
-              <button type="button" id="btnCreateChannelNotFound" class="btn-post">Criar canal</button>
+              <button type="button" id="btnCreateChannelNotFound" class="btn-post">Create community</button>
             </div>
           </div>
         `}

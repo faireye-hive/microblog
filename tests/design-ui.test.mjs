@@ -28,8 +28,8 @@ test("refined neutral light theme loads last and keeps structural routes",()=>{
 
 test("top tabs focus on feed and following while sidebar keeps essential routes",()=>{
   assert.equal((TopNavHTML.match(/class="top-nav-tab(?: active)?"/g)||[]).length,2);
-  assert.match(TopNavHTML,/id="tabForYou">Para você/);
-  assert.match(TopNavHTML,/id="tabFollowing">Seguindo/);
+  assert.match(TopNavHTML,/id="tabForYou">For you/);
+  assert.match(TopNavHTML,/id="tabFollowing">Following/);
   assert.match(TopNavHTML,/id="topSearchInput"/);
   assert.match(TopNavHTML,/id="btnNotificationsTop"/);
   assert.match(TopNavHTML,/id="userMenuDropdown"/);
@@ -58,9 +58,9 @@ test("composer keeps all six functional modes but groups advanced tools",()=>{
   for(const mode of ["text","image","link"])assert.ok(ComposerHTML.indexOf('data-mode="'+mode+'"')<extra,mode);
   for(const mode of ["video","file","json"])assert.ok(ComposerHTML.indexOf('data-mode="'+mode+'"')>extra,mode);
   assert.match(ComposerHTML,/class="composer-extra-menu"/);
-  assert.match(ComposerHTML,/>Nova publicação</);
-  assert.match(ComposerHTML,/>Publicar</);
-  assert.match(state,/btnPostSpan\.textContent = "Publicar"/);
+  assert.match(ComposerHTML,/>Start a conversation</);
+  assert.match(ComposerHTML,/>Post</);
+  assert.match(state,/btnPostSpan\.textContent = "Post"/);
   assert.match(app,/advancedMenu\.open = false/);
 });
 
@@ -68,7 +68,7 @@ test("right sidebar preserves active widgets but removes redundant cards",()=>{
   for(const id of ["btnCreateChannelTrigger","sidebarChannelsList","trendingList","btnRefreshTags"]){
     assert.ok(RightSidebarHTML.includes('id="'+id+'"'),id);
   }
-  assert.match(RightSidebarHTML,/>Em alta</);
+  assert.match(RightSidebarHTML,/>Trending</);
   assert.doesNotMatch(RightSidebarHTML,/quick-actions-grid/);
   assert.doesNotMatch(RightSidebarHTML,/create-channel-box/);
   assert.match(app,/btnCreateChannelTrigger/);
@@ -79,8 +79,8 @@ test("filters retain the same behavior keys with clearer labels",()=>{
   for(const name of ["all","text","media","links","long"]){
     assert.ok(FeedFiltersHTML.includes('data-filter="'+name+'"'),name);
   }
-  assert.match(FeedFiltersHTML,/>Todos</);
-  assert.match(FeedFiltersHTML,/>Recentes</);
+  assert.match(FeedFiltersHTML,/>All</);
+  assert.match(FeedFiltersHTML,/>Latest</);
   assert.match(app,/setActiveFilter\(filter\)/);
   assert.match(app,/setCurrentSort\("votes"\)/);
 });
@@ -93,11 +93,11 @@ test("first line of a multi-line post is not repeated as body text",async()=>{
   const { buildPostCard }=await import("../js/render.js");
   const post={id:101,custom_id:"micro.fair",required_posting_auths:["faireye"],
     timestamp:"2026-11-07T00:00:00Z",
-    json:JSON.stringify({app:"micro.fair",type:"post",content:"Título simples\nTexto do post com informações adicionais."})};
+    json:JSON.stringify({app:"micro.fair",type:"post",content:"Simple title\nThe post body with further details."})};
   const markup=buildPostCard(post,[post]).innerHTML;
-  assert.equal((markup.match(/Título simples/g)||[]).length,1);
-  assert.match(markup,/<h4 class="post-headline">Título simples<\/h4>/);
-  assert.match(markup,/Texto do post com informações adicionais/);
+  assert.equal((markup.match(/Simple title/g)||[]).length,1);
+  assert.match(markup,/<h4 class="post-headline">Simple title<\/h4>/);
+  assert.match(markup,/The post body with further details/);
 });
 
 test("design changes do not add inline JavaScript or weaken CSP",()=>{

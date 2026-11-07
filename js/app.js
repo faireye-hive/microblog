@@ -95,15 +95,15 @@ function showMuteReasonModal(contentId) {
   const modalHtml = `
     <div id="muteReasonModal" class="modal-overlay">
       <div class="modal-dialog">
-        <h3 class="modal-title">Mutar Post</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">Insira o motivo para mutar este post:</p>
-        <textarea id="muteReasonInput" class="modal-input" rows="3" placeholder="Motivo obrigatório"></textarea>
+        <h3 class="modal-title">Mute post</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">Enter a reason for muting this post:</p>
+        <textarea id="muteReasonInput" class="modal-input" rows="3" placeholder="Reason (required)"></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
           <button id="cancelMute" class="btn-outline-small">
-            Cancelar
+            Cancel
           </button>
           <button id="confirmMute" class="btn-post">
-            Mutar
+            Mute
           </button>
         </div>
       </div>
@@ -117,12 +117,12 @@ function showMuteReasonModal(contentId) {
   document.getElementById("confirmMute").addEventListener("click", () => {
     const cause = input.value.trim();
     if (!cause) {
-      showNotification("⚠️ O motivo é obrigatório para mutar.", false);
+      showNotification("⚠️ Please enter a reason before muting.", false);
       return;
     }
     sendMute(contentId, cause);
     modal.remove();
-    showNotification("✅ Post mutado, aguardando confirmação...", true);
+    showNotification("✅ Post muted. Waiting for blockchain confirmation...", true);
   });
 
   document.getElementById("cancelMute").addEventListener("click", () => modal.remove());
@@ -169,7 +169,7 @@ function setupFeedDelegation() {
         return;
       }
       const repliesHtml = buildRepliesRecursive(id, activeChannel ? getChannelPosts(activeChannel) : allPosts);
-      threadDiv.innerHTML = repliesHtml || '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">Sem respostas ainda. Seja o primeiro a responder!</div>';
+      threadDiv.innerHTML = repliesHtml || '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">No replies yet. Start the conversation!</div>';
       threadDiv.classList.remove("hidden");
     }
 
@@ -187,10 +187,10 @@ function setupFeedDelegation() {
       const replyBox = document.createElement("div");
       replyBox.className = "reply-input-box";
       replyBox.innerHTML = `
-        <textarea class="reply-input-textarea" rows="2" placeholder="Escreva sua resposta na rede Hive..."></textarea>
+        <textarea class="reply-input-textarea" rows="2" placeholder="Write your reply on Hive..."></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
-          <button class="btn-outline-small cancel-reply">Cancelar</button>
-          <button class="btn-post send-reply" style="padding: 0.35rem 0.95rem; font-size: 0.8rem;">Responder</button>
+          <button class="btn-outline-small cancel-reply">Cancel</button>
+          <button class="btn-post send-reply" style="padding: 0.35rem 0.95rem; font-size: 0.8rem;">Reply</button>
         </div>`;
       
       const contentWrap = card.querySelector(".post-card-main") || card;
@@ -202,7 +202,7 @@ function setupFeedDelegation() {
       replyBox.querySelector(".cancel-reply").addEventListener("click", () => replyBox.remove());
       replyBox.querySelector(".send-reply").addEventListener("click", () => {
         const text = textarea.value.trim();
-        if (!text) return showNotification("⚠️ Digite algo para responder!", false);
+        if (!text) return showNotification("⚠️ Write a reply before submitting!", false);
         const targetPost = allPosts.find(p => p.id == id) || (activeChannel ? getChannelPosts(activeChannel).find(p => p.id == id) : null);
         const postChannel = (targetPost && targetPost.custom_id) ? targetPost.custom_id : activeChannel;
         sendPost(text, parseInt(id) || id, postChannel);
@@ -220,7 +220,7 @@ function setupFeedDelegation() {
       if (svg) {
         svg.setAttribute("fill", isSaved ? "currentColor" : "none");
       }
-      showNotification(isSaved ? "🔖 Post salvo nos Favoritos!" : "Post removido dos Favoritos.", true);
+      showNotification(isSaved ? "Post saved to bookmarks!" : "Post removed from bookmarks.", true);
     }
 
     // 5. IMAGE MODAL
@@ -248,7 +248,7 @@ function setupFeedDelegation() {
     const muteBtn = e.target.closest(".mute-btn");
     if (muteBtn) {
       if (!loggedInUser) {
-        showNotification("🔒 Você precisa estar logado para mutar/desmutar posts.", false);
+        showNotification("🔒 Sign in to mute or unmute posts.", false);
         return;
       }
       const contentId = muteBtn.dataset.id;
@@ -257,7 +257,7 @@ function setupFeedDelegation() {
         showMuteReasonModal(contentId);
       } else if (type === "unmute") {
         sendUnmute(contentId);
-        showNotification("✅ Desmutando post...", true);
+        showNotification("✅ Unmuting post...", true);
       }
     }
 
@@ -352,7 +352,7 @@ function setupComposerControls() {
   if (btnPost) {
     btnPost.addEventListener("click", () => {
       const text = textarea ? textarea.value.trim() : "";
-      if (!text) return showNotification("⚠️ Digite algo para publicar!", false);
+      if (!text) return showNotification("⚠️ Write something before posting!", false);
       sendPost(text);
     });
   }
@@ -375,27 +375,27 @@ function setupComposerControls() {
       pill.classList.add("active");
 
       if (mode === "image") {
-        const url = prompt("Insira a URL da imagem:");
+        const url = prompt("Enter an image URL:");
         if (url && textarea) {
-          textarea.value += `\n![imagem](${url})\n`;
+          textarea.value += `\n![image](${url})\n`;
           textarea.focus();
         }
       } else if (mode === "link") {
-        const url = prompt("Insira a URL do link:");
+        const url = prompt("Enter a link URL:");
         if (url && textarea) {
           textarea.value += `\n[link](${url})\n`;
           textarea.focus();
         }
       } else if (mode === "video") {
-        const url = prompt("Insira a URL do vídeo (YouTube/3Speak):");
+        const url = prompt("Enter a video URL (YouTube/3Speak):");
         if (url && textarea) {
           textarea.value += `\n${url}\n`;
           textarea.focus();
         }
       } else if (mode === "file") {
-        const url = prompt("Insira a URL do anexo/arquivo:");
+        const url = prompt("Enter an attachment URL:");
         if (url && textarea) {
-          textarea.value += `\n[arquivo](${url})\n`;
+          textarea.value += `\n[file](${url})\n`;
           textarea.focus();
         }
       } else if (mode === "json") {
@@ -425,13 +425,13 @@ function setupFeedFilters() {
     sortBtn.addEventListener("click", () => {
       if (currentSort === "recent") {
         setCurrentSort("votes");
-        if (sortLabel) sortLabel.textContent = "Em alta";
+        if (sortLabel) sortLabel.textContent = "Trending";
       } else if (currentSort === "votes") {
         setCurrentSort("comments");
-        if (sortLabel) sortLabel.textContent = "Comentários";
+        if (sortLabel) sortLabel.textContent = "Most discussed";
       } else {
         setCurrentSort("recent");
-        if (sortLabel) sortLabel.textContent = "Recentes";
+        if (sortLabel) sortLabel.textContent = "Latest";
       }
     });
   }
@@ -493,7 +493,7 @@ function setupSidebarControls() {
       const channel = btn.dataset.channel;
       const joined = btn.classList.toggle("joined");
       btn.textContent = joined ? "Joined" : "Join";
-      showNotification(joined ? `✅ Inscrito no canal #${channel}` : `Saiu do canal #${channel}`, true);
+      showNotification(joined ? `✅ Joined #${channel}` : `Left #${channel}`, true);
     });
   });
 
@@ -501,7 +501,7 @@ function setupSidebarControls() {
   const channelModal = document.getElementById("createChannelModal");
   const openChannelModal = (prefillName = "") => {
     if (!loggedInUser) {
-      showNotification("🔒 Faça login com Hive Keychain para criar um canal!", false);
+      showNotification("🔒 Sign in with Hive Keychain to create a community!", false);
       document.getElementById("loginModal")?.classList.remove("hidden");
       return;
     }
@@ -555,10 +555,10 @@ function setupSidebarControls() {
     const channelDesc = document.getElementById("newChannelDesc")?.value.trim();
 
     if (!channelName) {
-      return showNotification("⚠️ Informe o nome do canal (ex: Linux, Rust, Gaming)!", false);
+      return showNotification("⚠️ Enter a community name (e.g. Linux, Rust, Gaming).", false);
     }
     if (!channelId) {
-      return showNotification("⚠️ Informe o ID/tag do canal (ex: linux, rust, gaming)!", false);
+      return showNotification("⚠️ Enter a community ID (e.g. linux, rust, gaming).", false);
     }
 
     sendCreateChannel(channelId, channelName, channelDesc);
@@ -571,9 +571,9 @@ function setupSidebarControls() {
   document.getElementById("submitCustomJson")?.addEventListener("click", () => {
     const customId = document.getElementById("customJsonId")?.value.trim() || "microblog_v1";
     const payload = document.getElementById("customJsonPayload")?.value.trim();
-    if (!payload) return showNotification("⚠️ Digite o conteúdo JSON!", false);
-    if (!hasHiveKeychain()) return showNotification("❌ Hive Keychain não detectado!", false);
-    if (!loggedInUser) return showNotification("🔒 Faça login para transmitir Custom JSON!", false);
+    if (!payload) return showNotification("⚠️ Enter a JSON payload!", false);
+    if (!hasHiveKeychain()) return showNotification("❌ Hive Keychain was not detected!", false);
+    if (!loggedInUser) return showNotification("🔒 Sign in before broadcasting Custom JSON!", false);
 
     requestHiveCustomJson(
       loggedInUser,
@@ -582,10 +582,10 @@ function setupSidebarControls() {
       "Broadcast Custom JSON",
       (res) => {
         if (res.success) {
-          showNotification("✅ Operação Custom JSON transmitida com sucesso!", true);
+          showNotification("✅ Custom JSON operation broadcast successfully!", true);
           customModal?.classList.add("hidden");
         } else {
-          showNotification("❌ Falha na transmissão: " + (res.message || "Erro"), false);
+          showNotification("❌ Broadcast failed: " + (res.message || "Unknown error"), false);
         }
       }
     );

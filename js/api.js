@@ -135,7 +135,7 @@ async function fetchDataInLoop() {
 
 export async function fetchData() {
     document.getElementById("feed").innerHTML =
-        '<div class="card p-4 text-center small-muted">Carregando...</div>';
+        '<div class="card p-4 text-center small-muted">Loading...</div>';
 
     // 1. Lê IndexedDB; na primeira execução importa o cache antigo do localStorage.
     const cachedPosts = await readPostCache(APP_ID);
@@ -176,7 +176,7 @@ export async function fetchData() {
     let networkAvailable = true;
     const safePostSync = postSyncPromise.catch(error => {
         networkAvailable = false;
-        console.warn("HAFSQL indisponível; utilizando publicações em cache.", error);
+        console.warn("HAFSQL is unavailable. Using cached posts.", error);
         return [];
     });
 
@@ -227,15 +227,15 @@ export async function fetchData() {
         updateTags(); 
         
     } catch (e) {
-        console.error("Erro ao processar dados auxiliares pós-sincronização:", e);
+        console.error("Failed to process auxiliary data after sync:", e);
     }
     
     // 4. FINALIZAÇÃO
     window.dispatchEvent(new Event('hashchange'));
     showNotification(
         networkAvailable
-          ? `✅ Dados carregados e sincronizados. (${newPostsCount} novos posts)`
-          : "⚠️ Sem conexão com a HAFSQL. Exibindo o cache disponível.",
+          ? `Synced successfully. ${newPostsCount} new posts.`
+          : "HAFSQL is offline. Showing available cached posts.",
         networkAvailable
     );
 }
@@ -264,7 +264,7 @@ export async function fetchChannelPosts(channelId) {
         await writePostCache(cleanId, sorted);
         return sorted;
     } catch (err) {
-        console.error(`Erro ao buscar posts do canal ${cleanId}:`, err);
+        console.error(`Failed to fetch posts from #${cleanId}:`, err);
         return getChannelPosts(cleanId);
     }
 }
@@ -272,7 +272,7 @@ export async function fetchChannelPosts(channelId) {
 // Envia um novo Post ou Reply (para o canal ativo ou para o canal principal 'micro.fair')
 export function sendPost(content, replyTo = null, channelOverride = null) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Conecte sua conta via Hive Keychain primeiro!", false);
+    if (!username) return showNotification("🔒 Sign in with Hive Keychain first!", false);
 
     // Se estiver navegando em um canal específico, o Custom JSON é emitido DIRETAMENTE para o ID do canal!
     // Exemplo: se estiver no canal 'fairmemes', o custom_id do blockchain Hive será 'fairmemes'.
@@ -280,7 +280,7 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
     const targetChannel = channelOverride !== null ? channelOverride : activeChannel;
     const customId = parseChannelCustomId(targetChannel || APP_ID);
     if (!customId) {
-        showNotification("⚠️ Identificador de canal inválido. Nenhuma operação foi enviada.", false);
+        showNotification("⚠️ Invalid community ID. Nothing was broadcast.", false);
         return;
     }
 
@@ -297,8 +297,8 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
     }));
 
     const actionText = customId === APP_ID
-        ? (replyTo ? "Responder no Feed Principal" : "Postar no Feed Principal")
-        : (replyTo ? `Responder em #${customId}` : `Postar em #${customId}`);
+        ? (replyTo ? "Reply on main feed" : "Post on main feed")
+        : (replyTo ? `Reply in #${customId}` : `Post in #${customId}`);
 
     if (hasHiveKeychain()) {
         requestHiveCustomJson(
@@ -308,7 +308,7 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
             actionText,
             (res) => {
                 if (res.success) {
-                    showNotification(`✅ Publicado com sucesso no canal #${customId}!`, true);
+                    showNotification(`✅ Successfully posted to #${customId}!`, true);
 
                     const textarea = document.getElementById("newPostContent");
                     if (textarea) textarea.value = "";
@@ -341,12 +341,12 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
                     updateChannelsUI();
                     updateTags();
                 } else {
-                    showNotification(`❌ Erro ao postar: ${res.message || "Operação cancelada"}`, false);
+                    showNotification(`❌ Posting failed: ${res.message || "Operation cancelled"}`, false);
                 }
             }
         );
     } else {
-        showNotification("❌ Hive Keychain não detectado!", false);
+        showNotification("❌ Hive Keychain was not detected!", false);
     }
 }
 
@@ -354,7 +354,7 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
 
 function sendCustomJsonAction(type, targetUser, actionText) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Faça login para realizar esta ação.", false);
+    if (!username) return showNotification("🔒 Sign in to perform this action.", false);
 
     const json = JSON.stringify(buildUserActionPayload(type, targetUser));
 
@@ -364,7 +364,7 @@ function sendCustomJsonAction(type, targetUser, actionText) {
     } else if (type === 'follow' || type === 'unfollow') {
         customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username);
     } else {
-        return showNotification("Erro interno: Ação desconhecida.", false);
+        return showNotification("Internal error: unknown action.", false);
     }
     
     if (hasHiveKeychain()) {
@@ -372,49 +372,49 @@ function sendCustomJsonAction(type, targetUser, actionText) {
             username, customId, json, actionText,
             (res) => {
                 if (res.success) {
-                    showNotification(`✅ Sucesso! ${actionText}`, true);
+                    showNotification(`✅ Success! ${actionText}`, true);
                     // Recarrega os dados e a view atual
                     fetchData().then(() => {
                         window.dispatchEvent(new Event('hashchange'));
                     });
                 } else {
-                    showNotification(`❌ Erro ao ${type}!`, false);
+                    showNotification(`❌ Failed to ${type}!`, false);
                 }
             }
         );
     } else {
-        showNotification("Hive Keychain não detectado!", false);
+        showNotification("Hive Keychain was not detected!", false);
     }
 }
 
 
 // NOVO: Envia Ação de Bloqueio
 export function sendBlock(targetUser) {
-    sendCustomJsonAction('block', targetUser, "Bloquear Usuário");
+    sendCustomJsonAction('block', targetUser, "Block user");
 }
 
 // NOVO: Envia Ação de Desbloqueio
 export function sendUnblock(targetUser) {
-    sendCustomJsonAction('unblock', targetUser, "Desbloquear Usuário");
+    sendCustomJsonAction('unblock', targetUser, "Unblock user");
 }
 
 // NOVO: Envia Ação de Follow
 export function sendFollow(targetUser) {
-    sendCustomJsonAction('follow', targetUser, "Seguir Usuário");
+    sendCustomJsonAction('follow', targetUser, "Follow user");
 }
 
 // NOVO: Envia Ação de Unfollow
 export function sendUnfollow(targetUser) {
-    sendCustomJsonAction('unfollow', targetUser, "Deixar de Seguir");
+    sendCustomJsonAction('unfollow', targetUser, "Unfollow user");
 }
 
 // NOVO: Helper para enviar custom_json para ações de dado (Vote, Mute)
 function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false) {
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Faça login para realizar esta ação.", false);
+    if (!username) return showNotification("🔒 Sign in to perform this action.", false);
     
     if (requiresAdmin && username !== ADMIN) {
-        return showNotification("Apenas administradores podem realizar esta ação.", false);
+        return showNotification("Only administrators can perform this action.", false);
     }
     
     if (hasHiveKeychain()) {
@@ -422,18 +422,18 @@ function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false
             username, customId, jsonPayload, actionText,
             (res) => {
                 if (res.success) {
-                    showNotification(`✅ ${actionText} enviado com sucesso!`, true);
+                    showNotification(`✅ ${actionText} sent successfully!`, true);
                     // Recarrega os dados e a view atual
                     fetchData().then(() => {
                         window.dispatchEvent(new Event('hashchange'));
                     });
                 } else {
-                    showNotification(`❌ Erro ao ${actionText.toLowerCase().split(' ')[0]}!`, false);
+                    showNotification(`❌ Failed to perform ${actionText.toLowerCase().split(' ')[0]}!`, false);
                 }
             }
         );
     } else {
-        showNotification("Hive Keychain não detectado!", false);
+        showNotification("Hive Keychain was not detected!", false);
     }
 }
 
@@ -443,53 +443,53 @@ function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false
 
 export function sendVote(contentId, voteType) {
     const json = JSON.stringify(buildVotePayload(contentId, voteType));
-    sendDataAction(VOTE_CUSTOM_ID, json, "Votar");
+    sendDataAction(VOTE_CUSTOM_ID, json, "Vote");
 }
 
 export function sendMute(contentId, cause) {
     const json = JSON.stringify(buildMutePayload(contentId, "mute", cause));
     // O último argumento true indica que é necessária a autoridade de ADMIN
-    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Mutar Post", true); 
+    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Mute post", true); 
 }
 
 export function sendUnmute(contentId) {
     const json = JSON.stringify(buildMutePayload(contentId, "unmute"));
     // O último argumento true indica que é necessária a autoridade de ADMIN
-    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Desmutar Post", true);
+    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Unmute post", true);
 }
 
 // Cria um novo canal transmitindo Custom JSON para CHANNELS_CUSTOM_ID
 export function sendCreateChannel(channelId, channelName, description = "") {
     const username = localStorage.getItem("hiveUser");
     if (!username) {
-        showNotification("🔒 Conecte sua conta via Hive Keychain para criar um canal!", false);
+        showNotification("🔒 Sign in with Hive Keychain to create a community!", false);
         document.getElementById("loginModal")?.classList.remove("hidden");
         return;
     }
 
     const cleanId = parseChannelCustomId(channelId);
     if (!cleanId) {
-        showNotification("⚠️ ID inválido: use até 32 caracteres (letras, números, ponto, hífen ou _).", false);
+        showNotification("⚠️ Invalid ID: use up to 32 letters, numbers, dots, hyphens, or underscores.", false);
         return;
     }
 
     const cleanName = (channelName || cleanId).trim();
     if (!cleanName) {
-        showNotification("⚠️ O nome do canal é obrigatório!", false);
+        showNotification("⚠️ Community name is required!", false);
         return;
     }
 
-    const cleanDesc = (description || `Canal #${cleanId} criado na blockchain Hive por @${username}`).trim();
+    const cleanDesc = (description || `Community #${cleanId} created on Hive by @${username}`).trim();
 
     const payload = buildChannelCreatePayload({
         id: cleanId, name: cleanName, description: cleanDesc,
         createdAt: new Date().toISOString()
     });
 
-    const actionText = `Criar Canal #${cleanId}`;
+    const actionText = `Create community #${cleanId}`;
 
     if (!hasHiveKeychain()) {
-        showNotification("❌ Hive Keychain não detectado no navegador!", false);
+        showNotification("❌ Hive Keychain was not detected in your browser!", false);
         return;
     }
 
@@ -500,7 +500,7 @@ export function sendCreateChannel(channelId, channelName, description = "") {
         actionText,
         (res) => {
             if (res.success) {
-                showNotification(`✅ Canal #${cleanId} ("${cleanName}") registrado na blockchain Hive!`, true);
+                showNotification(`✅ Community #${cleanId} ("${cleanName}") registered on Hive!`, true);
 
                 const newChannelObj = {
                     id: cleanId,
@@ -523,13 +523,13 @@ export function sendCreateChannel(channelId, channelName, description = "") {
                     });
                     localStorage.setItem(CHANNELS_CACHE_KEY, JSON.stringify(cached));
                 } catch (e) {
-                    console.error("Erro ao salvar cache de canais:", e);
+                    console.error("Failed to cache communities:", e);
                 }
 
                 document.getElementById("createChannelModal")?.classList.add("hidden");
                 window.location.hash = `#/channel/${cleanId}`;
             } else {
-                showNotification(`❌ Falha ao criar canal: ${res.message || "Operação cancelada"}`, false);
+                showNotification(`❌ Failed to create community: ${res.message || "Operation cancelled"}`, false);
             }
         }
     );
@@ -556,8 +556,8 @@ export async function clearAllCaches() {
 
     showNotification(
         idbCleared || !globalThis.indexedDB
-            ? "🗑️ Cache limpo! Recarregando dados..."
-            : "⚠️ Cache local limpo; o IndexedDB está bloqueado ou indisponível.",
+            ? "Local cache cleared. Refreshing data..."
+            : "Local cache was cleared, but IndexedDB is blocked or unavailable.",
         idbCleared || !globalThis.indexedDB
     );
     await fetchData();

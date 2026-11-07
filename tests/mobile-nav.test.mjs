@@ -27,7 +27,7 @@ test("mobile navigation exposes the five destinations", () => {
   for (const name of ["home", "explore", "channels", "bookmarks", "profile"]) {
     assert.match(html, new RegExp('data-mobile-section="' + name + '"'));
   }
-  assert.match(html, /aria-label="Navegação principal para celular"/);
+  assert.match(html, /aria-label="Mobile navigation"/);
   assert.match(html, /href="#mainArea"/);
   assert.match(html, /css\/modern\.css/);
 });

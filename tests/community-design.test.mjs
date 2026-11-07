@@ -54,8 +54,8 @@ test("authenticated profile uses real lists, counts and safe usernames", () => {
   for (const id of ["profileUsername","btnProfileLogout","followedUsersList","blockedUsersList"])
     assert.match(output, new RegExp('id="'+id+'"'));
   assert.match(output, />@faireye</);
-  assert.match(output, /2<\/strong>\s*<span>Seguindo/);
-  assert.match(output, /1<\/strong>\s*<span>Bloqueados/);
+  assert.match(output, /2<\/strong>\s*<span>Following/);
+  assert.match(output, /1<\/strong>\s*<span>Blocked/);
   assert.match(output, /@sm-silva/);
   assert.match(output, /@peak\.snaps/);
   assert.doesNotMatch(output, /<img src=x onerror=alert\(1\)>/);
@@ -65,15 +65,15 @@ test("authenticated profile uses real lists, counts and safe usernames", () => {
   state.setFollowedUsers(new Set());
   state.setBlockedUsers(new Set());
   const empty = buildProfilePage();
-  assert.match(empty, /Você ainda não segue ninguém/);
-  assert.match(empty, /Nenhuma conta bloqueada/);
+  assert.match(empty, /You're not following anyone yet/);
+  assert.match(empty, /No blocked accounts/);
   state.setLoggedInUser(null);
 });
 
 test("channel directory keeps real channel state, inputs, event IDs and XSS escaping", () => {
   state.setChannels([
-    {id:"dev",name:"Desenvolvimento <script>alert(1)</script>",description:"Programação & comunidade",creator:"faireye"},
-    {id:"news",name:"Notícias Hive",description:"Posts e notícias",creator:"sm-silva"}
+    {id:"dev",name:"Development <script>alert(1)</script>",description:"Programming & community",creator:"faireye"},
+    {id:"news",name:"Hive news",description:"Posts and news",creator:"sm-silva"}
   ]);
   const out = buildChannelsPage();
   for (const id of ["btnCreateChannelFromPage","channelsDirectorySearch","channelsDirectoryGrid"])
@@ -83,18 +83,18 @@ test("channel directory keeps real channel state, inputs, event IDs and XSS esca
   assert.match(out, /data-channel="dev"/);
   assert.match(out, /data-channel="news"/);
   // escapeHtml intentionally encodes / as &#x2F; as well as < and >.
-  assert.match(out, /Desenvolvimento &lt;script&gt;alert\(1\)&lt;&#x2F;script&gt;/);
+  assert.match(out, /Development &lt;script&gt;alert\(1\)&lt;&#x2F;script&gt;/);
   assert.doesNotMatch(out, /<script>alert\(1\)<\/script>/);
   assert.match(out, /#\/channel\/dev/);
   const none = buildChannelsPage("xyz-inexistente");
-  assert.match(none, /Nenhum canal encontrado/);
+  assert.match(none, /No communities found/);
   assert.match(none, /id="btnCreateChannelNotFound"/);
   assert.doesNotMatch(none, /class="channel-tile"/);
   const filtered = buildChannelsPage("dev");
   assert.equal((filtered.match(/class="channel-tile"/g)||[]).length,1);
   state.setChannels([]);
   const first = buildChannelsPage();
-  assert.match(first, /Seja o primeiro a criar um canal/);
+  assert.match(first, /Start the first community/);
 });
 
 test("all auxiliary modal controls and labels survive the redesign", () => {
@@ -123,6 +123,6 @@ test("filter and channel empty state use the same design vocabulary", () => {
   assert.match(stateJs,/class="community-empty-state"/);
   assert.match(routingJs,/class="community-empty-state community-loading"/);
   assert.match(routingJs,/id="btnFocusChannelComposer"/);
-  assert.match(routingJs,/isJoined \? "Participando" : "Participar"/);
+  assert.match(routingJs,/isJoined \? "Joined" : "Join"/);
   assert.match(routingJs, /\["feed", "profile", "channels"\]\.includes\(newPage\)/);
 });

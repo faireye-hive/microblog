@@ -30,7 +30,7 @@ export function processChannelsData(channelsData) {
 
       const name = String(json.name || json.channel_name || id).trim();
       const description = String(
-        json.description || json.desc || `Canal #${id} registrado na Hive`
+        json.description || json.desc || `Community #${id} on Hive`
       ).trim();
 
       const previous = channelMap.get(id);

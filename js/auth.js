@@ -36,7 +36,7 @@ function setLoginPending(pending) {
     const label = document.getElementById("loginSubmitLabel");
     const form = document.getElementById("loginForm");
     if (submit) submit.disabled = pending;
-    if (label) label.textContent = pending ? "Aguardando Keychain…" : "Continuar com Keychain";
+    if (label) label.textContent = pending ? "Waiting for Keychain…" : "Continue with Keychain";
     if (form) form.setAttribute("aria-busy", String(pending));
 }
 
@@ -63,15 +63,15 @@ export function updateLoginUI() {
     sectionLabel?.classList.toggle("hidden", !user);
     if (trigger) {
         trigger.dataset.authenticated = user ? "true" : "false";
-        trigger.setAttribute("aria-label", user ? `Abrir menu da conta @${user}` : "Entrar com Hive Keychain");
+        trigger.setAttribute("aria-label", user ? `Open account menu for @${user}` : "Sign in with Hive Keychain");
         trigger.setAttribute("aria-haspopup", user ? "true" : "false");
     }
-    if (triggerLabel) triggerLabel.textContent = user ? `@${user}` : "Entrar";
+    if (triggerLabel) triggerLabel.textContent = user ? `@${user}` : "Sign in";
     guestIcon?.classList.toggle("hidden", Boolean(user));
-    if (accountName) accountName.textContent = user ? `@${user}` : "Sua conta";
-    if (accountStatus) accountStatus.textContent = user ? "Conectado à Hive" : "Entre para publicar e interagir";
+    if (accountName) accountName.textContent = user ? `@${user}` : "Your account";
+    if (accountStatus) accountStatus.textContent = user ? "Connected to Hive" : "Sign in to post and connect";
     const profileLabel = document.getElementById("menuUserLabel");
-    if (profileLabel) profileLabel.textContent = "Meu perfil";
+    if (profileLabel) profileLabel.textContent = "My profile";
 
     const avatarUrl = proxiedImageUrl(hiveAvatarUrl(user || "hive"));
     const navAvatar = document.getElementById("navUserAvatar");
@@ -95,14 +95,14 @@ function handleLogin() {
     const username = String(input?.value || "").trim().toLowerCase();
     if (!username) {
         input?.focus();
-        return showNotification("⚠️ Digite seu usuário Hive!", false);
+        return showNotification("Enter your Hive username.", false);
     }
     if (safeHiveUsername(username) !== username) {
         input?.focus();
-        return showNotification("⚠️ Nome de conta Hive inválido.", false);
+        return showNotification("Invalid Hive username.", false);
     }
     if (!window.hive_keychain) {
-        return showNotification("❌ Hive Keychain não detectado!", false);
+        return showNotification("Hive Keychain was not detected. Please install or enable the extension.", false);
     }
     setLoginPending(true);
     try {
@@ -116,16 +116,16 @@ function handleLogin() {
                     localStorage.setItem("hiveUser", username);
                     toggleModal("loginModal", false);
                     updateLoginUI();
-                    showNotification("✅ Login bem-sucedido como @" + username, true);
+                    showNotification("Signed in as @" + username, true);
                     onLoginSuccessCallback(username);
                 } else {
-                    showNotification("❌ Falha no login via Keychain.", false);
+                    showNotification("Keychain sign-in was not approved.", false);
                 }
             }
         );
     } catch {
         setLoginPending(false);
-        showNotification("❌ Não foi possível conectar à Hive Keychain.", false);
+        showNotification("Could not connect to Hive Keychain.", false);
     }
 }
 

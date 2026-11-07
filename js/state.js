@@ -88,19 +88,19 @@ export function updateComposerChannelUI() {
     if (badge) badge.classList.remove("hidden");
     if (nameEl) nameEl.textContent = `#${activeChannel}`;
     if (textarea) {
-      textarea.placeholder = `Escreva algo para o canal #${activeChannel} (Custom JSON: ${activeChannel})...`;
+      textarea.placeholder = `Share something in #${activeChannel}...`;
     }
     if (btnPostSpan) {
-      btnPostSpan.textContent = `Postar em #${activeChannel}`;
+      btnPostSpan.textContent = `Post to #${activeChannel}`;
     }
   } else {
     if (badge) badge.classList.add("hidden");
     if (nameEl) nameEl.textContent = "";
     if (textarea) {
-      textarea.placeholder = "O que você quer compartilhar?";
+      textarea.placeholder = "What's on your mind?";
     }
     if (btnPostSpan) {
-      btnPostSpan.textContent = "Publicar";
+      btnPostSpan.textContent = "Post";
     }
   }
 }
@@ -278,8 +278,8 @@ export function renderFeed(postsToRender) {
             <rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>
           </svg>
         </span>
-        <h2>Nada por aqui ainda</h2>
-        <p>Não encontramos publicações nesta visualização. Experimente outro filtro ou explore os canais.</p>
+        <h2>Nothing here yet</h2>
+        <p>No posts match this view yet. Try another filter or explore the communities.</p>
       </div>
     `;
     const indicator = document.getElementById("loadingIndicator");
@@ -315,8 +315,8 @@ export function renderNextBatch() {
             <rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>
           </svg>
         </span>
-        <h2>Nada por aqui ainda</h2>
-        <p>Não encontramos publicações nesta visualização. Experimente outro filtro ou explore os canais.</p>
+        <h2>Nothing here yet</h2>
+        <p>No posts match this view yet. Try another filter or explore the communities.</p>
       </div>
     `;
   }
@@ -364,7 +364,7 @@ export function updateTags() {
   if (sorted.length === 0) {
     tList.innerHTML = `
       <div style="padding: 1rem 0.5rem; text-align: center; color: var(--text-faint); font-size: 0.8rem;">
-        Nenhuma hashtag em alta nos posts ainda.
+        No trending topics yet.
       </div>
     `;
     return;
@@ -395,7 +395,7 @@ export function updateChannelsUI() {
     if (channels.length === 0) {
       yourList.innerHTML = `
         <div style="padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text-faint);">
-          Nenhum canal criado ainda.
+          No communities discovered yet.
         </div>
       `;
     } else {
@@ -419,7 +419,7 @@ export function updateChannelsUI() {
       const viewAll = document.createElement("a");
       viewAll.href = "#/channels";
       viewAll.className = "view-all-link";
-      viewAll.textContent = "Ver todos os canais →";
+      viewAll.textContent = "View all communities →";
       yourList.appendChild(viewAll);
     }
   }
@@ -431,7 +431,7 @@ export function updateChannelsUI() {
     if (channels.length === 0) {
       sidebarList.innerHTML = `
         <div style="padding: 1rem 0.75rem; text-align: center; font-size: 0.82rem; color: var(--text-faint);">
-          Nenhum canal descoberto na Hive ainda.
+          No communities discovered on Hive yet.
         </div>
       `;
     } else {

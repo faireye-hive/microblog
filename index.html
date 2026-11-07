@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <!-- GitHub Pages cannot set HTTP response headers; enforce CSP via HTML meta. -->
@@ -7,20 +7,21 @@
     <!-- External media should not receive the current page URL in Referrer. -->
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>micro.fair — Conversas na Hive</title>
-    <meta name="description" content="Uma rede social descentralizada na blockchain Hive, com conversas, canais e autenticação via Hive Keychain." />
-    <meta property="og:title" content="micro.fair — Conversas na Hive" />
-    <meta property="og:description" content="Uma rede social descentralizada na blockchain Hive, com conversas, canais e autenticação via Hive Keychain." />
+    <title>micro.fair — The Hive conversation</title>
+    <meta name="description" content="A fresh social experience on the Hive blockchain. Join communities, share posts and connect securely with Hive Keychain." />
+    <meta property="og:title" content="micro.fair — The Hive conversation" />
+    <meta property="og:description" content="A fresh social experience on the Hive blockchain. Join communities, share posts and connect securely with Hive Keychain." />
     <!-- Google Fonts CSS is allowed by style-src; cross-origin preconnect is omitted. -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css" />
     <link rel="stylesheet" href="./css/modern.css" />
     <link rel="stylesheet" href="./css/refined.css" />
     <link rel="stylesheet" href="./css/community.css" />
+    <link rel="stylesheet" href="./css/editorial.css" />
   </head>
   
   <body>
-    <a class="skip-link" href="#mainArea">Pular para o conteúdo</a>
+    <a class="skip-link" href="#mainArea">Skip to content</a>
     <!-- Top Header Navbar -->
     <div id="top-nav-root"></div>
 
@@ -36,7 +37,7 @@
         <div id="feed-filters-root"></div>
         <section id="feed" class="feed-container"></section>
         <div id="loadingIndicator" class="loading-state hidden">
-          Carregando mais posts...
+          Loading more posts...
         </div>
       </main>
 
@@ -46,26 +47,26 @@
 
 
     <!-- Mobile navigation: routes are shared with the desktop sidebar. -->
-    <nav id="mobileBottomNav" class="mobile-bottom-nav" aria-label="Navegação principal para celular">
-      <a class="mobile-nav-link active" data-mobile-section="home" href="#/" aria-label="Início" aria-current="page">
+    <nav id="mobileBottomNav" class="mobile-bottom-nav" aria-label="Mobile navigation">
+      <a class="mobile-nav-link active" data-mobile-section="home" href="#/" aria-label="Home" aria-current="page">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
-        <span>Início</span>
+        <span>Home</span>
       </a>
-      <a class="mobile-nav-link" data-mobile-section="explore" href="#/trending" aria-label="Explorar">
+      <a class="mobile-nav-link" data-mobile-section="explore" href="#/trending" aria-label="Explore">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.4 8.6-2.6 4.2-4.2 2.6 2.6-4.2z"/></svg>
-        <span>Explorar</span>
+        <span>Explore</span>
       </a>
-      <a class="mobile-nav-link" data-mobile-section="channels" href="#/channels" aria-label="Canais">
+      <a class="mobile-nav-link" data-mobile-section="channels" href="#/channels" aria-label="Communities">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2zM17 5a3 3 0 0 1 0 6m1 3a5 5 0 0 1 3 5v1"/></svg>
-        <span>Canais</span>
+        <span>Communities</span>
       </a>
-      <a class="mobile-nav-link" data-mobile-section="bookmarks" href="#/bookmarks" aria-label="Salvos">
+      <a class="mobile-nav-link" data-mobile-section="bookmarks" href="#/bookmarks" aria-label="Bookmarks">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4z"/></svg>
-        <span>Salvos</span>
+        <span>Bookmarks</span>
       </a>
-      <a class="mobile-nav-link" data-mobile-section="profile" href="#/profile" aria-label="Perfil">
+      <a class="mobile-nav-link" data-mobile-section="profile" href="#/profile" aria-label="Profile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-        <span>Perfil</span>
+        <span>Profile</span>
       </a>
     </nav>
 

@@ -91,7 +91,7 @@ export function showSinglePost(postId) {
   }
 
   if (!post) {
-    showNotification("❌ Post não encontrado ou não carregado!", false);
+    showNotification("Post not found or not loaded yet.", false);
     window.location.hash = "";
     return;
   }
@@ -108,7 +108,7 @@ export function showSinglePost(postId) {
     repliesContainer.className = "composer-card";
     repliesContainer.style.marginTop = "1rem";
     repliesContainer.innerHTML = `
-      <h4 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem;">Respostas</h4>
+      <h4 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem;">Replies</h4>
       ${repliesHtml}
     `;
     feed.appendChild(repliesContainer);
@@ -117,11 +117,11 @@ export function showSinglePost(postId) {
   // Atualiza UI
   const feedHeaderBar = document.getElementById("feedHeaderBar");
   if (feedHeaderBar) feedHeaderBar.classList.remove("hidden");
-  document.getElementById("pageTitle").textContent = "Discussão (Thread)";
+  document.getElementById("pageTitle").textContent = "Conversation";
   const btnBack = document.getElementById("btnBack");
   if (btnBack) {
     btnBack.classList.remove("hidden");
-    btnBack.textContent = "← Voltar";
+    btnBack.textContent = "← Back";
   }
   
   document.getElementById("newPostSection")?.classList.add("hidden");
@@ -156,7 +156,7 @@ export function filterByTag(tag, pushHistory = true) {
   const btnBack = document.getElementById("btnBack");
   if (btnBack) {
     btnBack.classList.remove("hidden");
-    btnBack.textContent = "← Voltar";
+    btnBack.textContent = "← Back";
   }
   document.getElementById("newPostSection")?.classList.remove("hidden");
 
@@ -169,7 +169,7 @@ export function filterByTag(tag, pushHistory = true) {
 export async function filterByChannel(channelId, pushHistory = false) {
   const cleanId = parseChannelCustomId(channelId);
   if (!cleanId) {
-    showNotification("Canal inválido: informe um ID Custom JSON válido.", false);
+    showNotification("Invalid community ID. Enter a valid Custom JSON ID.", false);
     return;
   }
   if (pushHistory) {
@@ -181,7 +181,7 @@ export async function filterByChannel(channelId, pushHistory = false) {
   const channelObj = channels.find(c => c.id === cleanId) || {
     id: cleanId,
     name: `#${cleanId}`,
-    description: `Canal #${cleanId} registrado na Hive`
+    description: `Community #${cleanId} registered on Hive`
   };
 
   const feedHeaderBar = document.getElementById("feedHeaderBar");
@@ -201,7 +201,7 @@ export async function filterByChannel(channelId, pushHistory = false) {
   const btnBack = document.getElementById("btnBack");
   if (btnBack) {
     btnBack.classList.remove("hidden");
-    btnBack.textContent = "← Feed Principal (micro.fair)";
+    btnBack.textContent = "← Main feed";
   }
 
   // Mantém compositor visível para postar no canal
@@ -220,8 +220,8 @@ export async function filterByChannel(channelId, pushHistory = false) {
     feed.innerHTML = `
       <div class="community-empty-state community-loading" role="status">
         <span class="community-empty-icon" aria-hidden="true">#</span>
-        <h2>Carregando #${escapeHtml(cleanId)}</h2>
-        <p>Buscando as publicações deste canal na blockchain Hive.</p>
+        <h2>Loading #${escapeHtml(cleanId)}</h2>
+        <p>Fetching this community's posts from Hive.</p>
       </div>
     `;
   } else {
@@ -243,9 +243,9 @@ export async function filterByChannel(channelId, pushHistory = false) {
       feed.innerHTML = `
         <div class="community-empty-state">
           <span class="community-empty-icon" aria-hidden="true">#</span>
-          <h2>Comece uma conversa em #${escapeHtml(cleanId)}</h2>
-          <p>Ainda não existem publicações neste canal. Você pode fazer a primeira!</p>
-          <button id="btnFocusChannelComposer" type="button" class="btn-post">Criar primeira publicação</button>
+          <h2>Start a conversation in #${escapeHtml(cleanId)}</h2>
+          <p>No one has posted here yet. Be the first to start a conversation.</p>
+          <button id="btnFocusChannelComposer" type="button" class="btn-post">Create the first post</button>
         </div>
       `;
     } else {
@@ -318,7 +318,7 @@ export function setupChannelsPageEvents() {
       toggleJoinChannel(ch);
       const isJoined = joinedChannels.has(ch);
       btn.classList.toggle("joined", isJoined);
-      btn.textContent = isJoined ? "Participando" : "Participar";
+      btn.textContent = isJoined ? "Joined" : "Join";
     });
   });
 
@@ -410,7 +410,7 @@ export async function handleRoute() {
       const btnBack = document.getElementById("btnBack");
       if (btnBack) {
         btnBack.classList.toggle("hidden", newPage === "feed");
-        btnBack.textContent = "← Voltar";
+        btnBack.textContent = "← Back";
       }
     }
   }
@@ -430,35 +430,31 @@ export async function handleRoute() {
     setupChannelsPageEvents();
   } else if (newPage === "profile") {
     feed.innerHTML = buildProfilePage(); 
-  } else if (newPage === "notifications") {
+  } else if (newPage === "notifications" || newPage === "messages") {
+    // These are future capabilities, not fabricated live blockchain events.
+    const isNotifications = newPage === "notifications";
     feed.innerHTML = `
-      <div class="composer-card">
-        <h3 class="sidebar-card-title" style="margin-bottom: 1rem;">Notificações</h3>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
-            <div style="font-size: 1.25rem;">🐝</div>
-            <div>
-              <p style="margin: 0; font-weight: 600;">Bem-vindo ao micro.feed!</p>
-              <span style="font-size: 0.75rem; color: var(--text-faint);">Explore os posts descentralizados na blockchain Hive.</span>
-            </div>
-          </div>
-          <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
-            <div style="font-size: 1.25rem;">⭐</div>
-            <div>
-              <p style="margin: 0; font-weight: 600;">Nova tendência na rede Hive</p>
-              <span style="font-size: 0.75rem; color: var(--text-faint);">A tag #crypto e #linux estão em alta hoje.</span>
-            </div>
-          </div>
+      <section class="feature-empty-state" aria-labelledby="featureEmptyTitle">
+        <div class="feature-empty-symbol" aria-hidden="true">
+          ${isNotifications ? `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M10 21h4"/>
+            </svg>` : `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="3"/>
+              <path d="m4 7 8 6 8-6"/>
+            </svg>`}
         </div>
-      </div>
-    `;
-  } else if (newPage === "messages") {
-    feed.innerHTML = `
-      <div class="composer-card" style="padding: 2.5rem; text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✉️</div>
-        <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 0.25rem;">Mensagens Privadas Hive</h3>
-        <p style="color: var(--text-muted); font-size: 0.85rem;">Em breve: Mensagens criptografadas P2P com memo keys Hive.</p>
-      </div>
+        <span class="feature-empty-eyebrow">COMING SOON</span>
+        <h2 id="featureEmptyTitle">${isNotifications ? "Notifications" : "Private messages"}</h2>
+        <p>${isNotifications
+          ? "We're building a clearer way to follow your activity on Hive. Notifications are not available yet."
+          : "Secure Hive messages are on our roadmap. Messaging is not available yet."}</p>
+        <a class="feature-empty-link" href="#/">Back to the feed <span aria-hidden="true">→</span></a>
+      </section>
     `;
   } else {
     renderFeed(finalPosts); 
@@ -476,36 +472,36 @@ function getRouteData(path) {
   });
 
   const route = {
-    title: "Para Você (For You)",
+    title: "For you",
     postsToRender: mainFeedPosts,
     newPage: "feed"
   };
 
   if (path === "/followed") {
-    route.title = "Posts de Quem Você Segue";
+    route.title = "Following";
     route.postsToRender = loggedInUser 
       ? mainFeedPosts.filter(p => followedUsers.has(p.required_posting_auths?.[0]))
       : mainFeedPosts;
     route.newPage = "followed";
   } else if (path === "/profile") {
-    route.title = "Meu Perfil";
+    route.title = "My profile";
     route.newPage = "profile";
   } else if (path === "/bookmarks") {
-    route.title = "Meus Favoritos (Bookmarks)";
+    route.title = "Bookmarks";
     route.postsToRender = allPosts.filter(p => bookmarkedPostIds.has(p.id));
     route.newPage = "bookmarks";
   } else if (path === "/notifications") {
-    route.title = "Notificações";
+    route.title = "Notifications";
     route.newPage = "notifications";
   } else if (path === "/messages") {
-    route.title = "Mensagens";
+    route.title = "Messages";
     route.newPage = "messages";
   } else if (path === "/channels") {
-    route.title = "Canais & Comunidades";
+    route.title = "Communities";
     route.postsToRender = mainFeedPosts;
     route.newPage = "channels";
   } else if (path === "/my-votes" && loggedInUser) {
-    route.title = "Meus Votos";
+    route.title = "My votes";
     route.newPage = "my-votes";
     const votedPostIds = new Set();
     for (const postIdStr in voteCounts) {
@@ -516,7 +512,7 @@ function getRouteData(path) {
     }
     route.postsToRender = allPosts.filter(p => votedPostIds.has(String(p.id)));   
   } else if (path === "/my-comments" && loggedInUser) {
-    route.title = "Meus Comentários";
+    route.title = "My comments";
     route.newPage = "my-comments";
     route.postsToRender = allPosts.filter(p => {
       const isMyPost = p.required_posting_auths?.[0] === loggedInUser;
@@ -524,7 +520,7 @@ function getRouteData(path) {
       return isMyPost && isReply;
     });
   } else if (path === "/my-replies" && loggedInUser) {
-    route.title = "Respostas aos Meus Posts";
+    route.title = "Replies to my posts";
     route.newPage = "my-replies";
     const myPostIds = new Set(
       allPosts
@@ -537,15 +533,15 @@ function getRouteData(path) {
       return !isMyPost && replyTo && myPostIds.has(Number(replyTo));
     });
   } else if (path === "/trending" || path === "/explore") {
-    route.title = "Explorar / Trending";
+    route.title = "Explore";
     route.postsToRender = rankPostsByVotes(mainFeedPosts);
     route.newPage = "trending";
   } else if (path === "/active") {
-    route.title = "Em Alta / Comentados";
+    route.title = "Most discussed";
     route.postsToRender = rankPostsByComments(mainFeedPosts);
     route.newPage = "active";
   } else if (path === "/muted") {
-    route.title = "Mural (Posts Mutados)";
+    route.title = "Muted posts";
     route.postsToRender = allPosts.filter(p => mutedPostIds.has(p.id));
     route.newPage = "muted";
   }
