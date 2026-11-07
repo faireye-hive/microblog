@@ -3,6 +3,7 @@ import path from 'path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'url';
 import { cspHttpHeader } from './js/security/csp-policy.js';
+import { createImageProxyHandler } from './js/server/image-proxy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,10 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Media is retrieved by our backend without exposing the viewer's IP to
+// arbitrary third-party image hosts. Keep this before the static file server.
+app.get('/api/image', createImageProxyHandler());
 
 // Serve static assets from project root.
 app.use(express.static(__dirname));
