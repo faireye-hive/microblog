@@ -7,6 +7,8 @@ export function getActiveMobileSection(hash = "#/") {
   switch (segment) {
     case "trending":
     case "explore":
+    case "active":
+    case "search":
       return "explore";
     case "channels":
     case "channel":
