@@ -46,10 +46,10 @@ export function updateLoginUI() {
             if (link) link.classList.remove("hidden");
         });
         if (navUserAvatar) {
-            navUserAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'">`;
+            navUserAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" data-avatar-fallback="hive">`;
         }
         if (composerAvatar) {
-            composerAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'">`;
+            composerAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" data-avatar-fallback="hive">`;
         }
     } else {
         if (label) label.textContent = "Login";
