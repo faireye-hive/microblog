@@ -116,7 +116,7 @@ export function buildProtocolReferencePage() {
             Generated directly from the app's v${HIVE_PROTOCOL_VERSION} registry
             and production payload builders.</p>
           <div class="protocol-hero-pills">
-            <span>${groups.length} namespaces</span>
+            <span>${groups.length} operation families</span>
             <span>${groups.reduce((total,group)=>total+group.operations.length,0)} actions</span>
             <span>Posting authority</span>
           </div>
