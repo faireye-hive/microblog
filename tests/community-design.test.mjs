@@ -121,7 +121,8 @@ test("all auxiliary modal controls and labels survive the redesign", () => {
 
 test("filter and channel empty state use the same design vocabulary", () => {
   assert.match(stateJs,/class="community-empty-state"/);
-  assert.match(routingJs,/class="community-empty-state community-loading"/);
+  // Channel loading now uses the same accessible feed skeleton as initial sync.
+  assert.match(routingJs,/showFeedSkeleton\(feed\)/);
   assert.match(routingJs,/id="btnFocusChannelComposer"/);
   assert.match(routingJs,/isJoined \? "Joined" : "Join"/);
   assert.match(routingJs, /\["feed", "profile", "channels"\]\.includes\(newPage\)/);
