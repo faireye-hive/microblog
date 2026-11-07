@@ -32,21 +32,24 @@ test("channel registry preserves distinct hive.micro and hivemicro IDs", () => {
     {
       timestamp: "2026-10-01T00:00:00",
       required_posting_auths: ["user1"],
-      json: JSON.stringify({ id: "hive.micro", name: "Hive Micro Original" }),
+      custom_id:"hiveline.communities",
+      json: JSON.stringify({ app:"hiveline",v:2,id: "hive.micro", name: "Hive Micro Original" }),
     },
     {
       timestamp: "2026-10-02T00:00:00",
       required_posting_auths: ["user2"],
-      json: JSON.stringify({ id: "hivemicro", name: "Different channel" }),
+      custom_id:"hiveline.communities",
+      json: JSON.stringify({ app:"hiveline",v:2,id: "hivemicro", name: "Different channel" }),
     },
     {
       timestamp: "2026-10-03T00:00:00",
       required_posting_auths: ["user1"],
-      json: JSON.stringify({ channel_id: "hive.micro", name: "Hive Micro Updated" }),
+      custom_id:"hiveline.communities",
+      json: JSON.stringify({ app:"hiveline",v:2,channel_id: "hive.micro", name: "Hive Micro Updated" }),
     },
     {
       timestamp: "2026-10-04T00:00:00",
-      json: JSON.stringify({ id: "hive/micro", name: "Invalid namespace" }),
+      json: JSON.stringify({ app:"hiveline",v:2,id: "hive/micro", name: "Invalid namespace" }),
     },
   ];
   const initialOrder = [...operations];
@@ -64,13 +67,13 @@ test("channel API and routing reuse the canonical identifier helper", () => {
   const routes = readFileSync(new URL("../js/routing.js", import.meta.url), "utf8");
   const html = readFileSync(new URL("../js/templates.js", import.meta.url), "utf8");
 
-  assert.match(api, /parseChannelCustomId\(channelId\)/);
-  assert.match(api, /parseChannelCustomId\(targetChannel \|\| APP_ID\)/);
-  assert.match(api, /buildHafsqlCustomJsonUrl\(cleanId/);
+  assert.match(api, /normalizeHiveLineChannel\(channelId\)/);
+  assert.match(api, /resolveCustomJsonId\(replyTo \? "reply" : "post"/);
+  assert.match(api, /buildHafsqlCustomJsonUrl\(channelCustomId/);
   assert.match(transport, /encodeURIComponent\(id\)/);
-  assert.match(routes, /parseChannelCustomId\(channelId\)/);
+  assert.match(routes, /normalizeHiveLineChannel\(channelId\)/);
   assert.match(routes, /\[a-z0-9\._-\]\+/);
   // A channel ID is user-defined; the UI must not depend on one example name.
   assert.match(html, /id="newChannelId"/);
-  assert.match(html, /maxlength="32"/);
+  assert.match(html, /maxlength="21"/);
 });

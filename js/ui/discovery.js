@@ -115,7 +115,7 @@ export function buildSearchOverview({results}={}) {
       <div class="discovery-search-hero">
         <span class="discovery-eyebrow">SEARCH / LOADED HIVE CONTENT</span>
         <h1 id="searchPageTitle">Search the <em>conversation.</em></h1>
-        <p>Results from posts and communities currently loaded in Micro.fair — not a full Hive blockchain search.</p>
+        <p>Results from posts and communities currently loaded in HiveLine — not a full Hive blockchain search.</p>
         <div class="discovery-search-bar">
           ${magnifier}
           <input type="search" id="searchPageInput" aria-label="Search posts, people and communities"

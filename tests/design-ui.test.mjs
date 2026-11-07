@@ -92,9 +92,9 @@ test("first line of a multi-line post is not repeated as body text",async()=>{
     createElement(tag){return {tagName:tag.toUpperCase(),setAttribute(){},innerHTML:"",className:""};}
   };
   const { buildPostCard }=await import("../js/render.js");
-  const post={id:101,custom_id:"micro.fair",required_posting_auths:["faireye"],
+  const post={id:101,custom_id:"hiveline.posts",required_posting_auths:["faireye"],
     timestamp:"2026-11-07T00:00:00Z",
-    json:JSON.stringify({app:"micro.fair",type:"post",content:"Simple title\nThe post body with further details."})};
+    json:JSON.stringify({app:"hiveline",v:2,type:"post",channel:"hiveline.posts",content:"Simple title\nThe post body with further details."})};
   const markup=buildPostCard(post,[post]).innerHTML;
   assert.equal((markup.match(/Simple title/g)||[]).length,1);
   assert.match(markup,/<h4 class="post-headline">Simple title<\/h4>/);

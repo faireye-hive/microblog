@@ -1,6 +1,6 @@
 /*
  * Public account pages are a read-only view of Hive's public profile metadata
- * and Micro.fair posts already cached in the browser.
+ * and HiveLine posts already cached in the browser.
  *
  * Never display synthetic follower counts, hidden private data, or a claim
  * that the entire Hive post history has been indexed.
@@ -54,7 +54,7 @@ export function buildPublicProfilePage({
     <section class="public-profile-invalid" role="status">
       <h1>Invalid Hive account</h1>
       <p>This profile URL does not contain a valid account name.</p>
-      <a href="#/explore">Explore Micro.fair →</a>
+      <a href="#/explore">Explore HiveLine →</a>
     </section>`;
 
   const profile = account && account.username === user ? account : null;
@@ -121,7 +121,7 @@ export function buildPublicProfilePage({
           ${isBlocked ? `<p class="public-profile-blocked-note" role="status">
             You blocked @${escapeHtml(user)}. Their posts are hidden until you unblock them.</p>` : ""}
         </div>
-        <div class="public-profile-stats" aria-label="Activity in locally loaded Micro.fair content">
+        <div class="public-profile-stats" aria-label="Activity in locally loaded HiveLine content">
           <div class="public-profile-stat"><strong>${postsCount}</strong><span>Posts loaded</span></div>
           <span class="public-profile-stats-divider" aria-hidden="true"></span>
           <div class="public-profile-stat"><strong>${repliesCount}</strong><span>Replies loaded</span></div>
@@ -143,7 +143,7 @@ export function buildPublicProfilePage({
       </nav>
       ${isBlocked ? "" : section==="posts"&&postsCount===0 ?
         `<div class="public-profile-empty"><strong>No posts loaded for this account.</strong>
-          <p>The app shows only available Micro.fair posts, including communities you've visited.</p></div>` :
+          <p>The app shows only available HiveLine posts, including communities you've visited.</p></div>` :
         section==="replies"&&repliesCount===0 ?
         `<div class="public-profile-empty"><strong>No replies loaded for this account.</strong>
           <p>Replies will appear here when they're available in your loaded data.</p></div>` : ""}

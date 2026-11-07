@@ -63,7 +63,7 @@ test("vote namespace/type mismatch and malicious prototype keys return errors, n
     {...vote.payload,type:"__proto__"},
     {...vote.payload,type:"toString"},
     {...vote.payload,app:"different"},
-    {...vote.payload,v:2},
+    {...vote.payload,v:1},
     {...vote.payload,content_id:"12345"},
     {...vote.payload,content_id:0},
     {...vote.payload,content_id:1.2}
@@ -145,12 +145,13 @@ test("v2 namespace planning is disabled by default and cannot alter legacy mappi
   assert.equal(plan.enabled,false);
   assert.deepEqual(plan.ids,{
     posts:"hivora.posts",votes:"hivora.votes",moderation:"hivora.moderation",
-    communities:"hivora.communities",relationships:"hivora.relationships"
+    communities:"hivora.communities",relationships:"hivora.relationships",
+    communityPosts:"hivora.c.{channel}"
   });
-  assert.equal(plan.legacy.posts,HIVE_CUSTOM_JSON_IDS.POSTS);
-  assert.equal(plan.legacy.votes,HIVE_CUSTOM_JSON_IDS.VOTES);
+  assert.equal(plan.legacy.posts,"micro.fair");
+  assert.equal(plan.legacy.votes,"micro.fair.interation");
   assert.equal(plan.legacy.communityPosts,"{channel}");
-  assert.ok(plan.decisionsRequired.some(x=>x.includes("dual-read")));
+  assert.ok(plan.decisionsRequired.some(x=>x.includes("historic data")));
   assert.equal(proposeHiveV2Namespaces("hive").ids,null);
   assert.ok(proposeHiveV2Namespaces("Bad Brand!!").errors.length>0);
   assert.ok(proposeHiveV2Namespaces("a".repeat(19)).errors.length>0);
@@ -166,7 +167,7 @@ test("page includes read-only validator and a v2 preflight UI without signing to
     assert.ok(html.includes('id="'+id+'"'),id);
     assert.ok(page.includes('id="'+id+'"'),id);
   }
-  assert.match(page,/PROPOSAL ONLY/);
+  assert.match(page,/ACTIVE · V2/);
   assert.match(page,/No transactions sent/);
   assert.doesNotMatch(html,/requestCustomJson\(|onclick=|onerror=/);
 });

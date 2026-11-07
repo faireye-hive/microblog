@@ -28,7 +28,7 @@ export function buildProtocolValidatorSection() {
     <div class="protocol-validator-grid">
       <label>Custom JSON ID
         <input id="protocolValidatorId" type="text" maxlength="64" spellcheck="false"
-               autocomplete="off" placeholder="micro.fair.interation">
+               autocomplete="off" placeholder="hiveline.votes">
       </label>
       <label>Signing Hive account
         <input id="protocolValidatorSigner" type="text" maxlength="24" spellcheck="false"
@@ -36,7 +36,7 @@ export function buildProtocolValidatorSection() {
       </label>
       <label class="protocol-validator-wide">JSON payload
         <textarea id="protocolValidatorJson" spellcheck="false" rows="7"
-                  placeholder='{"app":"micro.fair","v":1,"type":"upvote","content_id":12345}'></textarea>
+                  placeholder='{"app":"hiveline","v":2,"type":"upvote","content_id":12345}'></textarea>
       </label>
     </div>
     <div class="protocol-validator-actions">
@@ -51,15 +51,15 @@ export function buildProtocolValidatorSection() {
   </section>
 
   <details class="protocol-v2-workbench">
-    <summary>Plan the next brand &amp; protocol v2 <span class="protocol-draft-badge">PROPOSAL ONLY</span></summary>
+    <summary>HiveLine v2 identity &amp; future namespace experiments <span class="protocol-draft-badge">ACTIVE · V2</span></summary>
     <div class="protocol-v2-body">
       <p>Enter a possible new application ID to preview clearer namespaces.
-         This is a design exercise. No v2 writing, rebranding or blockchain
-         migration has been enabled.</p>
+         HiveLine v2 IDs are now active. Other names are proposals; no further blockchain
+         migration is enabled.</p>
       <label>Proposed app ID
         <input id="protocolV2BrandInput" type="text" maxlength="24"
                autocapitalize="off" autocomplete="off" spellcheck="false"
-               placeholder="example: yourbrand">
+               placeholder="e.g. hiveline" value="hiveline">
       </label>
       <button type="button" id="protocolV2Preview" class="protocol-copy-btn">Preview v2 namespaces</button>
       <pre id="protocolV2Results" class="protocol-v2-output" role="status" aria-live="polite">
@@ -73,7 +73,7 @@ Choose a name to preview.</pre>
 
 function formatValidation(report) {
   const title=report.valid
-    ? report.recognized?"✓ Registered Micro.fair v1 operation":"⚠ Unregistered custom_json operation"
+    ? report.recognized?"✓ Registered HiveLine v2 operation":"⚠ Unregistered custom_json operation"
     : "✕ Operation requires corrections";
   const lines=[title];
   if(report.actionKey)lines.push("Action: "+report.actionKey);

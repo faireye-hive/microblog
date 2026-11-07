@@ -1,152 +1,167 @@
-# Micro.fair Hive Custom JSON Protocol — v1
+# HiveLine v2 — Canonical Hive Custom JSON protocol
 
-This document describes **existing on-chain messages** as implemented in Micro.fair. It is not a proposal to rename the protocol. The live, searchable version is available in the app at **[`#/protocol`](../index.html#/protocol)** (More → Protocol Reference).
+**Status:** active test protocol. **App identity:** `hiveline`. **Payload version:** `2`.
 
-## Where the truth lives
+HiveLine is a fresh-start successor to the Micro.fair v1 prototype. All v1
+operations remain permanently on the Hive blockchain, but the HiveLine app
+**does not import, render or vote on old Micro.fair posts**. There is no deletion
+or on-chain rewrite. New namespace IDs and separate browser caches ensure the
+initial HiveLine feed and community directory start empty until v2 test records
+are created.
 
-| Layer | Source | Purpose |
+## Actual v2 outer IDs
+
+| Operation | Hive `custom_json.id` | JSON `type` |
 | --- | --- | --- |
-| Registry | `js/hive/registry.js` | Canonical IDs, operation names, namespace resolution and field definitions |
-| Payload builders | `js/hive/protocol.js` | Construct the serialized v1 JSON objects (pure functions) |
-| Executable examples | `js/hive/examples.js` | Generate documentation samples using the **same production builders** |
-| Config compatibility | `js/config.js` | Re-exports historical constants and HAFSQL read URLs |
-| Keychain transport | `js/hive/keychain.js` | Signed `custom_json` operations, **Posting** authority |
-| On-chain writes | `js/api.js` | Select operation IDs via `resolveCustomJsonId()` |
-| On-chain reads | `js/api.js`, `js/data/sync.js` | HAFSQL queries and cache handling |
-| Reference UI | `js/ui/protocol-reference.js` | Read-only documentation, search and copy support |
+| Main post | `hiveline.posts` | `post` |
+| Main reply | `hiveline.posts` | `reply` |
+| Community post | `hiveline.c.{channel}` | `post` |
+| Community reply | `hiveline.c.{channel}` | `reply` |
+| Positive/negative vote | `hiveline.votes` | `upvote` / `downvote` |
+| Admin mute/unmute | `hiveline.moderation` | `mute` / `unmute` |
+| Follow/unfollow | `hiveline.relationships` | `follow` / `unfollow` |
+| Block/unblock | `hiveline.relationships` | `block` / `unblock` |
+| Register a community | `hiveline.communities` | `create_channel` |
 
-**Do not change any historical IDs without a designed migration with dual read compatibility.** In particular, `micro.fair.interation` and `micro.fair.adpmuted` have their original spelling.
+The **inner** `app: "hiveline"` is not the outer operation ID. A reply uses
+the same outer ID as the parent and has `reply_to` set to its positive numeric
+HAFSQL operation ID. A new top-level post has `reply_to: null`.
 
-## ID inventory
+Communities are namespaced under `hiveline.c.`. Their slug is limited to
+**21 characters** so that the complete `custom_json.id` fits 32 characters.
+For example, `dev` becomes `hiveline.c.dev`; a v1 custom ID `dev`
+continues to exist independently on-chain but is never queried by HiveLine.
 
-| What | Exact `custom_json.id` | JSON `type` | Notes |
-| --- | --- | --- | --- |
-| Main post | `micro.fair` | `post` | A top-level post |
-| Main reply | `micro.fair` | `reply` | Same ID as its parent post |
-| Community post | `{channel}`, e.g. `hive.micro` | `post` | Posts go directly to the community ID, **not** `micro.fair.{channel}` |
-| Community reply | `{channel}` | `reply` | Same namespace as the parent |
-| Upvote | `micro.fair.interation` | `upvote` | Historical spelling |
-| Downvote | `micro.fair.interation` | `downvote` | Latest vote per account/content ID is used |
-| Admin mute | `micro.fair.adpmuted` | `mute` | Only the configured administrator's signature is accepted |
-| Admin unmute | `micro.fair.adpmuted` | `unmute` | Reverses mute |
-| Follow | `micro.fair.{user}.follow` | `follow` | `{user}` is the **signer**, not the target |
-| Unfollow | `micro.fair.{user}.follow` | `unfollow` | Reverses follow |
-| Block | `micro.fair.{user}.block` | `block` | `{user}` is the signer |
-| Unblock | `micro.fair.{user}.block` | `unblock` | Reverses block |
-| Create community | `micro.fair.channels` | `create_channel` | Registry metadata, not community post content |
+The same `hiveline.relationships` namespace contains both follow and
+block operations. To calculate a user's current state, inspect the actual
+`required_posting_auths` signer, type and `target_user`; never use the ID
+string as proof of who performed an action.
 
-There are **7 namespace families** (main posts, community posts, votes, moderation, follow, block, community registry) and **13 action variants**. These are the operations currently sent by the app; they are not a complete catalog of all operations possible on Hive.
+## Real payload examples
 
-## What the transaction looks like
-
-A Hive operation contains `required_posting_auths` (the signing account), the outer `id`, and a `json` **string** containing the serialized payload. The outer ID and the inner `app` are different concepts.
-
-Example main post sent from `@alice`:
+### Publish to main feed — ID `hiveline.posts`
 
 ```json
 {
-  "required_auths": [],
-  "required_posting_auths": ["alice"],
-  "id": "micro.fair",
-  "json": "{\"app\":\"micro.fair\",\"v\":1,\"type\":\"post\",\"channel\":\"micro.fair\",\"content\":\"Hello Hive!\",\"reply_to\":null,\"mentions\":[],\"tags\":[]}"
-}
-```
-
-The **inner payload** before `JSON.stringify`:
-
-```json
-{
-  "app": "micro.fair",
-  "v": 1,
+  "app": "hiveline",
+  "v": 2,
   "type": "post",
-  "channel": "micro.fair",
-  "content": "Hello Hive!",
+  "channel": "hiveline.posts",
+  "content": "Hello HiveLine! #hive",
   "reply_to": null,
   "mentions": [],
-  "tags": []
+  "tags": ["hive"]
 }
 ```
 
-A **reply** has `type: "reply"`, `reply_to: <parent HAFSQL operation id>` and the same outer ID as its parent (or the community's ID). `content_id` in votes and moderation also refers to a custom_json operation ID assigned to the post by HAFSQL. It is **not** a Hive blog `author/permlink` string.
-
-A vote payload example (outer ID `micro.fair.interation`):
-
-```json
-{"app":"micro.fair","v":1,"type":"upvote","content_id":12345}
-```
-
-The number `12345` is **illustrative only**, not a real Hive post.
-
-A follow example (outer ID `micro.fair.alice.follow`):
-
-```json
-{"app":"micro.fair","v":1,"type":"follow","target_user":"bob"}
-```
-
-A moderator mute example (outer ID `micro.fair.adpmuted`):
-
-```json
-{"app":"micro.fair","v":1,"type":"mute","cause":"Spam","content_id":12345}
-```
-
-Community creation (outer ID `micro.fair.channels`):
+### Reply in a community — ID `hiveline.c.dev`
 
 ```json
 {
-  "app": "micro.fair",
-  "v": 1,
+  "app": "hiveline",
+  "v": 2,
+  "type": "reply",
+  "channel": "hiveline.c.dev",
+  "content": "Thanks for sharing!",
+  "reply_to": 12345,
+  "mentions": [],
+  "tags": ["dev"]
+}
+```
+
+### Vote — ID `hiveline.votes`
+
+```json
+{"app":"hiveline","v":2,"type":"upvote","content_id":12345}
+```
+
+### Follow — ID `hiveline.relationships`
+
+```json
+{"app":"hiveline","v":2,"type":"follow","target_user":"bob"}
+```
+
+### Mute — ID `hiveline.moderation`
+
+```json
+{"app":"hiveline","v":2,"type":"mute","cause":"Spam","content_id":12345}
+```
+
+Only operations signed by the configured administrator are accepted for
+moderation. `12345` is an illustrative HAFSQL ID, **not a real record**.
+The on-chain `json` property is a **serialized JSON string**, not an
+embedded object.
+
+### Register a community — ID `hiveline.communities`
+
+```json
+{
+  "app": "hiveline",
+  "v": 2,
   "type": "create_channel",
   "action": "create_channel",
-  "id": "hive.micro",
-  "name": "Hive Micro",
-  "description": "A community about Hive",
+  "id": "dev",
+  "name": "Developers",
+  "description": "Build in public",
   "created_at": "2026-11-07T12:00:00.000Z"
 }
 ```
 
-The `action` field in channel creation is historical and intentionally duplicated with `type`.
+## Blank-slate behavior and cache isolation
 
-## Important invariants
+HiveLine loads main posts **only** from `hiveline.posts`, community posts
+**only** from `hiveline.c.<slug>`, votes only from `hiveline.votes`,
+moderation only from `hiveline.moderation`, communities only from
+`hiveline.communities` and relationships only from
+`hiveline.relationships`.
 
-1. **Signer verification matters.** `custom_json.id` by itself does not prove authorization. Moderation reads require the signed administrator account. Follow/block reads are scoped to the relevant signer.
-2. **IDs are not interchangeable.** `hive.micro` and `hivemicro` are different namespaces. The channel ID validation currently allows up to 32 characters and preserves dots, hyphens and underscores.
-3. **The internal payload version stays `v:1`.** A future version must introduce a documented compatibility strategy. Changing `v` alone does not migrate old HAFSQL operations.
-4. **Account-scoped namespaces are historical templates.** The resulting ID length can vary by account name; do not silently truncate or hash usernames, since doing so changes where data is stored. Any network-length limitation must be addressed with explicit compatibility planning.
-5. **UI limits are not blockchain protocol limits.** The current composer limits post content to 2,048 characters. That client-side rule does not imply every Hive `custom_json` must follow that limit.
-6. **Custom JSON modal is an advanced, general-purpose tool.** Arbitrary IDs and payloads submitted there are not automatically recognized as Micro.fair operations.
-7. **Only approved payloads should be broadcast.** Application writes use constructors in `js/hive/protocol.js` and resolve IDs using `js/hive/registry.js`.
+Every accepted post also needs a JSON object with `app: "hiveline"`,
+`v: 2`, a `post` or `reply` type, and a `channel` matching the outer ID.
+This guard is applied to network replies **and caches**.
 
-## HAFSQL read URLs
+Browser storage is segregated via `hiveline-v2-posts` IndexedDB,
+`hivelineV2...` localStorage cache keys,
+`hiveline_bookmarks_v2` and `hiveline_joined_channels_v2`.
+Legacy cache values are not imported or deleted. Previously saved test posts,
+votes, blocks, follows, joined communities and bookmarks are not visible.
 
-Reads currently use:
+## Historical v1 (reference only — **not read** by HiveLine)
 
-```text
-https://rpc.mahdiyari.info/hafsql/operations/custom_json/<id>?limit=1000
-```
+| v1 category | Legacy ID |
+| --- | --- |
+| Main posts and replies | `micro.fair` |
+| Votes | `micro.fair.interation` |
+| Admin moderation | `micro.fair.adpmuted` |
+| Community registry | `micro.fair.channels` |
+| Following | `micro.fair.{user}.follow` |
+| Blocking | `micro.fair.{user}.block` |
+| Community posts | original bare channel IDs, e.g. `dev` |
 
-- Main posts: `.../micro.fair?limit=1000`
-- Votes: `.../micro.fair.interation?limit=1000`
-- Admin moderation: `.../micro.fair.adpmuted?limit=1000`
-- Community registry: `.../micro.fair.channels?limit=1000`
-- Follow or block: replace `{user}` with the logged-in account.
-- Community posts: substitute the exact community namespace.
+**This is isolation, not deletion.** Old records continue to exist in Hive
+and can be examined by historical APIs or a future explicit archive viewer.
 
-HAFSQL pagination and caching remain in `js/data/hafsql.js` and `js/data/sync.js`.
+## Where the implementation lives
 
-## Validate before signing
+| Module | Responsibility |
+| --- | --- |
+| `js/hive/registry.js` | Canonical v2 IDs, version, channel slug rules and action mapping |
+| `js/hive/protocol.js` | Pure v2 JSON payload builders |
+| `js/hive/content-scope.js` | Reject old posts and malformed v2 post envelopes |
+| `js/hive/examples.js` | Generate working examples from production builders |
+| `js/hive/validator.js` | Check v2 payload shape and block accidental legacy broadcasts |
+| `js/api.js` | HAFSQL v2 queries, Keychain v2 writes, signer/action-aware relationships |
+| `js/data/post-cache.js` | New isolated IndexedDB database |
+| `js/data/cache-keys.js` | New isolated localStorage cache IDs |
+| `js/ui/protocol-reference.js` | Interactive `#/protocol` reference |
+| `tests/hiveline-v2.test.mjs` | Fresh-start regression coverage |
 
-The interactive Protocol Reference (`#/protocol`) now includes an offline JSON validator.
-It checks the registered `custom_json.id`, payload version, allowed operation
-`type`, key fields and signer namespace context. The advanced Custom JSON
-dialog blocks known malformed operations before asking Keychain to sign.
-External, unregistered operations remain possible with explicit acknowledgment.
+Use `#/protocol` from **More → Protocol Reference** to view real payloads
+and validate them before signing. The validation UI is local and does not
+prove on-chain acceptance.
 
-Local validation **does not confirm a Hive signature, on-chain authorization,
-network acceptance or the existence of referenced HAFSQL operations**.
-For a migration to a new brand with semantic IDs, see
-[`protocol-v2-migration.md`](protocol-v2-migration.md). The v2 planner is
-read-only and no v2 writer is enabled.
+## Deployment scope
 
-## Changing the protocol safely
-
-Before changing a field name or an operation ID: update the registry, builder, examples, UI reference and tests together. If the change affects historical chain data, add dual-read support or a versioned migration before any new broadcasts. Run `npm test` and review `tests/hive-protocol-registry.test.mjs` plus the existing architecture and channel ID tests.
+The existing GitHub repo `faireye-hive/microblog` stays at its current
+path to avoid breaking GitHub Pages URLs. Only the **product branding and
+on-chain protocol identity** change in this rollout. Renaming the GitHub
+repository or registering a commercial mark/domain are separate decisions.

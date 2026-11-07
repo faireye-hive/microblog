@@ -15,9 +15,9 @@ import {getActiveMobileSection} from "../js/mobile-nav.js";
 
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const post = (id, username, content, replyTo = null, timestamp="2026-11-07T12:00:00Z") => ({
-  id, custom_id: "micro.fair", timestamp,
+  id, custom_id: "hiveline.posts", timestamp,
   required_posting_auths: [username],
-  json: JSON.stringify({app:"micro.fair",v:1,type:replyTo?"reply":"post", content, reply_to:replyTo})
+  json: JSON.stringify({app:"hiveline",v:2,type:replyTo?"reply":"post",channel:"hiveline.posts", content, reply_to:replyTo})
 });
 
 test("public Hive metadata is normalized with strict URLs and only expected account identity", () => {
@@ -81,7 +81,7 @@ test("public account RPC uses the already allowed origin without private keys an
   assert.match(read("index.html"),/connect-src 'self' https:\/\/rpc\.mahdiyari\.info/);
 });
 
-test("loaded Micro.fair posts and replies are partitioned without pretending account-wide stats",()=>{
+test("loaded HiveLine posts and replies are partitioned without pretending account-wide stats",()=>{
   const records=[
     post(1,"faireye","Welcome"),
     post(2,"sm-silva","Other user"),

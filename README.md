@@ -1,20 +1,35 @@
-#  micro.fair: Microblogging com Hive Keychain
+# HiveLine — Microblogging on Hive
 
-O **micro.fair** é um projeto de microblogging que demonstra como construir uma aplicação web moderna e modular usando HTML, CSS (Tailwind CSS) e JavaScript puro (Vanilla JS), com autenticação descentralizada via **Hive Keychain**.
+O **HiveLine** é um projeto de microblogging que demonstra como construir uma aplicação web moderna e modular usando HTML, CSS (Tailwind CSS) e JavaScript puro (Vanilla JS), com autenticação descentralizada via **Hive Keychain**.
 
 A principal arquitetura do projeto foca em separar as responsabilidades da interface, estado e lógica de negócio em módulos ES (`import`/`export`) bem definidos.
 
 -----
 
-## 📡 Protocolo Hive (Custom JSON)
+## 📡 HiveLine v2: nova fase de testes
 
-Todos os IDs históricos e operações de post, resposta, voto, moderação, follow/block e comunidades estão centralizados no registro [`js/hive/registry.js`](js/hive/registry.js). Os exemplos de JSON são gerados pelos mesmos builders usados para publicar.
+O HiveLine utiliza IDs **novos** de Custom JSON e não exibe as
+publicações antigas do Micro.fair. Os registros históricos continuam
+na blockchain Hive, mas não são consultados pelo novo feed.
 
-- **Página interativa no app:** navegue para `#/protocol` (menu **More → Protocol Reference**).
-- **Validador local:** a página `#/protocol` permite testar um ID e JSON, visualizar erros e simular novos namespaces sem assinar transações. O modal avançado bloqueia o envio de mensagens conhecidas inválidas.
-- **Renomeação/migração:** [Plano seguro de marca e namespaces v2](docs/protocol-v2-migration.md). Nenhum novo ID v2 está ativo; o nome da nova marca ainda precisa ser escolhido.
-- **Documento técnico:** [Hive Protocol v1 — IDs, tipos, exemplos e regras de migração](docs/hive-protocol.md).
-- **Compatibilidade:** `js/config.js` mantém os exports anteriores; os IDs `micro.fair.interation` e `micro.fair.adpmuted` são históricos e não devem ser renomeados.
+| Recurso | ID HiveLine v2 |
+| --- | --- |
+| Publicações e respostas | `hiveline.posts` |
+| Comunidades | `hiveline.c.{channel}` (posts) e `hiveline.communities` (registro) |
+| Votos | `hiveline.votes` |
+| Moderação | `hiveline.moderation` |
+| Follow / Block | `hiveline.relationships` |
+
+Os payloads usam `{"app":"hiveline","v":2}`. O cache do navegador
+também usa novas chaves e um IndexedDB separado.
+
+- [Protocolo completo, exemplos, IDs e legado](docs/hive-protocol.md).
+- [Política de transição e isolamento](docs/protocol-v2-migration.md).
+- **Página interativa:** `#/protocol` — menu **More → Protocol Reference**.
+
+**Aviso:** o nome comercial/domínio HiveLine ainda precisa de análise de
+disponibilidade. O repositório mantém o caminho atual por compatibilidade
+com o GitHub Pages.
 
 -----
 

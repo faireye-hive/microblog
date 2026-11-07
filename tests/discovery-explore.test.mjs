@@ -12,8 +12,8 @@ import {getActiveMobileSection} from "../js/mobile-nav.js";
 
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const post=(id,author,content,tags=[],timestamp="2026-11-07T12:00:00Z")=>({
-  id,custom_id:"micro.fair",timestamp,required_posting_auths:[author],
-  json:JSON.stringify({app:"micro.fair",type:"post",content,tags})
+  id,custom_id:"hiveline.posts",timestamp,required_posting_auths:[author],
+  json:JSON.stringify({app:"hiveline",v:2,type:"post",channel:"hiveline.posts",content,tags})
 });
 const data=[
   post(101,"faireye","Open-source code is growing on Hive #dev #hive",["dev","hive"],"2026-11-07T12:00:00Z"),

@@ -3,11 +3,11 @@
  *
  * This checks local JSON shape/namespace consistency only. It NEVER verifies
  * a cryptographic signature, network authority or blockchain acceptance.
- * Historical v1 IDs are intentionally unchanged.
+ * Legacy Micro.fair v1 IDs are intentionally rejected for this new test app.
  */
 import {
   HIVE_APP_ID, HIVE_PROTOCOL_VERSION, HIVE_CUSTOM_JSON_IDS,
-  HIVE_ACTION_TYPES, getHiveAction, resolveCustomJsonId
+  HIVE_ACTION_TYPES, normalizeHiveLineChannel, channelFromCustomJsonId
 } from "./registry.js";
 import { safeHiveUsername } from "../security/safe-values.js";
 import { ADMIN } from "../config.js";
@@ -15,7 +15,6 @@ import { parseChannelCustomId } from "../helpers/channel-id.js";
 
 export const MAX_VALIDATOR_JSON_BYTES = 64 * 1024;
 const types = new Set(Object.values(HIVE_ACTION_TYPES));
-const signedAccountPattern = /^micro\.fair\.([a-z0-9._-]+)\.(follow|block)$/;
 const own = (value,key)=>Object.prototype.hasOwnProperty.call(value,key);
 const validRef = value=>Number.isSafeInteger(value)&&value>0;
 const isStringArray = value=>Array.isArray(value)&&value.length<=128&&
@@ -44,18 +43,12 @@ function classifyKnownNamespace(id,payload,signer) {
     return {action:payload.type,kind:"moderation"};
   if(id===HIVE_CUSTOM_JSON_IDS.CHANNEL_REGISTRY)
     return {action:payload.type,kind:"channels"};
-  const userMatch=signedAccountPattern.exec(id);
-  if(userMatch) {
-    const family=userMatch[2];
-    return {
-      action:payload.type,kind:family,namespaceUser:userMatch[1]
-    };
+  if(id===HIVE_CUSTOM_JSON_IDS.RELATIONSHIPS) {
+    const family=["follow","unfollow"].includes(payload.type) ? "follow" :
+      ["block","unblock"].includes(payload.type) ? "block" : "relationships";
+    return {action:payload.type,kind:family};
   }
-  // A community uses its own exact ID and contains a post/reply with matching
-  // channel. A random custom JSON operation must not be silently treated as
-  // belonging to Micro.fair.
-  if(payload.app===HIVE_APP_ID && ["post","reply"].includes(payload.type) && parseChannelCustomId(id))
-    return {action:payload.type,kind:"community"};
+  if(channelFromCustomJsonId(id)) return {action:payload.type,kind:"community"};
   return null;
 }
 
@@ -109,19 +102,22 @@ export function validateCustomJsonOperation(draft = {}) {
 
   if(payload && id && errors.every(error=>error.field!=="id")) {
     const identified=classifyKnownNamespace(id,payload,signer);
-    const isMicrofair=payload.app===HIVE_APP_ID || id===HIVE_APP_ID || id.startsWith(HIVE_APP_ID+".");
+    const isHiveLine=payload.app===HIVE_APP_ID || id.startsWith(HIVE_APP_ID+".");
+    const isLegacy=id==="micro.fair" || id.startsWith("micro.fair.");
     if(!identified) {
-      if(isMicrofair) {
-        push(errors,"id","This ID/type combination is not registered in Micro.fair v1.");
+      if(isLegacy) {
+        push(errors,"id","Legacy Micro.fair IDs are disabled in HiveLine v2. Use a new hiveline.* namespace.");
+      } else if(isHiveLine) {
+        push(errors,"id","This ID/type combination is not registered in HiveLine v2.");
       } else {
         requiresAcknowledgement=true;
-        push(warnings,"id","Unregistered custom_json namespace. Micro.fair does not interpret this operation.");
+        push(warnings,"id","Unregistered custom_json namespace. HiveLine does not interpret this operation.");
       }
     } else {
       recognized=true;
-      const {kind,namespaceUser}=identified;
+      const {kind}=identified;
       const type=payload.type;
-      if(!types.has(type))push(errors,"type","Unsupported Micro.fair operation type.");
+      if(!types.has(type))push(errors,"type","Unsupported HiveLine operation type.");
       const expectedActions={
         feed:["post","reply"],community:["post","reply"],
         votes:["upvote","downvote"],moderation:["mute","unmute"],
@@ -132,8 +128,8 @@ export function validateCustomJsonOperation(draft = {}) {
       } else {
         actionKey=kind==="community"?"community-"+type:type;
       }
-      if(payload.app!==HIVE_APP_ID)push(errors,"app","Expected app: micro.fair for protocol v1.");
-      if(payload.v!==HIVE_PROTOCOL_VERSION)push(errors,"v","Expected v: 1 for the current on-chain protocol.");
+      if(payload.app!==HIVE_APP_ID)push(errors,"app","Expected app: hiveline for protocol v2.");
+      if(payload.v!==HIVE_PROTOCOL_VERSION)push(errors,"v","Expected v: 2 for the current HiveLine protocol.");
       if(kind==="feed"||kind==="community") {
         if(payload.channel!==id)
           push(errors,"channel","The channel must exactly equal the outer custom_json ID.");
@@ -157,21 +153,21 @@ export function validateCustomJsonOperation(draft = {}) {
           push(errors,"cause","Mute operations need a nonempty moderation reason.");
       }
       if(kind==="follow"||kind==="block") {
-        if(signer==="unknown"||namespaceUser!==signer)
-          push(errors,"id","The {user} in this namespace must match the signing Hive account.");
+        if(signer==="unknown")
+          push(errors,"signer","A valid signing Hive account is required for relationship operations.");
         const target=safeHiveUsername(payload.target_user);
         if(target==="unknown"||target!==payload.target_user||target===signer)
           push(errors,"target_user","Provide another valid, lowercase Hive username as target_user.");
       }
       if(kind==="channels") {
-        if(parseChannelCustomId(payload.id)!==payload.id)
+        if(normalizeHiveLineChannel(payload.id)!==payload.id)
           push(errors,"id","Community ID must be valid and already normalized.");
         if(typeof payload.name!=="string"||!payload.name.trim())
           push(errors,"name","Community name is required.");
         if(typeof payload.description!=="string")
           push(errors,"description","Community description must be a string.");
         if(payload.action!=="create_channel")
-          push(errors,"action","The v1 registry requires action: create_channel.");
+          push(errors,"action","The v2 registry requires action: create_channel.");
         if(typeof payload.created_at!=="string" ||
            !/^\d{4}-\d{2}-\d{2}T/.test(payload.created_at) ||
            !Number.isFinite(Date.parse(payload.created_at)))
@@ -179,7 +175,7 @@ export function validateCustomJsonOperation(draft = {}) {
       }
       const allowed=own(knownFields,type)?knownFields[type]:[];
       const extras=Object.keys(payload).filter(key=>!allowed.includes(key));
-      if(extras.length)push(warnings,"json","Extra fields not defined in v1: "+extras.slice(0,8).join(", ")+".");
+      if(extras.length)push(warnings,"json","Extra fields not defined in v2: "+extras.slice(0,8).join(", ")+".");
       if(errors.length===0)push(warnings,"signature",
         "Structure checked locally only. Signature authorization and blockchain acceptance are checked when submitting.");
     }

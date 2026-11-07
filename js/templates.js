@@ -18,7 +18,7 @@ export const TopNavHTML = `
           </svg>
         </div>
         <div class="brand-info">
-          <span class="brand-title">micro.fair</span>
+          <span class="brand-title">HiveLine</span>
           <span class="brand-subtitle">SOCIAL · ON HIVE</span>
         </div>
       </a>
@@ -79,7 +79,7 @@ export const TopNavHTML = `
         </button>
         <div id="userMenuDropdown" class="user-menu-dropdown hidden" aria-label="Account options">
           <div class="account-menu-heading">
-            <span class="account-menu-heading-kicker">MICRO.FAIR · HIVE</span>
+            <span class="account-menu-heading-kicker">HIVELINE · HIVE</span>
             <strong id="accountMenuName" class="account-menu-name">Your account</strong>
             <span id="accountMenuStatus" class="account-menu-status">Sign in to post and connect</span>
           </div>
@@ -260,7 +260,7 @@ export const ComposerHTML = `
     <div id="composerChannelBadge" class="hidden" style="display: flex; align-items: center; gap: 0.35rem; background: rgba(227, 19, 55, 0.08); border: 1px solid rgba(227, 19, 55, 0.2); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: #e31337;">
       <span>Community:</span>
       <span id="composerChannelName">#community</span>
-      <button id="btnExitChannelComposer" style="background: none; border: none; color: #e31337; font-weight: 900; font-size: 1rem; cursor: pointer; padding: 0 0 0 4px; line-height: 1;" title="Back to the main feed (micro.fair)">&times;</button>
+      <button id="btnExitChannelComposer" style="background: none; border: none; color: #e31337; font-weight: 900; font-size: 1rem; cursor: pointer; padding: 0 0 0 4px; line-height: 1;" title="Back to the main feed (HiveLine)">&times;</button>
     </div>
   </div>
 
@@ -478,7 +478,7 @@ export const LoginModalHTML = `
     <div class="auth-dialog-symbol" aria-hidden="true">
       <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><path d="M16 2 3 9.5v13L16 30l13-7.5v-13L16 2Z" fill="#262b35"/><path d="m11 10-3 6 3 6h3l-3-6 3-6h-3Zm7 0-3 6 3 6h3l-3-6 3-6h-3Z" fill="#c72e4a"/></svg>
     </div>
-    <span class="auth-dialog-eyebrow">WELCOME TO MICRO.FAIR</span>
+    <span class="auth-dialog-eyebrow">WELCOME TO HIVELINE</span>
     <h2 id="loginTitle" class="modal-title auth-dialog-title">Join the conversation</h2>
     <p id="loginDescription" class="auth-dialog-description">Connect your Hive account to post, vote, and be part of the conversation.</p>
     <form id="loginForm" class="auth-login-form" novalidate>
@@ -518,7 +518,7 @@ export const LogoutModalHTML = `
       </svg>
     </span>
     <span class="community-dialog-eyebrow">YOUR ACCOUNT</span>
-    <h2 id="logoutDialogTitle" class="modal-title community-dialog-title">Sign out of Micro.fair?</h2>
+    <h2 id="logoutDialogTitle" class="modal-title community-dialog-title">Sign out of HiveLine?</h2>
     <p id="logoutDialogDescription" class="community-dialog-description">
       You can sign in again with your Hive account at any time.
     </p>
@@ -548,24 +548,24 @@ export const CustomJsonModalHTML = `
     <p id="customJsonDialogDescription" class="community-dialog-description">
       Broadcast a custom operation to the Hive blockchain with your account.
       <a href="#/protocol" id="customJsonProtocolLink" class="protocol-modal-reference">
-        Browse registered Micro.fair IDs &amp; payload examples →</a>
+        Browse registered HiveLine IDs &amp; payload examples →</a>
     </p>
     <div class="community-dialog-form">
       <div class="community-field">
         <label for="customJsonId">Operation ID</label>
         <input type="text" id="customJsonId" class="modal-input community-input"
-               placeholder="e.g. micro.fair.interation" maxlength="32" autocomplete="off">
+               placeholder="e.g. hiveline.votes" maxlength="32" autocomplete="off">
       </div>
       <div class="community-field">
         <label for="customJsonPayload">JSON payload</label>
         <textarea id="customJsonPayload" class="modal-input community-input community-code-input"
-                  rows="5" spellcheck="false" placeholder='{"app":"micro.fair","v":1,"type":"upvote","content_id":12345}'></textarea>
+                  rows="5" spellcheck="false" placeholder='{"app":"hiveline","v":2,"type":"upvote","content_id":12345}'></textarea>
       </div>
       <div id="customJsonValidationResults" class="custom-json-validation"
            role="status" aria-live="polite">Enter a Custom JSON ID and payload to validate.</div>
       <label id="customJsonUnregisteredWrap" class="custom-json-unregistered hidden">
         <input type="checkbox" id="customJsonUnregisteredAck">
-        I understand this ID is not registered by Micro.fair, and I want to send a custom operation.
+        I understand this ID is not registered by HiveLine, and I want to send a custom operation.
       </label>
     </div>
     <p class="community-dialog-note">
@@ -589,7 +589,7 @@ export const CreateChannelModalHTML = `
     <button type="button" class="modal-close community-dialog-close" id="closeCreateChannelModal"
             aria-label="Close community dialog">&times;</button>
     <span class="community-dialog-icon" aria-hidden="true">#</span>
-    <span class="community-dialog-eyebrow">COMMUNITIES · MICRO.FAIR</span>
+    <span class="community-dialog-eyebrow">COMMUNITIES · HIVELINE</span>
     <h2 id="createChannelDialogTitle" class="modal-title community-dialog-title">Create a community</h2>
     <p id="createChannelDialogDescription" class="community-dialog-description">
       Bring people together around a topic. Your community will be registered on Hive.
@@ -605,7 +605,7 @@ export const CreateChannelModalHTML = `
         <div class="community-input-prefix-wrap">
           <span class="community-input-prefix" aria-hidden="true">#</span>
           <input type="text" id="newChannelId" class="modal-input community-input"
-                 placeholder="design-technology" maxlength="32" autocomplete="off" spellcheck="false"
+                 placeholder="design-technology" maxlength="21" autocomplete="off" spellcheck="false"
                  aria-describedby="newChannelIdHelp">
         </div>
         <small id="newChannelIdHelp">Unique identifier used for posts in this community.</small>

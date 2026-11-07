@@ -22,6 +22,7 @@ import { fetchData, fetchChannelPosts, hasFinishedFeedSync } from "./api.js";
 import { showFeedSkeleton, hideFeedSkeleton } from "./ui/feed-loading.js";
 import { parseEmbeddedJson, showNotification, escapeHtml } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
+import { normalizeHiveLineChannel, HIVE_CUSTOM_JSON_IDS } from "./hive/registry.js";
 import { getPostById, countDirectReplies } from "./data/post-index.js";
 import { buildPostCard, buildRepliesRecursive, buildProfilePage, buildChannelsPage } from "./render.js";
 import { rankPostsByVotes, rankPostsByComments } from "./helpers/ranking.js";
@@ -182,7 +183,7 @@ export function filterByTag(tag, pushHistory = true) {
 
 // Filtra o feed estritamente pelos posts de um canal específico (isolado por Custom JSON ID)
 export async function filterByChannel(channelId, pushHistory = false) {
-  const cleanId = parseChannelCustomId(channelId);
+  const cleanId = normalizeHiveLineChannel(channelId);
   if (!cleanId) {
     showNotification("Invalid community ID. Enter a valid Custom JSON ID.", false);
     return;
@@ -319,7 +320,7 @@ export function setupChannelsPageEvents() {
 
   document.getElementById("btnOpenChannelById")?.addEventListener("click", () => {
     const query = document.getElementById("channelsDirectorySearch")?.value?.trim() || "";
-    const channelId = parseChannelCustomId(query.replace(/^#/, ""));
+    const channelId = normalizeHiveLineChannel(query.replace(/^#/, ""));
     if (channelId) window.location.hash = `#/channel/${encodeURIComponent(channelId)}`;
   });
 
@@ -450,7 +451,7 @@ export async function handleRoute() {
     return;
   }
 
-  // Quando não estiver em um canal específico, volta para o canal principal (micro.fair)
+  // Quando não estiver em um canal específico, volta para o feed principal do HiveLine
   setActiveChannel(null);
 
   if (tagMatch) {
@@ -521,7 +522,7 @@ export async function handleRoute() {
     setupDiscoveryPageEvents();
   } else if (["explore", "trending", "active"].includes(newPage)) {
     const visibleMainPosts = discoveryPostPool(
-      allPosts.filter(post => !post.custom_id || post.custom_id === "micro.fair"),
+      allPosts.filter(post => !post.custom_id || post.custom_id === HIVE_CUSTOM_JSON_IDS.POSTS),
       [], blockedUsers, mutedPostIds);
     const mode = newPage === "trending" ? "popular" : newPage === "active" ? "discussed" : "latest";
     renderFeed(finalPosts);
@@ -591,10 +592,10 @@ function setupDiscoveryPageEvents() {
 }
 
 function getRouteData(path) {
-  // Posts do feed principal pertencentes estritamente ao micro.fair (isolando canais específicos)
+  // Posts from the HiveLine v2 feed only; legacy Micro.fair operations are excluded.
   const mainFeedPosts = allPosts.filter(p => {
     const cid = (p.custom_id || "").toLowerCase();
-    return !cid || cid === "micro.fair";
+    return cid === HIVE_CUSTOM_JSON_IDS.POSTS;
   });
 
   const route = {

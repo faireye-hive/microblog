@@ -19,33 +19,33 @@ import {
   CHANNELS_CACHE_KEY, getChannelPostsCacheKey, getUserCacheKey
 } from "../js/data/cache-keys.js";
 
-test("protocol stays fully backwards-compatible with Hive custom_json v1", () => {
-  assert.equal(APP_ID, "micro.fair");
+test("production protocol generates HiveLine custom_json v2", () => {
+  assert.equal(APP_ID, "hiveline");
   assert.deepEqual(buildPostPayload({
     content: "Olá #hive", channel: "hive.micro", mentions: ["bob"], tags: ["hive"]
   }), {
-    app: "micro.fair", v: 1, type: "post", channel: "hive.micro",
+    app: "hiveline", v: 2, type: "post", channel: "hive.micro",
     content: "Olá #hive", reply_to: null, mentions: ["bob"], tags: ["hive"]
   });
   assert.equal(buildPostPayload({content: "response", replyTo: 123}).type, "reply");
   assert.deepEqual(buildVotePayload(123,"upvote"), {
-    app:"micro.fair",v:1,type:"upvote",content_id:123
+    app:"hiveline",v:2,type:"upvote",content_id:123
   });
   assert.deepEqual(buildMutePayload(8,"mute","spam"), {
-    app:"micro.fair",v:1,type:"mute",cause:"spam",content_id:8
+    app:"hiveline",v:2,type:"mute",cause:"spam",content_id:8
   });
   assert.deepEqual(buildMutePayload(8,"unmute"), {
-    app:"micro.fair",v:1,type:"unmute",content_id:8
+    app:"hiveline",v:2,type:"unmute",content_id:8
   });
   assert.deepEqual(buildUserActionPayload("follow","alice"), {
-    app:"micro.fair",v:1,type:"follow",target_user:"alice"
+    app:"hiveline",v:2,type:"follow",target_user:"alice"
   });
   const channel = buildChannelCreatePayload({
     id:"hive.micro",name:"Hive Micro",description:"The original channel",
     createdAt:"2026-11-07T00:00:00Z"
   });
   assert.deepEqual(channel,{
-    app:"micro.fair",v:1,type:"create_channel",action:"create_channel",
+    app:"hiveline",v:2,type:"create_channel",action:"create_channel",
     id:"hive.micro",name:"Hive Micro",description:"The original channel",
     created_at:"2026-11-07T00:00:00Z"
   });
@@ -56,15 +56,15 @@ test("HAFSQL URL builder keeps dotted IDs and user templates", () => {
     "https://rpc.mahdiyari.info/hafsql/operations/custom_json/hive.micro?limit=1000");
   assert.equal(buildHafsqlCustomJsonUrl("hive.micro",{limit:25,start:99}),
     "https://rpc.mahdiyari.info/hafsql/operations/custom_json/hive.micro?limit=25&start=99");
-  assert.ok(API_URL.endsWith("/micro.fair?limit=1000"));
-  assert.ok(VOTE_API_URL.includes("/micro.fair.interation?limit=1000"));
-  assert.ok(ADMIN_POST_MUTE_API_URL.includes("/micro.fair.adpmuted?limit=1000"));
-  assert.ok(CHANNELS_API_URL.includes("/micro.fair.channels?limit=1000"));
-  assert.ok(USER_BLOCK_API_URL.includes("{user}.block?limit=1000"));
-  assert.ok(USER_FOLLOW_API_URL.includes("{user}.follow?limit=1000"));
-  assert.ok(USER_FOLLOW_API_URL.replace("{user}","bob").includes("/micro.fair.bob.follow"));
+  assert.ok(API_URL.endsWith("/hiveline.posts?limit=1000"));
+  assert.ok(VOTE_API_URL.includes("/hiveline.votes?limit=1000"));
+  assert.ok(ADMIN_POST_MUTE_API_URL.includes("/hiveline.moderation?limit=1000"));
+  assert.ok(CHANNELS_API_URL.includes("/hiveline.communities?limit=1000"));
+  assert.ok(USER_BLOCK_API_URL.includes("hiveline.relationships?limit=1000"));
+  assert.ok(USER_FOLLOW_API_URL.includes("hiveline.relationships?limit=1000"));
+  assert.ok(USER_FOLLOW_API_URL.replace("{user}","bob").includes("/hiveline.relationships"));
   assert.equal(withHafsqlCursor(API_URL,{limit:-1000,start:345}),
-    "https://rpc.mahdiyari.info/hafsql/operations/custom_json/micro.fair?limit=-1000&start=345");
+    "https://rpc.mahdiyari.info/hafsql/operations/custom_json/hiveline.posts?limit=-1000&start=345");
 });
 
 test("HAFSQL data normalizer supports API array and rows envelopes", () => {
@@ -105,12 +105,12 @@ test("Keychain adapter signs with Posting and forwards original parameters", () 
 });
 
 test("cache names retain existing users' localStorage data", () => {
-  assert.equal(POSTS_CACHE_KEY,"hiveAppPostsCache");
-  assert.equal(VOTES_CACHE_KEY,"hiveAppVotesCache");
-  assert.equal(MUTES_CACHE_KEY,"hiveAppMutesCache");
-  assert.equal(CHANNELS_CACHE_KEY,"hiveAppChannelsCache");
-  assert.equal(getChannelPostsCacheKey("hive.micro"),"hiveAppChannelPosts_hive.micro");
-  assert.equal(getUserCacheKey("hiveAppFollowsCache","alice"),"hiveAppFollowsCache.alice");
+  assert.equal(POSTS_CACHE_KEY,"hivelineV2PostsCache");
+  assert.equal(VOTES_CACHE_KEY,"hivelineV2VotesCache");
+  assert.equal(MUTES_CACHE_KEY,"hivelineV2MutesCache");
+  assert.equal(CHANNELS_CACHE_KEY,"hivelineV2CommunitiesCache");
+  assert.equal(getChannelPostsCacheKey("hive.micro"),"hivelineV2ChannelPosts_hive.micro");
+  assert.equal(getUserCacheKey("hivelineV2FollowsCache","alice"),"hivelineV2FollowsCache.alice");
 });
 
 test("api.js has no direct Keychain calls or HAFSQL fetch requests", () => {
