@@ -35,6 +35,7 @@ import { readPostCache, writePostCache, clearPostCaches } from "./data/post-cach
 import { mergePostSnapshots } from "./data/post-merge.js";
 import { showFeedSkeleton, hideFeedSkeleton } from "./ui/feed-loading.js";
 import { processChannelsData } from "./helpers/channels.js";
+import { POST_CHARACTER_LIMIT } from "./ui/composer-tools.js";
 export { processChannelsData } from "./helpers/channels.js";
 import { 
     setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, 
@@ -305,9 +306,16 @@ export async function fetchChannelPosts(channelId) {
 }
 
 // Envia um novo Post ou Reply (para o canal ativo ou para o canal principal 'micro.fair')
-export function sendPost(content, replyTo = null, channelOverride = null) {
+export function sendPost(content, replyTo = null, channelOverride = null, callbacks = {}) {
+    if (typeof content !== "string" || !content.trim() || content.length > POST_CHARACTER_LIMIT) {
+        showNotification("Posts must contain 1 to 2,048 characters.", false);
+        return false;
+    }
     const username = localStorage.getItem("hiveUser");
-    if (!username) return showNotification("🔒 Sign in with Hive Keychain first!", false);
+    if (!username) {
+        showNotification("🔒 Sign in with Hive Keychain first!", false);
+        return false;
+    }
 
     // Se estiver navegando em um canal específico, o Custom JSON é emitido DIRETAMENTE para o ID do canal!
     // Exemplo: se estiver no canal 'fairmemes', o custom_id do blockchain Hive será 'fairmemes'.
@@ -316,7 +324,7 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
     const customId = parseChannelCustomId(targetChannel || APP_ID);
     if (!customId) {
         showNotification("⚠️ Invalid community ID. Nothing was broadcast.", false);
-        return;
+        return false;
     }
 
     const tags = extractTagsFromText(content);
@@ -345,10 +353,14 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
                 if (res.success) {
                     showNotification(`✅ Successfully posted to #${customId}!`, true);
 
-                    const textarea = document.getElementById("newPostContent");
-                    if (textarea) textarea.value = "";
-                    const charCount = document.getElementById("charCount");
-                    if (charCount) charCount.textContent = "0 / 2048";
+                    // Never discard a main composer draft after replying elsewhere.
+                    if (!replyTo) {
+                        const textarea = document.getElementById("newPostContent");
+                        if (textarea && textarea.value.trim() === content.trim()) {
+                            textarea.value = "";
+                            textarea.dispatchEvent(new Event("input", { bubbles: true }));
+                        }
+                    }
 
                     // Cria objeto de post local imediato
                     const localPost = {
@@ -375,13 +387,17 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
 
                     updateChannelsUI();
                     updateTags();
+                    callbacks?.onSuccess?.(localPost);
                 } else {
                     showNotification(`❌ Posting failed: ${res.message || "Operation cancelled"}`, false);
+                    callbacks?.onFailure?.(res);
                 }
             }
         );
+        return true;
     } else {
         showNotification("❌ Hive Keychain was not detected!", false);
+        return false;
     }
 }
 
