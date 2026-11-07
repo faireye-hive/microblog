@@ -9,15 +9,15 @@ import { imageFallbackUrl, installImageErrorHandling } from "../js/security/imag
 
 const channelOperation = (author, id, name, stamp) => ({
   timestamp:stamp,
-  custom_id:"micro.fair.channels",
+  custom_id:"hiveline.communities",
   required_posting_auths:[author],
-  json:JSON.stringify({app:"micro.fair",v:1,type:"create_channel",id,name})
+  json:JSON.stringify({app:"hiveline",v:2,type:"create_channel",id,name})
 });
 const moderationOp = (author, type, id, time, extra={}) => ({
   timestamp:time,
-  custom_id:"micro.fair.adpmuted",
+  custom_id:"hiveline.moderation",
   required_posting_auths:[author],
-  json:JSON.stringify({app:"micro.fair",v:1,type,content_id:id,cause:"spam"}),
+  json:JSON.stringify({app:"hiveline",v:2,type,content_id:id,cause:"spam"}),
   ...extra
 });
 
@@ -72,8 +72,8 @@ test("moderation ignores wrong namespaces, unsigned records and malformed JSON",
     moderationOp("faireye","mute",15,"2026-01-01", {required_posting_auths:[],required_auths:["faireye"]}),
   ];
   const result=processMuteData(ops);
-  assert.equal(result.size,2);
-  assert.equal(result.get(14).cause,"Reason not specified");
+  assert.equal(result.size,1);
+  assert.equal(result.has(14),false);
   assert.ok(result.has(15));
 });
 
@@ -126,10 +126,10 @@ test("untrusted post content and attributes cannot inject executable markup",asy
   const content='<img src=x onerror=alert(1)> https://ok.test/?a=1&b=2';
   const post={
     id:maliciousId,
-    custom_id:"micro.fair",
+    custom_id:"hiveline.posts",
     timestamp:"2026-11-07T00:00:00Z",
     required_posting_auths:['bad" onclick="alert(1)'],
-    json:JSON.stringify({app:"micro.fair",type:"post",content,tags:['evil" onfocus="x']})
+    json:JSON.stringify({app:"hiveline",v:2,type:"post",channel:"hiveline.posts",content,tags:['evil" onfocus="x']})
   };
   const markup=buildPostCard(post,[post]).innerHTML;
   assert.ok(markup.includes("data-id=\"9&quot; onmouseover=&quot;alert(1)\""));
