@@ -1,20 +1,42 @@
 import express from 'express';
 import path from 'path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const htmlFile = path.join(__dirname, 'index.html');
+
+// Keep Express and GitHub Pages on the SAME policy: GitHub Pages reads the
+// CSP meta tag, while Express also sends it as an HTTP response header.
+const html = readFileSync(htmlFile, 'utf8');
+const cspMatch = html.match(/<meta\\s+http-equiv="Content-Security-Policy"\\s+content="([^"]+)"/i);
+if (!cspMatch) throw new Error('Missing Content-Security-Policy in index.html');
+const pageCsp = cspMatch[1];
 
 const app = express();
-const PORT = 3000;
-const HOST = '0.0.0.0';
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Serve static assets from project root
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
+  // frame-ancestors cannot be delivered through <meta>; it is header-only.
+  if (req.path === '/' || req.path.endsWith('.html') || !path.extname(req.path)) {
+    res.setHeader('Content-Security-Policy', `${pageCsp}; frame-ancestors 'self'`);
+  }
+  next();
+});
+
+// Serve static assets from project root.
 app.use(express.static(__dirname));
 
-// Fallback to index.html for SPA routing
+// Fallback to index.html for SPA routing.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(htmlFile);
 });
 
 app.listen(PORT, HOST, () => {
