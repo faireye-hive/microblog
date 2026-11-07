@@ -464,6 +464,11 @@ function setupSidebarControls() {
     });
   }
 
+  // The header notification icon must navigate instead of being decorative.
+  document.getElementById("btnNotificationsTop")?.addEventListener("click", () => {
+    window.location.hash = "#/notifications";
+  });
+
   // Refresh Tags
   document.getElementById("btnRefreshTags")?.addEventListener("click", updateTags);
 
@@ -554,26 +559,6 @@ function setupSidebarControls() {
     }
 
     sendCreateChannel(channelId, channelName, channelDesc);
-  });
-
-  // Quick Actions
-  document.querySelectorAll(".quick-action-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const action = item.dataset.action;
-      if (action === "new-post") {
-        const textarea = document.getElementById("newPostContent");
-        if (textarea) {
-          textarea.focus();
-          textarea.scrollIntoView({ behavior: "smooth" });
-        }
-      } else if (action === "new-channel") {
-        openChannelModal();
-      } else if (action === "custom-json") {
-        document.getElementById("customJsonModal")?.classList.remove("hidden");
-      } else if (action === "settings") {
-        window.location.hash = "#/profile";
-      }
-    });
   });
 
   // Custom JSON Modal Handlers
