@@ -409,7 +409,7 @@ export function buildProfilePage() {
             <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/>
             <path d="M9 12h10m-4-4 4 4-4 4"/>
           </svg>
-          Sair
+          Sign out
         </button>
       </section>
 
