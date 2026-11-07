@@ -187,10 +187,10 @@ function setupFeedDelegation() {
       const replyBox = document.createElement("div");
       replyBox.className = "reply-input-box";
       replyBox.innerHTML = `
-        <textarea class="reply-input-textarea" rows="2" placeholder="Escreva sua resposta na rede Hive..."></textarea>
+        <textarea class="reply-input-textarea" rows="2" placeholder="Write your reply on Hive..."></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
           <button class="btn-outline-small cancel-reply">Cancel</button>
-          <button class="btn-post send-reply" style="padding: 0.35rem 0.95rem; font-size: 0.8rem;">Responder</button>
+          <button class="btn-post send-reply" style="padding: 0.35rem 0.95rem; font-size: 0.8rem;">Reply</button>
         </div>`;
       
       const contentWrap = card.querySelector(".post-card-main") || card;
@@ -220,7 +220,7 @@ function setupFeedDelegation() {
       if (svg) {
         svg.setAttribute("fill", isSaved ? "currentColor" : "none");
       }
-      showNotification(isSaved ? "🔖 Post salvo nos Favoritos!" : "Post removido dos Favoritos.", true);
+      showNotification(isSaved ? "Post saved to bookmarks!" : "Post removed from bookmarks.", true);
     }
 
     // 5. IMAGE MODAL
