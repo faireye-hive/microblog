@@ -94,7 +94,8 @@ test("every example uses real production builders, posting authority and documen
     assert.equal(example.payload.type,action.type);
     assert.equal(example.authority,"Posting");
     assert.deepEqual(example.hiveOperation.required_auths,[]);
-    assert.deepEqual(example.hiveOperation.required_posting_auths,["alice"]);
+    assert.deepEqual(example.hiveOperation.required_posting_auths,
+      [action.namespace==="moderation"?"faireye":"alice"]);
     assert.equal(example.hiveOperation.id,example.id);
     assert.deepEqual(JSON.parse(example.hiveOperation.json),example.payload);
     for(const field of Object.keys(example.payload))
