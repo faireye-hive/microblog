@@ -73,7 +73,7 @@ test("moderation ignores wrong namespaces, unsigned records and malformed JSON",
   ];
   const result=processMuteData(ops);
   assert.equal(result.size,2);
-  assert.equal(result.get(14).cause,"Motivo não especificado");
+  assert.equal(result.get(14).cause,"Reason not specified");
   assert.ok(result.has(15));
 });
 
