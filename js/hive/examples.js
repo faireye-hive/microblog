@@ -5,6 +5,7 @@
  * A change to a payload builder therefore updates the reference examples.
  */
 import { HIVE_APP_ID, HIVE_ACTION_TYPES, getHiveAction, resolveCustomJsonId } from "./registry.js";
+import { ADMIN } from "../config.js";
 import {
   buildPostPayload, buildVotePayload, buildMutePayload,
   buildUserActionPayload, buildChannelCreatePayload
@@ -21,8 +22,9 @@ export function getExampleForAction(key, {
   const action = getHiveAction(key);
   if (!action) return null;
   const isCommunity = action.namespace === "community";
+  const signer = action.namespace === "moderation" ? ADMIN : username;
   const id = resolveCustomJsonId(key, {
-    username,
+    username: signer,
     channel: isCommunity ? community : undefined
   });
   if (!id) return null;
@@ -77,7 +79,7 @@ export function getExampleForAction(key, {
     authority: "Posting",
     hiveOperation: {
       required_auths: [],
-      required_posting_auths: [username],
+      required_posting_auths: [signer],
       id,
       json: JSON.stringify(payload)
     }
