@@ -1,7 +1,7 @@
 // /js/state.js
 
 import { buildPostCard } from "./render.js";
-import { parseEmbeddedJson, extractImages } from "./utils.js";
+import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./utils.js";
 import { ADMIN } from "./config.js";
 
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
@@ -390,7 +390,7 @@ export function updateChannelsUI() {
         a.innerHTML = `
           <div class="channel-item-name">
             <span class="channel-hash">#</span>
-            <span>${c.id}</span>
+            <span>${escapeHtml(c.id)}</span>
           </div>
           <span class="channel-count">${count}</span>
         `;
@@ -428,8 +428,8 @@ export function updateChannelsUI() {
           <div class="channel-card-left" style="cursor: pointer;" onclick="window.location.hash='#/channel/${encodeURIComponent(c.id)}'">
             <div class="channel-card-icon">${icon}</div>
             <div class="channel-card-info">
-              <div class="channel-card-name">#${c.id}</div>
-              <div class="channel-card-desc" title="${c.description}">${c.name || c.description}</div>
+              <div class="channel-card-name">#${escapeHtml(c.id)}</div>
+              <div class="channel-card-desc" title="${escapeAttr(c.description)}">${escapeHtml(c.name || c.description)}</div>
             </div>
           </div>
           <div class="channel-card-right">
