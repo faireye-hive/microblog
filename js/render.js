@@ -480,10 +480,11 @@ export function buildProfilePage() {
 }
 
 // Community directory: layout simplificado, sem placeholders de canais fictícios.
-export function buildChannelsPage(searchFilter = "") {
+export function buildChannelsPage(searchFilter = "", scope = "all") {
   const query = (searchFilter || "").toLowerCase().trim();
   const directId = parseChannelCustomId(query.replace(/^#/, ""));
   const filtered = channels.filter(channel => {
+    if (scope === "joined" && !joinedChannels.has(channel.id)) return false;
     if (!query) return true;
     return channel.id.toLowerCase().includes(query) ||
       (channel.name && channel.name.toLowerCase().includes(query)) ||
@@ -550,6 +551,16 @@ export function buildChannelsPage(searchFilter = "") {
         </div>
       </div>
 
+      <div class="channels-directory-toolbar" role="group" aria-label="Filter communities">
+        <button type="button" class="channel-scope-tab ${scope === "all" ? "active" : ""}"
+                data-scope="all" aria-pressed="${scope === "all"}">
+          All communities <span>${channels.length}</span>
+        </button>
+        <button type="button" class="channel-scope-tab ${scope === "joined" ? "active" : ""}"
+                data-scope="joined" aria-pressed="${scope === "joined"}">
+          Joined <span>${channels.filter(channel=>joinedChannels.has(channel.id)).length}</span>
+        </button>
+      </div>
       <div id="channelsDirectoryGrid" class="channels-grid">
         ${filtered.length ? cardsHtml : `
           <div class="community-empty-state">
@@ -557,16 +568,16 @@ export function buildChannelsPage(searchFilter = "") {
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>
             </span>
-            <h2>${query ? "No communities found" : "Start the first community"}</h2>
+            <h2>${query ? "No communities found" : scope === "joined" ? "No joined communities yet" : "Start the first community"}</h2>
             <p>${query ? `No communities matched “${escapeHtml(searchFilter)}”. Try another search or open a valid community ID.`
-                        : "New communities will appear here as soon as they are created."}</p>
+                        : scope === "joined" ? "Join a community to see it here." : "New communities will appear here as soon as they are created."}</p>
             <div class="community-empty-actions">
               ${directId ? `
                 <button type="button" id="btnOpenChannelById" class="btn-outline-small">
                   Open #${escapeHtml(directId)}
                 </button>
               ` : ""}
-              <button type="button" id="btnCreateChannelNotFound" class="btn-post">Create community</button>
+              ${scope === "joined" ? '<button type="button" id="btnBrowseAllCommunities" class="btn-outline-small">Browse all communities</button>' : '<button type="button" id="btnCreateChannelNotFound" class="btn-post">Create community</button>'}
             </div>
           </div>
         `}
