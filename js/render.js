@@ -336,16 +336,16 @@ function buildUserListHTML(usersSet, type) {
     return `<p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Nenhum usuário ${type === 'blocked' ? 'bloqueado' : 'seguido'}.</p>`;
   }
   
-  const users = Array.from(usersSet).sort(); 
+  const users = Array.from(usersSet).map(safeHiveUsername).filter(u => u !== "unknown").sort(); 
   const actionButton = (user) => type === 'blocked' 
-    ? `<button data-action="unblock" data-user="${user}" class="btn-outline-small" style="color: #16a34a; font-size: 0.75rem;">✅ Desbloquear</button>`
+    ? `<button data-action="unblock" data-user="${escapeAttr(user)}" class="btn-outline-small" style="color: #16a34a; font-size: 0.75rem;">✅ Desbloquear</button>`
     : '';
       
   return users.map(user => `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="https://images.hive.blog/u/${user}/avatar" style="width: 28px; height: 28px; border-radius: 50%;" onerror="this.style.display='none'">
-        <span style="font-weight: 600; font-size: 0.9rem;">@${user}</span>
+        <img src="${escapeAttr(hiveAvatarUrl(user))}" style="width: 28px; height: 28px; border-radius: 50%;" onerror="this.style.display='none'">
+        <span style="font-weight: 600; font-size: 0.9rem;">@${escapeHtml(user)}</span>
       </div>
       ${actionButton(user)}
     </div>
@@ -364,6 +364,7 @@ export function buildProfilePage() {
     `;
   }
 
+  const profileUser = safeHiveUsername(loggedInUser);
   const followedListHtml = buildUserListHTML(followedUsers, 'followed');
   const blockedListHtml = buildUserListHTML(blockedUsers, 'blocked');
 
@@ -373,14 +374,14 @@ export function buildProfilePage() {
       <div class="composer-card" style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1.25rem;">
           <img 
-            src="https://images.hive.blog/u/${loggedInUser}/avatar" 
-            alt="@${loggedInUser}" 
+            src="${escapeAttr(hiveAvatarUrl(profileUser))}" 
+            alt="@${escapeAttr(profileUser)}" 
             style="width: 68px; height: 68px; border-radius: 50%; border: 2px solid var(--border);"
             onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'"
           >
           <div>
             <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
-              @${loggedInUser}
+              @${escapeHtml(profileUser)}
               <span class="hive-user-badge">
                 <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/><path d="M11 10L8 16L11 22H14L11 16L14 10H11Z" fill="#e31337"/><path d="M18 10L15 16L18 22H21L18 16L21 10H18Z" fill="#e31337"/></svg>
               </span>
@@ -436,7 +437,7 @@ export function buildChannelsPage(searchFilter = "") {
           <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(227, 19, 55, 0.08); color: #e31337; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
-                ${icon}
+                ${escapeHtml(icon)}
               </div>
               <div>
                 <a href="#/channel/${encodeURIComponent(c.id)}" style="text-decoration: none; color: var(--text); font-weight: 800; font-size: 1.05rem; display: block; line-height: 1.2;">
@@ -447,7 +448,7 @@ export function buildChannelsPage(searchFilter = "") {
                 </span>
               </div>
             </div>
-            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${c.id}" style="font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${escapeAttr(c.id)}" style="font-size: 0.8rem; padding: 0.35rem 0.85rem;">
               ${isJoined ? 'Joined' : 'Join'}
             </button>
           </div>
@@ -461,7 +462,7 @@ export function buildChannelsPage(searchFilter = "") {
           <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--text-faint);">
             <div style="display: flex; align-items: center; gap: 0.35rem;">
               <span>Criado por</span>
-              <a href="#/user/${encodeURIComponent(c.creator)}" class="author-name" style="font-weight: 700;">@${escapeHtml(c.creator)}</a>
+              <a href="#/user/${encodeURIComponent(safeHiveUsername(c.creator))}" class="author-name" style="font-weight: 700;">@${escapeHtml(safeHiveUsername(c.creator))}</a>
             </div>
             <span style="font-weight: 600; color: var(--text);">${postLabel}</span>
           </div>
@@ -470,7 +471,7 @@ export function buildChannelsPage(searchFilter = "") {
             <a href="#/channel/${encodeURIComponent(c.id)}" class="btn-outline-small" style="flex: 1; text-align: center; text-decoration: none; justify-content: center; padding: 0.45rem;">
               Ver Feed
             </a>
-            <button class="btn-post btn-post-in-channel" data-channel="${c.id}" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
+            <button class="btn-post btn-post-in-channel" data-channel="${escapeAttr(c.id)}" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
               Postar
             </button>
           </div>
