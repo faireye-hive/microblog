@@ -198,8 +198,8 @@ test("API and channel state use IndexedDB adapter",()=>{
   const state=readFileSync(new URL("../js/state.js",import.meta.url),"utf8");
   assert.match(api,/readPostCache\(POSTS_CUSTOM_ID\)/);
   assert.match(api,/writePostCache\(POSTS_CUSTOM_ID, finalPosts\)/);
-  assert.match(api,/readPostCache\(cleanId\)/);
+  assert.match(api,/readPostCache\(channelCustomId\)/);
   assert.match(api,/await clearPostCaches\(\)/);
-  assert.match(state,/writePostCache\(clean, list\.slice\(0, 1000\)\)/);
+  assert.match(state,/writePostCache\(resolveCustomJsonId\("community-post",\{channel:clean\}\), list\.slice\(0, 1000\)\)/);
   assert.doesNotMatch(api,/localStorage\.setItem\(POSTS_CACHE_KEY/);
 });
