@@ -52,7 +52,7 @@ export const TopNavHTML = `
 
       <!-- User Menu Trigger -->
       <div class="user-menu-trigger" id="btnMenu">
-        <img id="navUserAvatar" class="user-avatar-sm" src="https://images.hive.blog/u/hive/avatar" alt="Avatar" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23cbd5e1\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'22\\' text-anchor=\\'middle\\'>👤</text></svg>'">
+        <img id="navUserAvatar" class="user-avatar-sm" src="https://images.hive.blog/u/hive/avatar" alt="Avatar" data-avatar-fallback="user">
         <svg class="chevron-down-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
@@ -237,7 +237,7 @@ export const ComposerHTML = `
 <div class="composer-card" id="newPostSection">
   <div class="composer-top" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
     <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <img id="composerAvatar" class="composer-avatar" src="https://images.hive.blog/u/hive/avatar" alt="Avatar" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23cbd5e1\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'22\\' text-anchor=\\'middle\\'>👤</text></svg>'">
+      <img id="composerAvatar" class="composer-avatar" src="https://images.hive.blog/u/hive/avatar" alt="Avatar" data-avatar-fallback="user">
       <h3 class="composer-title" style="margin: 0;">Create Post</h3>
     </div>
     <div id="composerChannelBadge" class="hidden" style="display: flex; align-items: center; gap: 0.35rem; background: rgba(227, 19, 55, 0.08); border: 1px solid rgba(227, 19, 55, 0.2); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: #e31337;">
@@ -447,7 +447,7 @@ export const LoginModalHTML = `
     <input type="text" id="loginUsername" class="modal-input" placeholder="ex: faireye" />
 
     <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-      <button class="btn-outline-small" onclick="document.getElementById('loginModal').classList.add('hidden')">
+      <button id="cancelLoginModal" class="btn-outline-small">
         Cancelar
       </button>
       <button id="confirmLogin" class="btn-post">
