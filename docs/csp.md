@@ -24,17 +24,25 @@ O `index.html` contém também `<meta name="referrer" content="no-referrer">`, a
 
 Há diversos templates e componentes que geram `style=""` dinamicamente. Remover essa exceção agora apagaria estilos de posts, modais e cards. A exceção existe **somente em CSS**; JavaScript não pode usar `unsafe-inline` nem `unsafe-eval`. Próxima etapa: mover estilos inline para classes CSS, e então remover `unsafe-inline` de `style-src`.
 
-## Proxy de imagem — próximo trabalho separado
+## Proxy de imagens — implementação opcional (etapa seguinte)
 
-`images.hive.blog` já atua como serviço de imagens para avatares, mas qualquer imagem externa em um post pode vir de outro domínio. Um proxy **sob controle do Micro.fair** pode reduzir a exposição do IP do visitante ao servidor original e permitir restringir `img-src` a esse proxy.
+O backend Express agora disponibiliza `GET /api/image?url=<URL_ENCODED>`, com módulos em `js/server/image-fetch.js` e `js/server/image-proxy.js`. A função cliente `proxiedImageUrl` (`js/security/media-url.js`) roteia imagens de posts, previews e avatares pelo proxy quando configurado.
 
-- Hospedar o proxy no **backend Render** ou Worker, não no GitHub Pages estático.
-- Apenas buscar URLs HTTPS, recusar endereços internos, de loopback, link-local e endpoints de metadados; repetir verificações em redirecionamentos e ao resolver DNS (prevenção de SSRF).
-- Limitar tamanho, timeout e tipo de imagem; não encaminhar cookies nem cabeçalhos privados.
-- Aplicar cache, rate limit, limites de uso e política de conteúdo; não virar proxy público arbitrário.
-- Após migração e confirmação de URLs, restringir `img-src` a origens controladas e fallback `data:`.
+**Deploy sem quebra:** `IMAGE_PROXY_ORIGIN = ""` em `js/config.js` mantém o comportamento atual no GitHub Pages. Em `http://localhost:3000` a rota é usada automaticamente para facilitar testes. Após implantar um serviço Render com o mesmo código, configure `IMAGE_PROXY_ORIGIN = "https://SEU-SERVICO.onrender.com"` no front-end e publique outra PR. Isso mudará o `src` da mídia para o proxy, sem precisar alterar o formato dos posts na blockchain. **O backend não está automaticamente hospedado pelo GitHub Pages.**
 
-Este PR **não implementa** proxy nem altera as URLs das imagens dos posts.
+**Defesas implementadas no servidor:**
+- Somente `https:` com porta padrão 443 e sem credenciais embutidas.
+- Bloqueio de faixas IP locais/privadas, loopback, link-local, metadados e reservas; validação das respostas DNS e **pinning** do IP conferido na conexão TLS.
+- Sem seguir redirecionamentos HTTP, impedindo saltos para destinos privados.
+- Respostas aceitas: JPEG, PNG, GIF, WebP e AVIF, com verificação de assinatura de arquivo. SVG e HTML são recusados.
+- Timeout 8 segundos, máximo 5 MB por imagem, até 8 requisições de origem simultâneas, cache LRU de 24 MB com TTL de uma hora, e limite por endereço de conexão de 600 requisições por minuto.
+- Nunca encaminha cookies/headers de autorização do visitante ou `Set-Cookie` do servidor original; responde com `nosniff`, `Cache-Control` e `Cross-Origin-Resource-Policy: cross-origin`.
+
+**Observações de produção:** rate limiting em memória não substitui limites na borda (Render, Cloudflare etc.). Em Render, o endereço observado no socket pode ser o do proxy reverso, agrupando visitantes no mesmo bucket. Ajuste métricas e política antes de atender muito tráfego. O proxy limita o risco de SSRF, mas uma auditoria de implantação e testes externos continuam necessários.
+
+**CSP atual:** `img-src 'self' https: data:` permanece intocada para permitir a transição. Somente após a implantação do backend e migração de todas as imagens poderemos restringi-la à origem controlada do proxy (e ao `data:` necessário para os avatares de fallback). Uma CSP no GitHub Pages não consegue autorizar uma origem que ainda não foi escolhida.
+
+**Escopo de privacidade:** o proxy esconde o endereço IP do visitante apenas em imagens efetivamente roteadas. Clicar em links externos continua acessando os sites diretamente. Não transforma imagens externas em conteúdo confiável por si só.
 
 ## Checklist manual antes de liberar a CSP em produção
 

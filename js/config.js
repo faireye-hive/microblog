@@ -2,6 +2,11 @@ import { buildHafsqlCustomJsonUrl } from "./data/hafsql.js";
 
 // /js/config.js
 
+// Optional public HTTPS origin for image-proxy service, e.g.
+// https://my-microfair-service.onrender.com . Leave empty until deployed.
+// GitHub Pages keeps its current image URLs while this is empty.
+export const IMAGE_PROXY_ORIGIN = "";
+
 export const APP_ID = "micro.fair";
 export const ADMIN = "faireye";
 export const VOTE_CUSTOM_ID = `${APP_ID}.interation`;
