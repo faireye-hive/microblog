@@ -2,6 +2,7 @@
 
 import { showNotification, escapeAttr } from "./utils.js";
 import { safeHiveUsername, hiveAvatarUrl } from "./security/safe-values.js";
+import { proxiedImageUrl } from "./security/media-url.js";
 
 function toggleModal(modalId, show = true) {
     const modal = document.getElementById(modalId);
@@ -46,10 +47,10 @@ export function updateLoginUI() {
             if (link) link.classList.remove("hidden");
         });
         if (navUserAvatar) {
-            navUserAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" data-avatar-fallback="hive">`;
+            navUserAvatar.innerHTML = `<img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" data-avatar-fallback="hive">`;
         }
         if (composerAvatar) {
-            composerAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" data-avatar-fallback="hive">`;
+            composerAvatar.innerHTML = `<img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" data-avatar-fallback="hive">`;
         }
     } else {
         if (label) label.textContent = "Login";
