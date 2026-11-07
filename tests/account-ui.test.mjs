@@ -81,6 +81,8 @@ function setupFakeDOM() {
     focus(){globalThis.document.activeElement=this;}
     querySelector(){return elements.menuProfile;}
     querySelectorAll(){return [];}
+    appendChild(child){this.lastChild=child;return child;}
+    remove(){}
     closest(selector){return selector==="#btnMenu"&&this.id==="btnMenu"?this:null;}
   }
   const ids=["menuLogin","menuLogout","menuProfile","menuMyVotes","menuMyComments",
@@ -94,13 +96,14 @@ function setupFakeDOM() {
   Object.defineProperty(elements.navUserAvatar,"innerHTML",{set(){throw new Error("Must not nest an img inside avatar img");},get(){return "";}});
   Object.defineProperty(elements.composerAvatar,"innerHTML",{set(){throw new Error("Must not nest an img inside composer img");},get(){return "";}});
   const stored=new Map();
-  const doc={getElementById:id=>elements[id]||null,addEventListener(){},activeElement:null};
+  const doc={getElementById:id=>elements[id]||null,addEventListener(){},createElement:tag=>new FakeElement(tag),body:new FakeElement("body"),activeElement:null};
   const local={getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)};
   return {elements,stored,doc,local};
 }
 
 test("logged-out header opens login directly; signed login updates img.src and controls", () => {
-  const oldDoc=globalThis.document,oldStorage=globalThis.localStorage,oldWindow=globalThis.window;
+  const oldDoc=globalThis.document,oldStorage=globalThis.localStorage,oldWindow=globalThis.window,oldTimeout=globalThis.setTimeout;
+  globalThis.setTimeout=()=>0;
   const {elements,stored,doc,local}=setupFakeDOM();
   globalThis.document=doc;
   globalThis.localStorage=local;
@@ -140,7 +143,7 @@ test("logged-out header opens login directly; signed login updates img.src and c
     elements.menuProfile.dispatch("click");
     assert.equal(elements.btnMenu.getAttribute("aria-expanded"),"false");
   } finally {
-    globalThis.document=oldDoc;globalThis.localStorage=oldStorage;globalThis.window=oldWindow;
+    globalThis.document=oldDoc;globalThis.localStorage=oldStorage;globalThis.window=oldWindow;globalThis.setTimeout=oldTimeout;
   }
 });
 
