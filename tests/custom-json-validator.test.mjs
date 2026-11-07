@@ -63,7 +63,7 @@ test("vote namespace/type mismatch and malicious prototype keys return errors, n
     {...vote.payload,type:"__proto__"},
     {...vote.payload,type:"toString"},
     {...vote.payload,app:"different"},
-    {...vote.payload,v:2},
+    {...vote.payload,v:1},
     {...vote.payload,content_id:"12345"},
     {...vote.payload,content_id:0},
     {...vote.payload,content_id:1.2}
@@ -167,7 +167,7 @@ test("page includes read-only validator and a v2 preflight UI without signing to
     assert.ok(html.includes('id="'+id+'"'),id);
     assert.ok(page.includes('id="'+id+'"'),id);
   }
-  assert.match(page,/PROPOSAL ONLY/);
+  assert.match(page,/ACTIVE · V2/);
   assert.match(page,/No transactions sent/);
   assert.doesNotMatch(html,/requestCustomJson\(|onclick=|onerror=/);
 });
