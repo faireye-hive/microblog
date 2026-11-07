@@ -17,7 +17,8 @@ import {
   getChannelPosts,
   channelPostsMap
 } from "./state.js";
-import { fetchData, fetchChannelPosts } from "./api.js";
+import { fetchData, fetchChannelPosts, hasFinishedFeedSync } from "./api.js";
+import { showFeedSkeleton, hideFeedSkeleton } from "./ui/feed-loading.js";
 import { parseEmbeddedJson, showNotification, escapeHtml } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { getPostById, countDirectReplies } from "./data/post-index.js";
@@ -221,13 +222,9 @@ export async function filterByChannel(channelId, pushHistory = false) {
   let currentPosts = getChannelPosts(cleanId);
 
   if (currentPosts.length === 0) {
-    feed.innerHTML = `
-      <div class="community-empty-state community-loading" role="status">
-        <span class="community-empty-icon" aria-hidden="true">#</span>
-        <h2>Loading #${escapeHtml(cleanId)}</h2>
-        <p>Fetching this community's posts from Hive.</p>
-      </div>
-    `;
+    // A channel change must replace the previous channel, not overlay its posts.
+    feed.innerHTML = "";
+    showFeedSkeleton(feed);
   } else {
     renderFeed(currentPosts);
   }
@@ -241,8 +238,9 @@ export async function filterByChannel(channelId, pushHistory = false) {
     finalPosts = fetched.filter(p => !mutedPostIds.has(p.id));
   }
 
-  // Se o usuário ainda estiver neste canal após o retorno da rede
+  // Only the currently selected channel may replace this view.
   if (activeChannel === cleanId) {
+    hideFeedSkeleton(feed);
     if (finalPosts.length === 0) {
       feed.innerHTML = `
         <div class="community-empty-state">
@@ -355,7 +353,7 @@ window.addEventListener("refreshChannelsPage", () => {
 
 // Lógica principal de roteamento
 export async function handleRoute() {
-  if (allPosts.length === 0) {
+  if (allPosts.length === 0 && !hasFinishedFeedSync()) {
     try {
       await fetchData();
     } catch (e) {
