@@ -62,6 +62,14 @@ test("Express emits enforced CSP and privacy headers for real HTTP pages", async
     assert.equal(missing.headers.get("content-security-policy"), cspHttpHeader(html));
     assert.doesNotMatch(await missing.text(), /cdn\.tailwindcss\.com/);
 
+    // Reject invalid remote URLs before making an outbound request.
+    const forbidden = await fetch(base + "/api/image?url=" +
+      encodeURIComponent("http://127.0.0.1:80/private"));
+    assert.equal(forbidden.status, 400);
+    assert.equal(forbidden.headers.get("x-content-type-options"), "nosniff");
+    const missingMedia = await fetch(base + "/api/image");
+    assert.equal(missingMedia.status, 400);
+
     const js = await fetch(base + "/js/app.js");
     assert.equal(js.status, 200);
     assert.equal(js.headers.get("x-content-type-options"), "nosniff");
