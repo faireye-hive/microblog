@@ -381,6 +381,9 @@ export function buildProfilePage() {
   }
 
   const profileUser = safeHiveUsername(loggedInUser);
+  // Keep visible list counters consistent with the validated accounts shown.
+  const followedCount = [...followedUsers].filter(name => safeHiveUsername(name) !== "unknown").length;
+  const blockedCount = [...blockedUsers].filter(name => safeHiveUsername(name) !== "unknown").length;
   const followedListHtml = buildUserListHTML(followedUsers, "followed");
   const blockedListHtml = buildUserListHTML(blockedUsers, "blocked");
 
@@ -412,12 +415,12 @@ export function buildProfilePage() {
 
       <div class="profile-summary" aria-label="Resumo das conexões">
         <div class="profile-stat">
-          <strong>${followedUsers.size}</strong>
+          <strong>${followedCount}</strong>
           <span>Seguindo</span>
         </div>
         <span class="profile-summary-divider" aria-hidden="true"></span>
         <div class="profile-stat">
-          <strong>${blockedUsers.size}</strong>
+          <strong>${blockedCount}</strong>
           <span>Bloqueados</span>
         </div>
       </div>
@@ -429,7 +432,7 @@ export function buildProfilePage() {
               <span class="profile-panel-kicker">CONEXÕES</span>
               <h2 id="profileFollowingTitle">Pessoas que você segue</h2>
             </div>
-            <span class="profile-count-badge">${followedUsers.size}</span>
+            <span class="profile-count-badge">${followedCount}</span>
           </div>
           <div id="followedUsersList" class="profile-people-list">
             ${followedListHtml}
@@ -442,7 +445,7 @@ export function buildProfilePage() {
               <span class="profile-panel-kicker">PRIVACIDADE</span>
               <h2 id="profileBlockedTitle">Contas bloqueadas</h2>
             </div>
-            <span class="profile-count-badge">${blockedUsers.size}</span>
+            <span class="profile-count-badge">${blockedCount}</span>
           </div>
           <p class="profile-panel-description">Publicações das contas bloqueadas ficam ocultas do seu feed.</p>
           <div id="blockedUsersList" class="profile-people-list">
