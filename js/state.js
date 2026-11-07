@@ -4,6 +4,7 @@ import { buildPostCard } from "./render.js";
 import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./utils.js";
 import { ADMIN } from "./config.js";
 import { getChannelPostsCacheKey } from "./data/cache-keys.js";
+import { writePostCache } from "./data/post-cache.js";
 
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
 export let allPosts = []; // Todos os posts brutos
@@ -65,9 +66,8 @@ export function addChannelPostLocally(channelId, post) {
     list.unshift(post);
   }
   channelPostsMap.set(clean, list);
-  try {
-    localStorage.setItem(getChannelPostsCacheKey(clean), JSON.stringify(list.slice(0, 1000)));
-  } catch (e) {}
+  // Non-blocking persistence; writes to the legacy key only when IDB fails.
+  void writePostCache(clean, list.slice(0, 1000));
 }
 
 export function setActiveChannel(channelId) {
