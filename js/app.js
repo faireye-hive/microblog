@@ -61,33 +61,86 @@ import {
 
 // ---------- Funções de UI Locais (Modais) ----------
 
+let imageModalReturnFocus = null;
+
+function closeImageModal() {
+  const modal = document.getElementById("imageModal");
+  const img = document.getElementById("modalImage");
+  modal?.classList.add("hidden");
+  if (img) img.removeAttribute("src");
+  imageModalReturnFocus?.focus?.();
+  imageModalReturnFocus = null;
+}
+
 function setupImageModal() {
   const modalHtml = `
-    <div id="imageModal" class="modal-overlay hidden">
-      <div style="position: relative; max-width: 90vw; max-height: 90vh;">
-        <img id="modalImage" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 16px;">
-        <button id="closeImageModal" class="modal-close" style="color: white; top: -2.5rem; right: 0; font-size: 2rem;">&times;</button>
+    <div id="imageModal" class="modal-overlay post-lightbox hidden"
+         role="dialog" aria-modal="true" aria-labelledby="imageModalTitle">
+      <div class="post-lightbox-dialog">
+        <div class="post-lightbox-header">
+          <strong id="imageModalTitle">Image preview</strong>
+          <button id="closeImageModal" type="button" class="post-lightbox-close"
+                  aria-label="Close image preview">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+              <path d="M6 6 18 18M18 6 6 18"/>
+            </svg>
+          </button>
+        </div>
+        <img id="modalImage" alt="Expanded post image" class="post-lightbox-image">
       </div>
     </div>
   `;
   document.body.insertAdjacentHTML("beforeend", modalHtml);
   const overlay = document.getElementById("imageModal");
-  overlay?.addEventListener("click", e => {
-    if (e.target === overlay) overlay.classList.add("hidden");
+  overlay?.addEventListener("click", event => {
+    if (event.target === overlay) closeImageModal();
   });
-  document.getElementById("closeImageModal")?.addEventListener("click", () => {
-    overlay?.classList.add("hidden");
+  overlay?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeImageModal();
+    } else if (event.key === "Tab") {
+      // Only one focusable element in the lightbox.
+      event.preventDefault();
+      document.getElementById("closeImageModal")?.focus();
+    }
   });
+  document.getElementById("closeImageModal")?.addEventListener("click", closeImageModal);
 }
 
-function showImageModal(src) {
+function showImageModal(src, trigger) {
   const modal = document.getElementById("imageModal");
   const img = document.getElementById("modalImage");
-  if (modal && img) {
-    const url = safeExternalUrl(src);
-    if (!url) return;
-    img.src = url;
-    modal.classList.remove("hidden");
+  if (!modal || !img) return;
+  const url = safeExternalUrl(src);
+  if (!url) return;
+  imageModalReturnFocus = trigger || document.activeElement;
+  img.src = url;
+  modal.classList.remove("hidden");
+  document.getElementById("closeImageModal")?.focus();
+}
+
+async function sharePostLink(id) {
+  // Build links from the current deployment path (GitHub Pages and local both work).
+  if (!/^\d+$/.test(String(id))) return;
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = `#/thread/${encodeURIComponent(id)}`;
+  try {
+    if (typeof navigator.share === "function") {
+      await navigator.share({title: "Post on Micro.fair", url: url.toString()});
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url.toString());
+      showNotification("Post link copied to clipboard.", true);
+    } else {
+      // Older browsers can still select the post URL manually.
+      window.prompt("Copy this post link:", url.toString());
+    }
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      showNotification("Could not share this post. Please try again.", false);
+    }
   }
 }
 
@@ -148,13 +201,14 @@ function setupFeedDelegation() {
   if (!feed) return;
 
   feed.addEventListener("click", (e) => {
-    // 1. VIEW THREAD
-    if (e.target.classList.contains("view-thread")) {
-      const id = e.target.dataset.id;
-      showSinglePost(id);
+    // Navigate to a parent post from a reply context card.
+    const threadLink = e.target.closest(".view-thread");
+    if (threadLink) {
+      showSinglePost(threadLink.dataset.id);
+      return;
     }
 
-    // 2. THREAD TOGGLE
+    // Expand or collapse the replies inline.
     const threadBtn = e.target.closest(".thread-btn");
     if (threadBtn) {
       const id = threadBtn.dataset.id;
@@ -162,18 +216,34 @@ function setupFeedDelegation() {
       if (!card) return;
       const threadDiv = card.querySelector(".thread");
       if (!threadDiv) return;
-
-      if (!threadDiv.classList.contains("hidden")) {
-        threadDiv.classList.add("hidden");
-        threadDiv.innerHTML = "";
+      if (currentPage === "thread") {
+        document.querySelector(".conversation-panel")?.scrollIntoView({behavior:"smooth", block:"start"});
         return;
       }
-      const repliesHtml = buildRepliesRecursive(id, activeChannel ? getChannelPosts(activeChannel) : allPosts);
-      threadDiv.innerHTML = repliesHtml || '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">No replies yet. Start the conversation!</div>';
+
+      const opening = threadDiv.classList.contains("hidden");
+      if (!opening) {
+        threadDiv.classList.add("hidden");
+        threadDiv.innerHTML = "";
+        threadBtn.setAttribute("aria-expanded", "false");
+        return;
+      }
+      const pool = activeChannel ? getChannelPosts(activeChannel) : allPosts;
+      const repliesHtml = buildRepliesRecursive(id, pool);
+      threadDiv.innerHTML = `
+        <div class="thread-inline-heading">
+          <span>Replies</span>
+          ${/^\d+$/.test(String(id)) ?
+            `<a href="#/thread/${encodeURIComponent(id)}" class="thread-open-link">Full conversation →</a>` : ""}
+        </div>
+        ${repliesHtml || '<p class="thread-no-replies">No replies yet. Start the conversation!</p>'}
+      `;
       threadDiv.classList.remove("hidden");
+      threadBtn.setAttribute("aria-expanded", "true");
+      return;
     }
 
-    // 3. REPLY BUTTON
+    // Reply inline to a post or to an individual reply in a thread.
     const replyBtn = e.target.closest(".reply-btn");
     if (replyBtn) {
       const id = replyBtn.dataset.id;
@@ -181,32 +251,75 @@ function setupFeedDelegation() {
       if (!card) return;
       const existing = card.querySelector(".reply-input-box");
       if (existing) {
+        const sameTarget = existing.dataset.replyId === String(id);
         existing.remove();
-        return;
+        card.querySelectorAll(".reply-btn[aria-expanded]").
+          forEach(button => button.setAttribute("aria-expanded", "false"));
+        if (sameTarget) return;
       }
+
+      const replyItem = replyBtn.closest(".reply-thread-item");
+      const mount = replyItem || card.querySelector(".post-card-main") || card;
       const replyBox = document.createElement("div");
       replyBox.className = "reply-input-box";
+      replyBox.dataset.replyId = String(id);
       replyBox.innerHTML = `
-        <textarea class="reply-input-textarea" rows="2" placeholder="Write your reply on Hive..."></textarea>
-        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
-          <button class="btn-outline-small cancel-reply">Cancel</button>
-          <button class="btn-post send-reply" style="padding: 0.35rem 0.95rem; font-size: 0.8rem;">Reply</button>
-        </div>`;
-      
-      const contentWrap = card.querySelector(".post-card-main") || card;
-      contentWrap.appendChild(replyBox);
-      
-      const textarea = replyBox.querySelector("textarea");
-      textarea.focus();
-
-      replyBox.querySelector(".cancel-reply").addEventListener("click", () => replyBox.remove());
+        <div class="reply-compose-top">
+          <span class="reply-compose-target">Write a reply</span>
+          <button type="button" class="reply-compose-close cancel-reply" aria-label="Close reply editor">×</button>
+        </div>
+        <textarea class="reply-input-textarea" rows="3" maxlength="2048"
+                  aria-label="Write a reply" placeholder="Share your thoughts on Hive..."></textarea>
+        <div class="reply-compose-bottom">
+          <span class="reply-compose-count" aria-live="off">0 / 2048</span>
+          <div class="reply-compose-actions">
+            <button type="button" class="btn-outline-small cancel-reply">Cancel</button>
+            <button type="button" class="btn-post send-reply">Post reply</button>
+          </div>
+        </div>
+      `;
+      mount.appendChild(replyBox);
+      const author = replyItem?.querySelector(".reply-author")?.textContent?.trim() ||
+        card.querySelector(".post-author-name")?.textContent?.trim() || "";
+      const replyTarget = replyBox.querySelector(".reply-compose-target");
+      if (author) replyTarget.textContent = `Replying to ${author}`;
+      const textarea = replyBox.querySelector(".reply-input-textarea");
+      const count = replyBox.querySelector(".reply-compose-count");
+      textarea.addEventListener("input", () => {
+        count.textContent = `${textarea.value.length} / 2048`;
+      });
+      const close = () => {
+        replyBox.remove();
+        replyBtn.setAttribute("aria-expanded", "false");
+        replyBtn.focus();
+      };
+      replyBtn.setAttribute("aria-expanded", "true");
+      textarea.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close();
+        }
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          replyBox.querySelector(".send-reply")?.click();
+        }
+      });
+      replyBox.querySelectorAll(".cancel-reply").forEach(button => button.addEventListener("click", close));
       replyBox.querySelector(".send-reply").addEventListener("click", () => {
         const text = textarea.value.trim();
-        if (!text) return showNotification("⚠️ Write a reply before submitting!", false);
-        const targetPost = allPosts.find(p => p.id == id) || (activeChannel ? getChannelPosts(activeChannel).find(p => p.id == id) : null);
-        const postChannel = (targetPost && targetPost.custom_id) ? targetPost.custom_id : activeChannel;
-        sendPost(text, parseInt(id) || id, postChannel);
+        if (!text) {
+          showNotification("Write a reply before posting.", false);
+          textarea.focus();
+          return;
+        }
+        const pool = activeChannel ? getChannelPosts(activeChannel) : allPosts;
+        const targetPost = pool.find(post => String(post.id) === String(id)) ||
+          allPosts.find(post => String(post.id) === String(id));
+        const postChannel = targetPost?.custom_id || activeChannel;
+        sendPost(text, /^\d+$/.test(String(id)) ? Number(id) : id, postChannel);
       });
+      textarea.focus();
+      return;
     }
 
     // 4. BOOKMARK BUTTON
@@ -216,6 +329,9 @@ function setupFeedDelegation() {
       toggleBookmark(id);
       const isSaved = bookmarkedPostIds.has(id);
       bookmarkBtn.classList.toggle("bookmarked", isSaved);
+      bookmarkBtn.setAttribute("aria-pressed", String(isSaved));
+      bookmarkBtn.setAttribute("aria-label", isSaved ? "Remove bookmark" : "Save post");
+      bookmarkBtn.title = isSaved ? "Remove bookmark" : "Save post";
       const svg = bookmarkBtn.querySelector("svg");
       if (svg) {
         svg.setAttribute("fill", isSaved ? "currentColor" : "none");
@@ -223,10 +339,18 @@ function setupFeedDelegation() {
       showNotification(isSaved ? "Post saved to bookmarks!" : "Post removed from bookmarks.", true);
     }
 
-    // 5. IMAGE MODAL
-    if (e.target.classList.contains("post-image")) {
-      const fullSrc = e.target.dataset.fullSrc;
-      showImageModal(fullSrc);
+    // Native image buttons can be opened with a pointer or keyboard.
+    const imageTrigger = e.target.closest(".post-image-trigger");
+    if (imageTrigger) {
+      const image = imageTrigger.querySelector(".post-image");
+      showImageModal(image?.dataset.fullSrc, imageTrigger);
+      return;
+    }
+
+    const shareBtn = e.target.closest(".post-share-btn");
+    if (shareBtn) {
+      void sharePostLink(shareBtn.dataset.id);
+      return;
     }
 
     // 6. VOTE BUTTON
@@ -261,21 +385,25 @@ function setupFeedDelegation() {
       }
     }
 
-    // 9. PROFILE POPUP
-    if (e.target.classList.contains("author-name")) {
-      const author = e.target.dataset.author;
-      const currentPostCard = e.target.closest(".card") || e.target.closest(".post-card");
-      const popover = currentPostCard
-        ? [...currentPostCard.querySelectorAll(".user-popover-menu")].find(el => el.dataset.author === author)
+    // Accessible author actions, only when authenticated.
+    const authorButton = e.target.closest(".author-name[data-author]");
+    if (authorButton) {
+      const author = authorButton.dataset.author;
+      const card = authorButton.closest(".post-card");
+      const popover = card
+        ? [...card.querySelectorAll(".user-popover-menu")].find(el => el.dataset.author === author)
         : null;
-
-      document.querySelectorAll(".user-popover-menu").forEach((p) => {
-        if (p !== popover) p.classList.add("hidden");
+      document.querySelectorAll(".user-popover-menu").forEach(other => {
+        if (other !== popover) other.classList.add("hidden");
       });
-
+      document.querySelectorAll(".author-name[aria-expanded]").forEach(button => {
+        if (button !== authorButton) button.setAttribute("aria-expanded", "false");
+      });
       if (popover) {
         popover.classList.toggle("hidden");
+        authorButton.setAttribute("aria-expanded", String(!popover.classList.contains("hidden")));
       }
+      return;
     }
 
     // 10. LOGIN/LOGOUT ON PROFILE PAGE
@@ -318,10 +446,23 @@ function setupGlobalInteractions() {
       profileUnblockBtn.closest("div")?.remove();
     }
 
-    // Fechar Popover ao clicar fora
-    if (!e.target.closest(popoverSelector) && !e.target.classList.contains("author-name")) {
+    // Close author menus and restore their expanded state when clicking away.
+    if (!e.target.closest(popoverSelector) && !e.target.closest(".author-name[data-author]")) {
       document.querySelectorAll(popoverSelector).forEach(p => p.classList.add("hidden"));
+      document.querySelectorAll(".author-name[aria-expanded]").forEach(
+        button => button.setAttribute("aria-expanded", "false")
+      );
     }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    const openMenu = document.querySelector(".user-popover-menu:not(.hidden)");
+    if (!openMenu) return;
+    const trigger = openMenu.closest(".post-card")?.querySelector(".author-name[aria-expanded]");
+    openMenu.classList.add("hidden");
+    trigger?.setAttribute("aria-expanded", "false");
+    trigger?.focus();
   });
 
   // Atalho global Ctrl+K para buscar
