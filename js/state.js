@@ -302,7 +302,12 @@ export function renderNextBatch() {
     return;
   }
 
-  const currentList = allPostsToRender.length > 0 ? allPostsToRender : allPosts;
+  // Never fall back to the full global feed when a search/filter has zero matches.
+  if (allPostsToRender.length === 0) {
+    loading = false;
+    return;
+  }
+  const currentList = allPostsToRender;
 
   const filteredList = currentList.filter(p => 
     !blockedUsers.has(p.required_posting_auths?.[0])
