@@ -5,6 +5,8 @@ import {
   parseEmbeddedJson,
 } from "./utils.js";
 import { buildRepliesRecursive } from "./render.js";
+import { getDiscoveryResults, normalizeDiscoveryQuery, discoveryPostPool } from "./helpers/discovery.js";
+import { buildSearchSuggestions } from "./ui/discovery.js";
 import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
 import { safeExternalUrl, safeHiveUsername } from "./security/safe-values.js";
 import { installImageErrorHandling } from "./security/image-errors.js";
@@ -44,6 +46,10 @@ import {
 } from "./routing.js";
 import { 
   allPosts, 
+  channels, 
+  channelPostsMap, 
+  blockedUsers, 
+  mutedPostIds, 
   renderFeed, 
   renderNextBatch, 
   loading, 
@@ -583,32 +589,103 @@ function setupFeedFilters() {
 }
 
 function setupSidebarControls() {
-  // Busca no Topo
+  // Fast, accessible, client-side discovery over the content already loaded.
   const searchInput = document.getElementById("topSearchInput");
-  if (searchInput) {
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const query = searchInput.value.trim();
-        if (!query) {
-          window.location.hash = "#/";
-          return;
-        }
-        if (query.startsWith("#")) {
-          filterByTag(query.replace("#", ""));
-        } else {
-          const filtered = allPosts.filter((p) => {
-            const js = parseEmbeddedJson(p.json);
-            const content = (js?.content || "").toLowerCase();
-            const author = (p.required_posting_auths?.[0] || "").toLowerCase();
-            return content.includes(query.toLowerCase()) || author.includes(query.toLowerCase());
-          });
-          const feedHeaderBar = document.getElementById("feedHeaderBar");
-          if (feedHeaderBar) feedHeaderBar.classList.remove("hidden");
-          document.getElementById("pageTitle").textContent = `Busca: "${query}"`;
-          document.getElementById("btnBack").classList.remove("hidden");
-          renderFeed(filtered);
-        }
+  const searchPanel = document.getElementById("searchResultsPanel");
+  const searchContainer = searchInput?.closest(".search-container");
+  const mobileTrigger = document.getElementById("btnMobileSearch");
+  const mobileClose = document.getElementById("closeMobileSearch");
+  if (searchInput && searchPanel) {
+    let debounceId = 0;
+    let activeOption = -1;
+    const options = () => [...searchPanel.querySelectorAll(".search-suggestion-item")];
+    const showPanel = () => {
+      searchPanel.classList.remove("hidden");
+      searchInput.setAttribute("aria-expanded", "true");
+    };
+    const closePanel = (closeMobile = false) => {
+      clearTimeout(debounceId);
+      searchPanel.classList.add("hidden");
+      searchInput.setAttribute("aria-expanded", "false");
+      searchInput.removeAttribute("aria-activedescendant");
+      activeOption = -1;
+      if (closeMobile) {
+        searchContainer?.classList.remove("search-mobile-open");
+        mobileTrigger?.setAttribute("aria-expanded", "false");
       }
+    };
+    const selectOption = index => {
+      const items = options();
+      activeOption = Math.min(items.length-1,Math.max(-1,index));
+      items.forEach((item,n)=>{
+        const selected=n===activeOption;
+        item.classList.toggle("selected",selected);
+        item.setAttribute("aria-selected",String(selected));
+      });
+      if(activeOption>=0) {
+        searchInput.setAttribute("aria-activedescendant",items[activeOption].id);
+        items[activeOption].scrollIntoView?.({block:"nearest"});
+      } else searchInput.removeAttribute("aria-activedescendant");
+    };
+    const renderSuggestions = () => {
+      const query = normalizeDiscoveryQuery(searchInput.value);
+      const postPool = discoveryPostPool(
+        allPosts, [...channelPostsMap.values()].flat(), blockedUsers, mutedPostIds);
+      const results = getDiscoveryResults({query,posts:postPool,channels,maxPosts:5});
+      searchPanel.innerHTML = buildSearchSuggestions(results);
+      activeOption=-1;
+      searchInput.removeAttribute("aria-activedescendant");
+      showPanel();
+    };
+    const goToSearch = () => {
+      const query=normalizeDiscoveryQuery(searchInput.value);
+      closePanel(true);
+      window.location.hash=query ? `#/search?q=${encodeURIComponent(query)}` : "#/explore";
+    };
+    searchInput.addEventListener("focus", renderSuggestions);
+    searchInput.addEventListener("input", ()=>{
+      clearTimeout(debounceId);
+      debounceId = setTimeout(renderSuggestions, 100);
+    });
+    searchInput.addEventListener("keydown",event=>{
+      if(event.key==="ArrowDown"||event.key==="ArrowUp"){
+        event.preventDefault();
+        if(searchPanel.classList.contains("hidden"))renderSuggestions();
+        const items=options();
+        if(items.length)selectOption(event.key==="ArrowDown" ?
+          (activeOption+1)%items.length : (activeOption<=0?items.length-1:activeOption-1));
+      } else if(event.key==="Escape"){
+        event.preventDefault();
+        closePanel(true);
+        searchInput.blur();
+        mobileTrigger?.focus?.();
+      } else if(event.key==="Enter"){
+        event.preventDefault();
+        const selected=options()[activeOption];
+        if(selected?.getAttribute("href")){
+          window.location.hash=selected.getAttribute("href");
+          closePanel(true);
+        } else goToSearch();
+      }
+    });
+    searchPanel.addEventListener("click",event=>{
+      if(event.target.closest("a[href]"))closePanel(true);
+    });
+    document.addEventListener("pointerdown",event=>{
+      if(!searchContainer?.contains(event.target) && event.target!==mobileTrigger)
+        closePanel(true);
+    });
+    window.addEventListener("hashchange",()=>closePanel(true));
+    mobileTrigger?.addEventListener("click",()=>{
+      const open = !searchContainer?.classList.contains("search-mobile-open");
+      searchContainer?.classList.toggle("search-mobile-open",open);
+      mobileTrigger.setAttribute("aria-expanded",String(open));
+      if(open)searchInput.focus();
+      else {closePanel(true);mobileTrigger.focus();}
+    });
+    mobileClose?.addEventListener("click",()=>{
+      closePanel(true);
+      mobileTrigger?.focus();
     });
   }
 
