@@ -325,83 +325,130 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   return el;
 }
 
+
 function buildUserListHTML(usersSet, type) {
-  if (usersSet.size === 0) {
-    return `<p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Nenhum usuário ${type === 'blocked' ? 'bloqueado' : 'seguido'}.</p>`;
-  }
-  
-  const users = Array.from(usersSet).map(safeHiveUsername).filter(u => u !== "unknown").sort(); 
-  const actionButton = (user) => type === 'blocked' 
-    ? `<button data-action="unblock" data-user="${escapeAttr(user)}" class="btn-outline-small" style="color: #16a34a; font-size: 0.75rem;">✅ Desbloquear</button>`
-    : '';
-      
-  return users.map(user => `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}" style="width: 28px; height: 28px; border-radius: 50%;" data-hide-on-error="true">
-        <span style="font-weight: 600; font-size: 0.9rem;">@${escapeHtml(user)}</span>
+  const blocked = type === "blocked";
+  const users = Array.from(usersSet).map(safeHiveUsername)
+    .filter(user => user !== "unknown").sort();
+
+  if (!users.length) {
+    return `
+      <div class="profile-list-empty">
+        <span class="profile-list-empty-icon" aria-hidden="true">
+          ${blocked ? "✓" : "＋"}
+        </span>
+        <strong>${blocked ? "Nenhuma conta bloqueada" : "Você ainda não segue ninguém"}</strong>
+        <p>${blocked
+          ? "Suas contas bloqueadas aparecerão aqui."
+          : "Encontre pessoas interessantes nas conversas e siga seus perfis."}</p>
       </div>
-      ${actionButton(user)}
+    `;
+  }
+
+  return users.map(user => `
+    <div class="profile-person-row">
+      <a href="#/user/${encodeURIComponent(user)}" class="profile-person-main">
+        <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}"
+             alt="" class="profile-person-avatar" loading="lazy"
+             data-avatar-fallback="user">
+        <span class="profile-person-name">@${escapeHtml(user)}</span>
+      </a>
+      ${blocked ? `<button type="button" data-action="unblock"
+        data-user="${escapeAttr(user)}" class="profile-unblock-btn">Desbloquear</button>` : ""}
     </div>
-  `).join('');
+  `).join("");
 }
 
 export function buildProfilePage() {
   if (!loggedInUser) {
     return `
-      <div class="composer-card" style="padding: 2.5rem; text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔑</div>
-        <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">Faça login com sua conta Hive</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Conecte sua conta Hive via Keychain para visualizar seu perfil, votos e comunidades.</p>
-        <button id="btnProfileLogin" class="btn-post" style="display: inline-flex;">Entrar via Keychain</button>
-      </div>
+      <section class="profile-page profile-guest">
+        <div class="profile-guest-icon" aria-hidden="true">
+          <svg width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>
+          </svg>
+        </div>
+        <span class="profile-eyebrow">SEU ESPAÇO NA HIVE</span>
+        <h2>Seu perfil começa aqui</h2>
+        <p>Entre com sua conta Hive para acompanhar as pessoas que você segue e gerenciar suas preferências.</p>
+        <button type="button" id="btnProfileLogin" class="btn-post profile-primary-action">Entrar com Keychain
+          <span aria-hidden="true">→</span>
+        </button>
+        <span class="profile-guest-footnote">A autenticação é feita pela extensão Hive Keychain.</span>
+      </section>
     `;
   }
 
   const profileUser = safeHiveUsername(loggedInUser);
-  const followedListHtml = buildUserListHTML(followedUsers, 'followed');
-  const blockedListHtml = buildUserListHTML(blockedUsers, 'blocked');
+  const followedListHtml = buildUserListHTML(followedUsers, "followed");
+  const blockedListHtml = buildUserListHTML(blockedUsers, "blocked");
 
   return `
-    <div style="display: flex; flex-direction: column; gap: 1.25rem; width: 100%;">
-      <!-- Profile Header Card -->
-      <div class="composer-card" style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 1.25rem;">
-          <img 
-            src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(profileUser)))}" 
-            alt="@${escapeAttr(profileUser)}" 
-            style="width: 68px; height: 68px; border-radius: 50%; border: 2px solid var(--border);"
-            data-avatar-fallback="hive"
-          >
-          <div>
-            <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
-              @${escapeHtml(profileUser)}
-              <span class="hive-user-badge">
-                <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/><path d="M11 10L8 16L11 22H14L11 16L14 10H11Z" fill="#e31337"/><path d="M18 10L15 16L18 22H21L18 16L21 10H18Z" fill="#e31337"/></svg>
-              </span>
-            </h1>
-            <span style="font-size: 0.8rem; color: var(--text-faint);">Conta Autenticada Hive</span>
+    <div class="profile-page">
+      <section class="profile-hero" aria-labelledby="profileUsername">
+        <div class="profile-hero-content">
+          <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(profileUser)))}"
+               alt="Avatar de @${escapeAttr(profileUser)}" class="profile-hero-avatar"
+               data-avatar-fallback="user">
+          <div class="profile-identity">
+            <span class="profile-eyebrow">MEU PERFIL</span>
+            <h1 id="profileUsername">@${escapeHtml(profileUser)}</h1>
+            <span class="profile-connected">
+              <span class="profile-status-dot" aria-hidden="true"></span>
+              Conectado com Hive Keychain
+            </span>
           </div>
         </div>
-        <button id="btnProfileLogout" class="btn-outline-small" style="color: #dc2626;">Sair da Conta</button>
+        <button type="button" id="btnProfileLogout" class="profile-logout-btn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/>
+            <path d="M9 12h10m-4-4 4 4-4 4"/>
+          </svg>
+          Sair
+        </button>
+      </section>
+
+      <div class="profile-summary" aria-label="Resumo das conexões">
+        <div class="profile-stat">
+          <strong>${followedUsers.size}</strong>
+          <span>Seguindo</span>
+        </div>
+        <span class="profile-summary-divider" aria-hidden="true"></span>
+        <div class="profile-stat">
+          <strong>${blockedUsers.size}</strong>
+          <span>Bloqueados</span>
+        </div>
       </div>
 
-      <!-- Followed & Blocked Cards -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
-        <div class="composer-card">
-          <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.75rem;">⭐ Usuários Seguidos (${followedUsers.size})</h3>
-          <div id="followedUsersList" style="max-height: 380px; overflow-y: auto;">
+      <div class="profile-panels">
+        <section class="profile-panel" aria-labelledby="profileFollowingTitle">
+          <div class="profile-panel-head">
+            <div>
+              <span class="profile-panel-kicker">CONEXÕES</span>
+              <h2 id="profileFollowingTitle">Pessoas que você segue</h2>
+            </div>
+            <span class="profile-count-badge">${followedUsers.size}</span>
+          </div>
+          <div id="followedUsersList" class="profile-people-list">
             ${followedListHtml}
           </div>
-        </div>
+        </section>
 
-        <div class="composer-card">
-          <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.25rem;">🚫 Usuários Bloqueados (${blockedUsers.size})</h3>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">Usuários bloqueados ficam ocultos no seu feed.</p>
-          <div id="blockedUsersList" style="max-height: 380px; overflow-y: auto;">
+        <section class="profile-panel" aria-labelledby="profileBlockedTitle">
+          <div class="profile-panel-head">
+            <div>
+              <span class="profile-panel-kicker">PRIVACIDADE</span>
+              <h2 id="profileBlockedTitle">Contas bloqueadas</h2>
+            </div>
+            <span class="profile-count-badge">${blockedUsers.size}</span>
+          </div>
+          <p class="profile-panel-description">Publicações das contas bloqueadas ficam ocultas do seu feed.</p>
+          <div id="blockedUsersList" class="profile-people-list">
             ${blockedListHtml}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   `;
