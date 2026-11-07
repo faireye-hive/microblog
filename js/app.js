@@ -481,6 +481,10 @@ function setupGlobalInteractions() {
       e.preventDefault();
       const input = document.getElementById("topSearchInput");
       if (input) {
+        if (window.matchMedia?.("(max-width: 640px)")?.matches) {
+          input.closest(".search-container")?.classList.add("search-mobile-open");
+          document.getElementById("btnMobileSearch")?.setAttribute("aria-expanded", "true");
+        }
         input.focus();
         input.select();
       }
@@ -672,7 +676,7 @@ function setupSidebarControls() {
       if(event.target.closest("a[href]"))closePanel(true);
     });
     document.addEventListener("pointerdown",event=>{
-      if(!searchContainer?.contains(event.target) && event.target!==mobileTrigger)
+      if(!searchContainer?.contains(event.target) && !mobileTrigger?.contains(event.target))
         closePanel(true);
     });
     window.addEventListener("hashchange",()=>closePanel(true));
