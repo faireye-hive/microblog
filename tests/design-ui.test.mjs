@@ -61,7 +61,8 @@ test("composer keeps all six functional modes but groups advanced tools",()=>{
   assert.match(ComposerHTML,/>Start a conversation</);
   assert.match(ComposerHTML,/>Post</);
   assert.match(state,/btnPostSpan\.textContent = "Post"/);
-  assert.match(app,/advancedMenu\.open = false/);
+  const composerController = readFileSync(new URL("../js/ui/composer-controller.js",import.meta.url),"utf8");
+  assert.match(composerController,/advanced\.open=false/);
 });
 
 test("right sidebar preserves active widgets but removes redundant cards",()=>{
