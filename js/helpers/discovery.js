@@ -42,7 +42,7 @@ export function getDiscoveryResults({query="",posts=[],channels=[],maxPosts=80}=
     const tags = Array.isArray(contentJson?.tags) ? contentJson.tags : [];
     const textTags = [...content.matchAll(/(?:^|\s)#([a-z0-9._-]+)/gi)].map(m=>m[1]);
     const postTags = new Set([...tags,...textTags].map(safeTag).filter(Boolean));
-    const contentMatches = !q.startsWith("@") && content.toLowerCase().includes(needle);
+    const contentMatches = !q.startsWith("@") && !q.startsWith("#") && content.toLowerCase().includes(needle);
     const authorMatches = username !== "unknown" && username.includes(needle);
     const tagMatches = [...postTags].some(tag=>tag.includes(needle));
     if (contentMatches || authorMatches || tagMatches) {
