@@ -10,6 +10,7 @@ import {
   HIVE_ACTION_TYPES, getHiveAction, resolveCustomJsonId
 } from "./registry.js";
 import { safeHiveUsername } from "../security/safe-values.js";
+import { ADMIN } from "../config.js";
 import { parseChannelCustomId } from "../helpers/channel-id.js";
 
 export const MAX_VALIDATOR_JSON_BYTES = 64 * 1024;
@@ -148,8 +149,8 @@ export function validateCustomJsonOperation(draft = {}) {
       if(["votes","moderation"].includes(kind)&&!validRef(payload.content_id))
         push(errors,"content_id","Provide a positive numeric HAFSQL content operation ID.");
       if(kind==="moderation") {
-        if(signer!=="faireye")
-          push(errors,"signer","Moderation operations require the configured admin account (@faireye).");
+        if(signer!==ADMIN)
+          push(errors,"signer","Moderation operations require the configured admin account (@" + ADMIN + ").");
         if(type==="mute" && (typeof payload.cause!=="string"||!payload.cause.trim()))
           push(errors,"cause","Mute operations need a nonempty moderation reason.");
       }
