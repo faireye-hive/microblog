@@ -295,6 +295,7 @@ export function setupChannelsPageEvents() {
           // Adicionado o ponto (.) no regex para não removê-lo ao preencher automaticamente
           if (idInput) idInput.value = prefillName.toLowerCase().replace(/[^a-z0-9._-]/g, "");
         }
+        document.getElementById("newChannelName")?.focus();
       }
   };
 
@@ -400,7 +401,8 @@ export async function handleRoute() {
   const isSpecialView = ["profile", "custom-json", "notifications", "messages", "channels"].includes(newPage);
   
   if (feedHeaderBar) {
-    if (newPage === "feed") {
+    if (["feed", "profile", "channels"].includes(newPage)) {
+      // Profile and directory already have their own clear page header.
       feedHeaderBar.classList.add("hidden");
     } else {
       feedHeaderBar.classList.remove("hidden");
