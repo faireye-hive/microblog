@@ -33,14 +33,29 @@ export const TopNavHTML = `
 
     <!-- Right Controls -->
     <div class="top-header-right">
+      <button id="btnMobileSearch" class="icon-btn top-mobile-search" type="button"
+              title="Search" aria-label="Open search" aria-controls="topSearchInput" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/>
+        </svg>
+      </button>
       <!-- Search -->
       <div class="search-container">
         <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" id="topSearchInput" class="top-search-input" placeholder="Search posts, people and channels..." aria-label="Search posts, people and channels" autocomplete="off">
-        <span class="search-shortcut-badge">Ctrl + K</span>
+        <input type="search" id="topSearchInput" class="top-search-input"
+               placeholder="Search Hive…" aria-label="Search posts, people and communities"
+               role="combobox" aria-autocomplete="list" aria-expanded="false"
+               aria-controls="searchResultsPanel" maxlength="100"
+               autocomplete="off" spellcheck="false">
+        <span class="search-shortcut-badge" aria-hidden="true">Ctrl + K</span>
+        <button id="closeMobileSearch" type="button" class="search-mobile-close"
+                aria-label="Close search">Close</button>
+        <div id="searchResultsPanel" class="search-results-panel hidden"
+             role="listbox" aria-label="Search suggestions"></div>
       </div>
 
       <!-- Notifications Bell -->
