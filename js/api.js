@@ -10,6 +10,7 @@ import {
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { safeHiveUsername } from "./security/safe-values.js";
+import { resolveCustomJsonId } from "./hive/registry.js";
 import {
     buildHafsqlCustomJsonUrl,
     withHafsqlCursor,
@@ -321,7 +322,9 @@ export function sendPost(content, replyTo = null, channelOverride = null, callba
     // Exemplo: se estiver no canal 'fairmemes', o custom_id do blockchain Hive será 'fairmemes'.
     // Se for o canal principal, usa APP_ID ('micro.fair').
     const targetChannel = channelOverride !== null ? channelOverride : activeChannel;
-    const customId = parseChannelCustomId(targetChannel || APP_ID);
+    const customId = resolveCustomJsonId(replyTo ? "reply" : "post", {
+        channel: parseChannelCustomId(targetChannel || APP_ID)
+    });
     if (!customId) {
         showNotification("⚠️ Invalid community ID. Nothing was broadcast.", false);
         return false;
@@ -413,13 +416,9 @@ function sendCustomJsonAction(type, targetUser, actionText) {
 
     const json = JSON.stringify(buildUserActionPayload(type, target));
 
-    let customId;
-    if (type === 'block' || type === 'unblock') {
-        customId = `${APP_ID}.${username}.block`;
-    } else if (type === 'follow' || type === 'unfollow') {
-        customId = FOLLOW_USER_CUSTOM_ID.replace('{user}', username);
-    } else {
-        return showNotification("Internal error: unknown action.", false);
+    const customId = resolveCustomJsonId(type, { username });
+    if (!customId) {
+        return showNotification("Internal error: unknown or invalid account operation.", false);
     }
     
     if (hasHiveKeychain()) {
@@ -498,19 +497,19 @@ function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false
 
 export function sendVote(contentId, voteType) {
     const json = JSON.stringify(buildVotePayload(contentId, voteType));
-    sendDataAction(VOTE_CUSTOM_ID, json, "Vote");
+    sendDataAction(resolveCustomJsonId(voteType), json, "Vote");
 }
 
 export function sendMute(contentId, cause) {
     const json = JSON.stringify(buildMutePayload(contentId, "mute", cause));
     // O último argumento true indica que é necessária a autoridade de ADMIN
-    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Mute post", true); 
+    sendDataAction(resolveCustomJsonId("mute"), json, "Mute post", true); 
 }
 
 export function sendUnmute(contentId) {
     const json = JSON.stringify(buildMutePayload(contentId, "unmute"));
     // O último argumento true indica que é necessária a autoridade de ADMIN
-    sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Unmute post", true);
+    sendDataAction(resolveCustomJsonId("unmute"), json, "Unmute post", true);
 }
 
 // Cria um novo canal transmitindo Custom JSON para CHANNELS_CUSTOM_ID
@@ -550,7 +549,7 @@ export function sendCreateChannel(channelId, channelName, description = "") {
 
     requestHiveCustomJson(
         username,
-        CHANNELS_CUSTOM_ID,
+        resolveCustomJsonId("create_channel"),
         JSON.stringify(payload),
         actionText,
         (res) => {

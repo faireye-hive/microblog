@@ -5,6 +5,7 @@
  * assemble payloads; they do not sign, store data or access the DOM.
  */
 import { APP_ID } from "../config.js";
+import { HIVE_PROTOCOL_VERSION, HIVE_ACTION_TYPES } from "./registry.js";
 
 export function buildPostPayload({
   content,
@@ -15,8 +16,8 @@ export function buildPostPayload({
 }) {
   return {
     app: APP_ID,
-    v: 1,
-    type: replyTo ? "reply" : "post",
+    v: HIVE_PROTOCOL_VERSION,
+    type: replyTo ? HIVE_ACTION_TYPES.REPLY : HIVE_ACTION_TYPES.POST,
     channel,
     content,
     reply_to: replyTo,
@@ -26,21 +27,26 @@ export function buildPostPayload({
 }
 
 export function buildVotePayload(contentId, voteType) {
-  return { app: APP_ID, v: 1, type: voteType, content_id: contentId };
+  if (![HIVE_ACTION_TYPES.UPVOTE, HIVE_ACTION_TYPES.DOWNVOTE].includes(voteType))
+    throw new Error("Unsupported vote action");
+  return { app: APP_ID, v: HIVE_PROTOCOL_VERSION, type: voteType, content_id: contentId };
 }
 
 export function buildMutePayload(contentId, type, cause) {
-  if (type === "mute") {
-    return { app: APP_ID, v: 1, type: "mute", cause, content_id: contentId };
+  if (type === HIVE_ACTION_TYPES.MUTE) {
+    return { app: APP_ID, v: HIVE_PROTOCOL_VERSION, type: HIVE_ACTION_TYPES.MUTE, cause, content_id: contentId };
   }
-  if (type === "unmute") {
-    return { app: APP_ID, v: 1, type: "unmute", content_id: contentId };
+  if (type === HIVE_ACTION_TYPES.UNMUTE) {
+    return { app: APP_ID, v: HIVE_PROTOCOL_VERSION, type: HIVE_ACTION_TYPES.UNMUTE, content_id: contentId };
   }
   throw new Error("Unsupported mute action");
 }
 
 export function buildUserActionPayload(type, targetUser) {
-  return { app: APP_ID, v: 1, type, target_user: targetUser };
+  if (![HIVE_ACTION_TYPES.FOLLOW, HIVE_ACTION_TYPES.UNFOLLOW,
+        HIVE_ACTION_TYPES.BLOCK, HIVE_ACTION_TYPES.UNBLOCK].includes(type))
+    throw new Error("Unsupported user action");
+  return { app: APP_ID, v: HIVE_PROTOCOL_VERSION, type, target_user: targetUser };
 }
 
 export function buildChannelCreatePayload({
@@ -51,9 +57,9 @@ export function buildChannelCreatePayload({
 }) {
   return {
     app: APP_ID,
-    v: 1,
-    type: "create_channel",
-    action: "create_channel",
+    v: HIVE_PROTOCOL_VERSION,
+    type: HIVE_ACTION_TYPES.CREATE_CHANNEL,
+    action: HIVE_ACTION_TYPES.CREATE_CHANNEL,
     id,
     name,
     description,

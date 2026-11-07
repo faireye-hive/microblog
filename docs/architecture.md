@@ -6,6 +6,9 @@ O frontend continua **Vanilla JavaScript (ES Modules)**, compatível com GitHub 
 
 | Camada | Módulos | Responsabilidade |
 | --- | --- | --- |
+| Registro de protocolo | `js/hive/registry.js` | Fonte única dos IDs, tipos de operação e campos (protocolo v1) |
+| Exemplos executáveis | `js/hive/examples.js` | Amostras do mesmo payload gerado na produção |
+| Referência visual | `js/ui/protocol-reference.js` | Página de documentação `#/protocol` (somente leitura) |
 | Protocolo Hive | `js/hive/protocol.js` | Gera payloads `custom_json` v1, sem DOM ou rede |
 | Assinatura Hive | `js/hive/keychain.js` | Envia operações via Posting Key/Keychain, sem UI |
 | Consulta HAFSQL | `js/data/hafsql.js` | Monta URLs, aplica cursor, busca JSON e normaliza respostas |
@@ -19,6 +22,12 @@ O frontend continua **Vanilla JavaScript (ES Modules)**, compatível com GitHub 
 | Orquestração antiga | `js/api.js` | Ainda coordena sync, cache e efeitos de UI; migração futura |
 
 Os consumidores permanecem com os mesmos imports de `js/api.js`. Não foram alterados os atributos `app`, `v`, `type`, `channel`, `content`, `reply_to`, `mentions` e `tags` dos posts, nem os IDs de voto, follow, bloqueio e canais.
+
+## Registro de operações on-chain
+
+Os namespaces de Custom JSON e os tipos de cada operação estão mapeados em [`docs/hive-protocol.md`](hive-protocol.md). As constantes compatíveis em `js/config.js` são derivadas de `js/hive/registry.js`, e `js/api.js` consulta `resolveCustomJsonId()` para enviar operações. A referência `#/protocol` está disponível mesmo sem carregar posts.
+
+**Imutabilidade:** `micro.fair.interation`, `micro.fair.adpmuted` e os IDs por usuário/canal permanecem históricos. Qualquer migração precisa ler os namespaces antigos.
 
 ## Estrutura atual (núcleo)
 
