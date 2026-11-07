@@ -53,7 +53,7 @@ function classifyKnownNamespace(id,payload,signer) {
   // A community uses its own exact ID and contains a post/reply with matching
   // channel. A random custom JSON operation must not be silently treated as
   // belonging to Micro.fair.
-  if(["post","reply"].includes(payload.type) && parseChannelCustomId(id))
+  if(payload.app===HIVE_APP_ID && ["post","reply"].includes(payload.type) && parseChannelCustomId(id))
     return {action:payload.type,kind:"community"};
   return null;
 }
