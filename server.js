@@ -10,7 +10,7 @@ const htmlFile = path.join(__dirname, 'index.html');
 // Keep Express and GitHub Pages on the SAME policy: GitHub Pages reads the
 // CSP meta tag, while Express also sends it as an HTTP response header.
 const html = readFileSync(htmlFile, 'utf8');
-const cspMatch = html.match(/<meta\s+http-equiv="Content-Security-Policy"\\s+content="([^"]+)"/i);
+const cspMatch = html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i);
 if (!cspMatch) throw new Error('Missing Content-Security-Policy in index.html');
 const pageCsp = cspMatch[1];
 
