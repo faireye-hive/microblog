@@ -29,6 +29,10 @@ body {
 }
 button, input, textarea, select { font: inherit; }
 a, button, summary { -webkit-tap-highlight-color: transparent; }
+:where(button, a, summary, input, textarea, select):focus-visible {
+  outline: 2px solid rgba(199, 46, 74, .62);
+  outline-offset: 3px;
+}
 ::selection { background: #e8e9ef; color: #16191f; }
 
 .top-header {
