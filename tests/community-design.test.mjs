@@ -82,7 +82,8 @@ test("channel directory keeps real channel state, inputs, event IDs and XSS esca
   assert.equal((out.match(/class="channel-tile"/g)||[]).length,2);
   assert.match(out, /data-channel="dev"/);
   assert.match(out, /data-channel="news"/);
-  assert.match(out, /Desenvolvimento &lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  // escapeHtml intentionally encodes / as &#x2F; as well as < and >.
+  assert.match(out, /Desenvolvimento &lt;script&gt;alert\(1\)&lt;&#x2F;script&gt;/);
   assert.doesNotMatch(out, /<script>alert\(1\)<\/script>/);
   assert.match(out, /#\/channel\/dev/);
   const none = buildChannelsPage("xyz-inexistente");
