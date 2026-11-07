@@ -6,6 +6,7 @@ import { ADMIN } from "./config.js";
 import { getChannelPostsCacheKey } from "./data/cache-keys.js";
 import { writePostCache } from "./data/post-cache.js";
 import { getPostIndex } from "./data/post-index.js";
+import { safeTag } from "./security/safe-values.js";
 
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
 export let allPosts = []; // Todos os posts brutos
@@ -330,12 +331,11 @@ export function updateTags() {
 
   visiblePosts.forEach((p) => {
     const js = parseEmbeddedJson(p.json);
-    const tags = js?.tags || [];
-    const text = js?.content || "";
+    const tags = Array.isArray(js?.tags) ? js.tags : [];
+    const text = typeof js?.content === "string" ? js.content : "";
     const matches = text.match(/#([a-zA-Z0-9_\-]+)/g) || [];
-    matches.forEach(m => tags.push(m.replace('#', '')));
-    tags.forEach((t) => {
-      const clean = (t || "").toString().toLowerCase().trim();
+    [...tags, ...matches.map(t => t.slice(1))].forEach((t) => {
+      const clean = safeTag(t);
       if (clean && clean.length > 1) {
         map.set(clean, (map.get(clean) || 0) + 1);
       }
@@ -364,7 +364,7 @@ export function updateTags() {
     div.innerHTML = `
       <div class="trending-tag-left">
         <span class="trending-rank">${idx + 1}</span>
-        <span class="trending-tag-name">#${t}</span>
+        <span class="trending-tag-name">#${escapeHtml(t)}</span>
       </div>
       <span class="trending-post-count">${formattedCount} posts</span>
     `;
@@ -430,8 +430,8 @@ export function updateChannelsUI() {
         const div = document.createElement("div");
         div.className = "channel-card-row";
         div.innerHTML = `
-          <div class="channel-card-left" style="cursor: pointer;" onclick="window.location.hash='#/channel/${encodeURIComponent(c.id)}'">
-            <div class="channel-card-icon">${icon}</div>
+          <div class="channel-card-left" style="cursor: pointer;">
+            <div class="channel-card-icon">${escapeHtml(icon)}</div>
             <div class="channel-card-info">
               <div class="channel-card-name">#${escapeHtml(c.id)}</div>
               <div class="channel-card-desc" title="${escapeAttr(c.description)}">${escapeHtml(c.name || c.description)}</div>
@@ -439,11 +439,14 @@ export function updateChannelsUI() {
           </div>
           <div class="channel-card-right">
             <span class="channel-sub-count">${postLabel}</span>
-            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${c.id}">
+            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${escapeAttr(c.id)}">
               ${isJoined ? 'Joined' : 'Join'}
             </button>
           </div>
         `;
+        div.querySelector(".channel-card-left")?.addEventListener("click", () => {
+          window.location.hash = `#/channel/${encodeURIComponent(c.id)}`;
+        });
         sidebarList.appendChild(div);
       });
 

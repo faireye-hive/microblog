@@ -6,6 +6,8 @@ import {
 } from "./utils.js";
 import { buildRepliesRecursive } from "./render.js";
 import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
+import { safeExternalUrl, safeHiveUsername } from "./security/safe-values.js";
+import { installImageErrorHandling } from "./security/image-errors.js";
 import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
 import {
   TopNavHTML,
@@ -61,21 +63,30 @@ import {
 
 function setupImageModal() {
   const modalHtml = `
-    <div id="imageModal" class="modal-overlay hidden" onclick="this.classList.add('hidden')">
+    <div id="imageModal" class="modal-overlay hidden">
       <div style="position: relative; max-width: 90vw; max-height: 90vh;">
-        <img id="modalImage" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 16px;" onclick="event.stopPropagation()">
-        <button class="modal-close" style="color: white; top: -2.5rem; right: 0; font-size: 2rem;" onclick="document.getElementById('imageModal').classList.add('hidden'); event.stopPropagation();">&times;</button>
+        <img id="modalImage" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 16px;">
+        <button id="closeImageModal" class="modal-close" style="color: white; top: -2.5rem; right: 0; font-size: 2rem;">&times;</button>
       </div>
     </div>
   `;
   document.body.insertAdjacentHTML("beforeend", modalHtml);
+  const overlay = document.getElementById("imageModal");
+  overlay?.addEventListener("click", e => {
+    if (e.target === overlay) overlay.classList.add("hidden");
+  });
+  document.getElementById("closeImageModal")?.addEventListener("click", () => {
+    overlay?.classList.add("hidden");
+  });
 }
 
 function showImageModal(src) {
   const modal = document.getElementById("imageModal");
   const img = document.getElementById("modalImage");
   if (modal && img) {
-    img.src = src;
+    const url = safeExternalUrl(src);
+    if (!url) return;
+    img.src = url;
     modal.classList.remove("hidden");
   }
 }
@@ -157,7 +168,7 @@ function setupFeedDelegation() {
         threadDiv.innerHTML = "";
         return;
       }
-      const repliesHtml = buildRepliesRecursive(id, allPosts);
+      const repliesHtml = buildRepliesRecursive(id, activeChannel ? getChannelPosts(activeChannel) : allPosts);
       threadDiv.innerHTML = repliesHtml || '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">Sem respostas ainda. Seja o primeiro a responder!</div>';
       threadDiv.classList.remove("hidden");
     }
@@ -255,7 +266,7 @@ function setupFeedDelegation() {
       const author = e.target.dataset.author;
       const currentPostCard = e.target.closest(".card") || e.target.closest(".post-card");
       const popover = currentPostCard
-        ? currentPostCard.querySelector(`.user-popover-menu[data-author="${author}"]`)
+        ? [...currentPostCard.querySelectorAll(".user-popover-menu")].find(el => el.dataset.author === author)
         : null;
 
       document.querySelectorAll(".user-popover-menu").forEach((p) => {
@@ -629,13 +640,18 @@ async function refreshCurrentView() {
 }
 
 async function handleInitialRoute() {
-  setLoggedInUser(localStorage.getItem("hiveUser"));
+  const storedUser = localStorage.getItem("hiveUser");
+  const safeUser = safeHiveUsername(storedUser);
+  setLoggedInUser(safeUser === "unknown" ? null : safeUser);
   handleRoute();
 }
 
 // ---------- INICIALIZAÇÃO ----------
 
-// 1. Monta o HTML no DOM
+// 1. Erros de imagens são tratados sem atributos HTML executáveis.
+installImageErrorHandling();
+
+// 2. Monta o HTML no DOM
 setupInitialDOM();
 
 // 2. Configura a Autenticação

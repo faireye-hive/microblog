@@ -1,5 +1,6 @@
 // /js/render.js
-import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
+import { parseEmbeddedJson, escapeHtml, escapeAttr, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
+import { safeExternalUrl, safeHiveUsername, hiveAvatarUrl, safeTag } from "./security/safe-values.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { getPostById, getDirectReplies, countDirectReplies } from "./data/post-index.js";
 import { 
@@ -41,11 +42,11 @@ function buildUserPopover(author, isBlocked) {
   const blockType = isBlocked ? "unblock" : "block";
 
   return `
-    <div data-author="${author}" class="user-popover-menu hidden">
-      <button data-action="${followType}" data-user="${author}" class="dropdown-link" style="font-size: 0.825rem;">
+    <div data-author="${escapeAttr(author)}" class="user-popover-menu hidden">
+      <button data-action="${followType}" data-user="${escapeAttr(author)}" class="dropdown-link" style="font-size: 0.825rem;">
         ${followText}
       </button>
-      <button data-action="${blockType}" data-user="${author}" class="dropdown-link" style="font-size: 0.825rem; color: #dc2626;">
+      <button data-action="${blockType}" data-user="${escapeAttr(author)}" class="dropdown-link" style="font-size: 0.825rem; color: #dc2626;">
         ${blockText}
       </button>
     </div>
@@ -61,19 +62,19 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1, seen = new 
   seen.add(key);
   const html = replies
     .map((r) => {
-      const author = r.required_posting_auths?.[0] || "user";
+      const author = safeHiveUsername(r.required_posting_auths?.[0]);
       const rj = parseEmbeddedJson(r.json);
       const nestedHTML = buildRepliesRecursive(r.id, allPosts, depth + 1, seen);
-      const replyContentHtml = linkifyText(escapeHtml(rj.content || "")).replace(/\n/g, "<br>");
+      const replyContentHtml = linkifyText(escapeHtml(typeof rj?.content === "string" ? rj.content : "")).replace(/\n/g, "<br>");
       return `
         <div class="reply-thread-item" data-depth="${depth}">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem;">
-            <span class="reply-author author-name" data-author="${author}">@${author}</span>
+            <span class="reply-author author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
             <span style="font-size: 0.75rem; color: var(--text-faint);">${fmtDate(r.timestamp)}</span>
           </div>
           <div class="reply-body">${replyContentHtml}</div>
           <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
-            <button class="post-action-btn reply-btn" data-id="${r.id}" style="padding: 0.2rem 0.5rem; font-size: 0.775rem;">
+            <button class="post-action-btn reply-btn" data-id="${escapeAttr(r.id)}" style="padding: 0.2rem 0.5rem; font-size: 0.775rem;">
               Reply
             </button>
           </div>
@@ -91,28 +92,28 @@ export function buildThreadAbove(post, allPosts) {
   const parent = getPostById(allPosts, parsed.reply_to);
   if (!parent) return ""; 
   const pj = parseEmbeddedJson(parent.json);
-  const author = parent.required_posting_auths?.[0] || "user";
+  const author = safeHiveUsername(parent.required_posting_auths?.[0]);
 
   const maxSlice = 120;
-  const originalContent = pj.content || "";
+  const originalContent = typeof pj?.content === "string" ? pj.content : "";
   const snippetText = originalContent.slice(0, maxSlice);
   const ellipsis = originalContent.length > maxSlice ? '...' : ''; 
   const contentHtml = linkifyText(escapeHtml(snippetText)).replace(/\n/g, "<br>");
   
   return `
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.65rem; font-size: 0.85rem;">
-      <span class="view-thread" data-id="${parent.id}" style="font-weight: 700; color: #0284c7; cursor: pointer;">
-        ↳ Em resposta a @${author}
+      <span class="view-thread" data-id="${escapeAttr(parent.id)}" style="font-weight: 700; color: #0284c7; cursor: pointer;">
+        ↳ Em resposta a @${escapeHtml(author)}
       </span>: 
       <span style="color: var(--text-muted);">${contentHtml}${ellipsis}</span>
     </div>`;
 }
 
 export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new Map()) {
-  const author = (p.required_posting_auths && p.required_posting_auths[0]) || "unknown";
+  const author = safeHiveUsername(p.required_posting_auths?.[0]);
   const parsed = parseEmbeddedJson(p.json);
 
-  const rawContent = parsed?.content || ""; 
+  const rawContent = typeof parsed?.content === "string" ? parsed.content : ""; 
   let text = stripMarkdown(rawContent);
   const imgs = extractImages(rawContent); 
 
@@ -121,13 +122,13 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   }
 
   // Tags extraídas
-  const tags = parsed?.tags || [];
+  const tags = Array.isArray(parsed?.tags) ? parsed.tags : [];
   const tagMatches = rawContent.match(/#([a-zA-Z0-9_\-]+)/g) || [];
   const allTagNames = [...tags, ...tagMatches.map(t => t.replace('#', ''))];
-  const primaryTag = allTagNames[0] || "hive";
+  const primaryTag = allTagNames.map(safeTag).find(Boolean) || "hive";
 
   // URL para preview card
-  const firstUrl = extractFirstUrl(rawContent);
+  const firstUrl = safeExternalUrl(extractFirstUrl(rawContent));
 
   const replyCount = countDirectReplies(allPosts, p.id);
 
@@ -138,7 +139,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   const muteInfo = mutedPostMap.get(p.id);
   const isMuted = !!muteInfo;
   const muteCause = muteInfo ? escapeHtml(muteInfo.cause) : '';
-  const muteAdmin = muteInfo ? muteInfo.admin : 'Admin';
+  const muteAdmin = escapeHtml(muteInfo ? muteInfo.admin : 'Admin');
   const isAdmin = loggedInUser === ADMIN;
   const isBlocked = blockedUsers.has(author);
   const isBookmarked = bookmarkedPostIds?.has(p.id);
@@ -192,14 +193,14 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
     }
 
     previewBoxHtml = `
-      <a href="${firstUrl}" target="_blank" rel="noopener noreferrer" class="preview-box">
-        <img src="${previewThumb}" alt="Preview" class="preview-thumb" onerror="this.style.display='none'">
+      <a href="${escapeAttr(firstUrl)}" target="_blank" rel="noopener noreferrer" class="preview-box">
+        <img src="${previewThumb}" alt="Preview" class="preview-thumb" data-hide-on-error="true">
         <div class="preview-content">
-          <div class="preview-title">${previewTitle}</div>
-          <div class="preview-desc">${previewDesc}</div>
+          <div class="preview-title">${escapeHtml(previewTitle)}</div>
+          <div class="preview-desc">${escapeHtml(previewDesc)}</div>
           <div class="preview-domain">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            <span>${firstUrl}</span>
+            <span>${escapeHtml(firstUrl)}</span>
           </div>
         </div>
       </a>
@@ -212,7 +213,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
     imagesHtml = `
       <div class="post-image-grid" style="${imgs.length > 1 ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
         ${imgs.map(u => `
-          <img src="${u}" class="post-inline-image post-image" data-full-src="${u}" loading="lazy" alt="Post attachment">
+          <img src="${escapeAttr(u)}" class="post-inline-image post-image" data-full-src="${escapeAttr(u)}" loading="lazy" alt="Post attachment">
         `).join('')}
       </div>
     `;
@@ -221,10 +222,10 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   el.innerHTML = `
     <!-- User Avatar -->
     <img 
-      src="https://images.hive.blog/u/${author}/avatar" 
-      alt="@${author}" 
+      src="${escapeAttr(hiveAvatarUrl(author))}" 
+      alt="@${escapeAttr(author)}" 
       class="post-card-avatar post-avatar"
-      onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23cbd5e1\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'22\\' text-anchor=\\'middle\\'>👤</text></svg>'"
+      data-avatar-fallback="user"
     >
 
     <!-- Post Main Content -->
@@ -232,7 +233,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       <!-- Header Meta -->
       <div class="post-card-header post-meta">
         <div class="post-author-row">
-          <span class="post-author-name author-name" data-author="${author}">@${author}</span>
+          <span class="post-author-name author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
           <span class="hive-user-badge" title="Hive verified account">
             <svg width="13" height="13" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/>
@@ -245,8 +246,8 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
           ${buildUserPopover(author, isBlocked)}
         </div>
 
-        <a href="#/tag/${primaryTag}" class="post-tag-badge tag-link" data-tag="${primaryTag}">
-          <span># ${primaryTag}</span>
+        <a href="#/tag/${encodeURIComponent(primaryTag)}" class="post-tag-badge tag-link" data-tag="${escapeAttr(primaryTag)}">
+          <span># ${escapeHtml(primaryTag)}</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
@@ -265,7 +266,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       <!-- Actions Footer -->
       <div class="post-actions-row post-actions">
         <!-- Upvote -->
-        <button class="post-action-btn vote-btn upvote-btn" data-id="${p.id}" data-vote="upvote" title="Upvote">
+        <button class="post-action-btn vote-btn upvote-btn" data-id="${escapeAttr(p.id)}" data-vote="upvote" title="Upvote">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="18 15 12 9 6 15"></polyline>
           </svg>
@@ -273,7 +274,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
         </button>
 
         <!-- Downvote -->
-        <button class="post-action-btn vote-btn downvote-btn" data-id="${p.id}" data-vote="downvote" title="Downvote">
+        <button class="post-action-btn vote-btn downvote-btn" data-id="${escapeAttr(p.id)}" data-vote="downvote" title="Downvote">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -281,7 +282,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
         </button>
 
         <!-- Comments / Thread -->
-        <button class="post-action-btn thread-btn" data-id="${p.id}" title="Comments">
+        <button class="post-action-btn thread-btn" data-id="${escapeAttr(p.id)}" title="Comments">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
           </svg>
@@ -289,14 +290,14 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
         </button>
 
         <!-- Bookmark -->
-        <button class="post-action-btn bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" data-id="${p.id}" title="Bookmark">
+        <button class="post-action-btn bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" data-id="${escapeAttr(p.id)}" title="Bookmark">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="${isBookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
           </svg>
         </button>
 
         <!-- Reply Button -->
-        <button class="post-action-btn reply-btn" data-id="${p.id}" title="Reply to post">
+        <button class="post-action-btn reply-btn" data-id="${escapeAttr(p.id)}" title="Reply to post">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 17 4 12 9 7"></polyline>
             <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
@@ -306,14 +307,14 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
 
         ${isAdmin ? `
           ${isMuted ? `
-            <button class="post-action-btn mute-btn" style="color: #16a34a;" data-id="${p.id}" data-type="unmute">Unmute</button>
+            <button class="post-action-btn mute-btn" style="color: #16a34a;" data-id="${escapeAttr(p.id)}" data-type="unmute">Unmute</button>
           ` : `
-            <button class="post-action-btn mute-btn" style="color: #dc2626;" data-id="${p.id}" data-type="mute">Mute</button>
+            <button class="post-action-btn mute-btn" style="color: #dc2626;" data-id="${escapeAttr(p.id)}" data-type="mute">Mute</button>
           `}
         ` : ''}
 
         <!-- More Options -->
-        <button class="post-action-btn post-more-btn" data-id="${p.id}" title="More options">
+        <button class="post-action-btn post-more-btn" data-id="${escapeAttr(p.id)}" title="More options">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="1"></circle>
             <circle cx="19" cy="12" r="1"></circle>
@@ -323,7 +324,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       </div>
 
       <!-- Thread Container -->
-      <div class="thread hidden thread-container" id="thread-${p.id}"></div>
+      <div class="thread hidden thread-container" id="thread-${escapeAttr(p.id)}"></div>
     </div>
   `;
 
@@ -335,16 +336,16 @@ function buildUserListHTML(usersSet, type) {
     return `<p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Nenhum usuário ${type === 'blocked' ? 'bloqueado' : 'seguido'}.</p>`;
   }
   
-  const users = Array.from(usersSet).sort(); 
+  const users = Array.from(usersSet).map(safeHiveUsername).filter(u => u !== "unknown").sort(); 
   const actionButton = (user) => type === 'blocked' 
-    ? `<button data-action="unblock" data-user="${user}" class="btn-outline-small" style="color: #16a34a; font-size: 0.75rem;">✅ Desbloquear</button>`
+    ? `<button data-action="unblock" data-user="${escapeAttr(user)}" class="btn-outline-small" style="color: #16a34a; font-size: 0.75rem;">✅ Desbloquear</button>`
     : '';
       
   return users.map(user => `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="https://images.hive.blog/u/${user}/avatar" style="width: 28px; height: 28px; border-radius: 50%;" onerror="this.style.display='none'">
-        <span style="font-weight: 600; font-size: 0.9rem;">@${user}</span>
+        <img src="${escapeAttr(hiveAvatarUrl(user))}" style="width: 28px; height: 28px; border-radius: 50%;" data-hide-on-error="true">
+        <span style="font-weight: 600; font-size: 0.9rem;">@${escapeHtml(user)}</span>
       </div>
       ${actionButton(user)}
     </div>
@@ -363,6 +364,7 @@ export function buildProfilePage() {
     `;
   }
 
+  const profileUser = safeHiveUsername(loggedInUser);
   const followedListHtml = buildUserListHTML(followedUsers, 'followed');
   const blockedListHtml = buildUserListHTML(blockedUsers, 'blocked');
 
@@ -372,14 +374,14 @@ export function buildProfilePage() {
       <div class="composer-card" style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1.25rem;">
           <img 
-            src="https://images.hive.blog/u/${loggedInUser}/avatar" 
-            alt="@${loggedInUser}" 
+            src="${escapeAttr(hiveAvatarUrl(profileUser))}" 
+            alt="@${escapeAttr(profileUser)}" 
             style="width: 68px; height: 68px; border-radius: 50%; border: 2px solid var(--border);"
-            onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'"
+            data-avatar-fallback="hive"
           >
           <div>
             <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
-              @${loggedInUser}
+              @${escapeHtml(profileUser)}
               <span class="hive-user-badge">
                 <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/><path d="M11 10L8 16L11 22H14L11 16L14 10H11Z" fill="#e31337"/><path d="M18 10L15 16L18 22H21L18 16L21 10H18Z" fill="#e31337"/></svg>
               </span>
@@ -435,7 +437,7 @@ export function buildChannelsPage(searchFilter = "") {
           <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(227, 19, 55, 0.08); color: #e31337; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
-                ${icon}
+                ${escapeHtml(icon)}
               </div>
               <div>
                 <a href="#/channel/${encodeURIComponent(c.id)}" style="text-decoration: none; color: var(--text); font-weight: 800; font-size: 1.05rem; display: block; line-height: 1.2;">
@@ -446,7 +448,7 @@ export function buildChannelsPage(searchFilter = "") {
                 </span>
               </div>
             </div>
-            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${c.id}" style="font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${escapeAttr(c.id)}" style="font-size: 0.8rem; padding: 0.35rem 0.85rem;">
               ${isJoined ? 'Joined' : 'Join'}
             </button>
           </div>
@@ -460,7 +462,7 @@ export function buildChannelsPage(searchFilter = "") {
           <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--text-faint);">
             <div style="display: flex; align-items: center; gap: 0.35rem;">
               <span>Criado por</span>
-              <a href="#/user/${encodeURIComponent(c.creator)}" class="author-name" style="font-weight: 700;">@${escapeHtml(c.creator)}</a>
+              <a href="#/user/${encodeURIComponent(safeHiveUsername(c.creator))}" class="author-name" style="font-weight: 700;">@${escapeHtml(safeHiveUsername(c.creator))}</a>
             </div>
             <span style="font-weight: 600; color: var(--text);">${postLabel}</span>
           </div>
@@ -469,7 +471,7 @@ export function buildChannelsPage(searchFilter = "") {
             <a href="#/channel/${encodeURIComponent(c.id)}" class="btn-outline-small" style="flex: 1; text-align: center; text-decoration: none; justify-content: center; padding: 0.45rem;">
               Ver Feed
             </a>
-            <button class="btn-post btn-post-in-channel" data-channel="${c.id}" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
+            <button class="btn-post btn-post-in-channel" data-channel="${escapeAttr(c.id)}" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
               Postar
             </button>
           </div>

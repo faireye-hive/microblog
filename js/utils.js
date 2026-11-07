@@ -4,6 +4,8 @@
 // utils.js - Helpers & Strong XSS Protection Engine
 
 // Funções Helpers de Parse seguro
+import { safeExternalUrl } from "./security/safe-values.js";
+
 export function parseEmbeddedJson(str) {
   if (!str) return null;
   if (typeof str !== "string") return str;
@@ -51,46 +53,15 @@ export function escapeAttr(str = "") {
 }
 
 // 3. SANITIZAÇÃO ESTRITA DE URLS (Defesa contra javascript:, data:, vbscript:)
+// URLs are validated as raw strings. HTML attributes must use escapeAttr.
 export function sanitizeUrl(url = "") {
-  if (!url || typeof url !== "string") return "";
-  
-  // Remove espaços, caracteres nulos e de controle
-  const trimmed = url.trim().replace(/[\u0000-\u001F\u007F-\u009F\s]/g, "");
-  
-  // Permite âncoras relativas do app (ex: #/channel/...)
-  if (trimmed.startsWith("#") || trimmed.startsWith("/")) {
-    return escapeAttr(trimmed);
-  }
-
-  // Decodifica tentativas de ofuscação (ex: jav&#x61;script:)
-  try {
-    const decoded = decodeURIComponent(trimmed).toLowerCase();
-    if (
-      decoded.includes("javascript:") ||
-      decoded.includes("data:") ||
-      decoded.includes("vbscript:") ||
-      decoded.includes("file:") ||
-      decoded.includes("blob:")
-    ) {
-      return "";
-    }
-  } catch (e) {
-    // Se URI malformada, pode ser tentativa de bypass
-    if (/(?:javascript|data|vbscript|file|blob)\s*:/i.test(trimmed)) {
-      return "";
-    }
-  }
-
-  // Validação estrita via parser de URL
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      return escapeAttr(trimmed);
-    }
-    return "";
-  } catch {
-    return "";
-  }
+  if (typeof url !== "string") return "";
+  const value = url.trim();
+  if (!value || /[\u0000-\u0020\u007f-\u009f<>"'`]/.test(value)) return "";
+  // Only internal app links or root-relative links, never protocol-relative URLs.
+  if (/^#\/[a-z0-9._\/-]*$/i.test(value)) return value;
+  if (/^\/(?!\/)[a-z0-9._\/-]*$/i.test(value)) return value;
+  return safeExternalUrl(value);
 }
 
 // 4. SANITIZAÇÃO DE NOMES DE USUÁRIO HIVE
