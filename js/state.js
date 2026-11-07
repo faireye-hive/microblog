@@ -306,7 +306,10 @@ export function renderNextBatch() {
     `;
   }
 
-  next.forEach((p) => feed.appendChild(buildPostCard(p, allPosts, voteCounts, mutedPostIds)));
+  // Channel posts are stored in separate namespaces; their replies must be
+  // looked up in the channel pool rather than the global micro.fair feed.
+  const postPool = activeChannel ? getChannelPosts(activeChannel) : allPosts;
+  next.forEach((p) => feed.appendChild(buildPostCard(p, postPool, voteCounts, mutedPostIds)));
 
   renderedCount += next.length;
   loading = false;
