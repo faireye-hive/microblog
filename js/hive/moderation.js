@@ -2,6 +2,7 @@
  * proof of administrator authority; only the signed Hive account is. */
 import { ADMIN, ADMIN_PMUTE_CUSTOM_ID } from "../config.js";
 import { parseEmbeddedJson } from "../utils.js";
+import { HIVE_APP_ID,HIVE_PROTOCOL_VERSION } from "./registry.js";
 
 export function processMuteData(operations) {
   const result = new Map();
@@ -21,7 +22,7 @@ export function processMuteData(operations) {
     if (!signers.includes(ADMIN)) continue;
 
     const json = parseEmbeddedJson(op.json);
-    if (!json || typeof json !== "object") continue;
+    if (!json || typeof json !== "object" || json.app !== HIVE_APP_ID || json.v !== HIVE_PROTOCOL_VERSION) continue;
     const id = json.content_id;
     if (id === null || id === undefined || id === "") continue;
     if (json.type === "mute") {
