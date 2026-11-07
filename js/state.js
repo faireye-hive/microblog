@@ -3,6 +3,7 @@
 import { buildPostCard } from "./render.js";
 import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./utils.js";
 import { ADMIN } from "./config.js";
+import { onlyHiveLinePosts } from "./hive/content-scope.js";
 import { getChannelPostsCacheKey } from "./data/cache-keys.js";
 import { writePostCache } from "./data/post-cache.js";
 import { hideFeedSkeleton } from "./ui/feed-loading.js";
@@ -24,12 +25,12 @@ export let blockedUsers = new Set(); // Armazena os nomes de usuários bloqueado
 export let followedUsers = new Set(); // Armazena os nomes de usuários seguidos
 
 // Bookmarks locais
-const savedBookmarks = JSON.parse(localStorage.getItem("micro_bookmarks") || "[]");
+const savedBookmarks = JSON.parse(localStorage.getItem("hiveline_bookmarks_v2") || "[]");
 export let bookmarkedPostIds = new Set(savedBookmarks);
 
 // Canais descobertos via Custom JSON (sem canais demonstrativos fictícios)
 export let channels = [];
-let savedJoined = JSON.parse(localStorage.getItem("micro_joined_channels") || "[]");
+let savedJoined = JSON.parse(localStorage.getItem("hiveline_joined_channels_v2") || "[]");
 // Remove eventuais canais de demonstração antigos do cache local
 savedJoined = savedJoined.filter(id => !["hive", "crypto", "linux", "gaming", "technology", "ai"].includes((id || "").toLowerCase()));
 export let joinedChannels = new Set(savedJoined);
@@ -42,7 +43,7 @@ export const channelPostsMap = new Map();
 
 export function setChannelPosts(channelId, posts) {
   const clean = (channelId || "").toLowerCase().trim();
-  channelPostsMap.set(clean, posts);
+  channelPostsMap.set(clean, onlyHiveLinePosts(posts,clean));
 }
 
 export function getChannelPosts(channelId) {
@@ -55,8 +56,9 @@ export function getChannelPosts(channelId) {
     const raw = localStorage.getItem(getChannelPostsCacheKey(clean));
     if (raw) {
       const arr = JSON.parse(raw);
-      channelPostsMap.set(clean, arr);
-      return arr;
+      const scoped = onlyHiveLinePosts(arr,clean);
+      channelPostsMap.set(clean, scoped);
+      return scoped;
     }
   } catch (e) {}
   return [];
@@ -65,6 +67,7 @@ export function getChannelPosts(channelId) {
 export function addChannelPostLocally(channelId, post) {
   const clean = (channelId || "").toLowerCase().trim();
   const list = [...getChannelPosts(clean)];
+  if (!onlyHiveLinePosts([post],clean).length) return;
   // Evita duplicatas locais
   if (!list.some(p => p.id === post.id)) {
     list.unshift(post);
@@ -114,7 +117,7 @@ export function toggleJoinChannel(channelId) {
   } else {
     joinedChannels.add(clean);
   }
-  localStorage.setItem("micro_joined_channels", JSON.stringify([...joinedChannels]));
+  localStorage.setItem("hiveline_joined_channels_v2", JSON.stringify([...joinedChannels]));
   updateChannelsUI();
 }
 
@@ -131,7 +134,7 @@ export function addChannelLocally(channel) {
     channels.unshift(channel);
   }
   joinedChannels.add(channel.id);
-  localStorage.setItem("micro_joined_channels", JSON.stringify([...joinedChannels]));
+  localStorage.setItem("hiveline_joined_channels_v2", JSON.stringify([...joinedChannels]));
   updateChannelsUI();
 }
 
@@ -172,13 +175,13 @@ export function toggleBookmark(postId) {
   } else {
     bookmarkedPostIds.add(postId);
   }
-  localStorage.setItem("micro_bookmarks", JSON.stringify([...bookmarkedPostIds]));
+  localStorage.setItem("hiveline_bookmarks_v2", JSON.stringify([...bookmarkedPostIds]));
 }
 
 // ---------- Funções de Mutação de Estado ----------
 
 export function setAllPosts(posts) {
-  allPosts = posts;
+  allPosts = onlyHiveLinePosts(posts);
   renderedCount = 0;
 }
 
@@ -265,7 +268,7 @@ export function applyFilterAndSort(baseList = allPosts) {
 // ---------- Funções de Renderização de Estado ----------
 
 export function renderFeed(postsToRender, postPoolOverride = null) {
-  allPostsToRender = postsToRender;
+  allPostsToRender = onlyHiveLinePosts(postsToRender);
   feedPostPoolOverride = postPoolOverride;
   renderedCount = 0;
 
