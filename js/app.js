@@ -138,7 +138,7 @@ async function sharePostLink(id) {
   url.hash = `#/thread/${encodeURIComponent(id)}`;
   try {
     if (typeof navigator.share === "function") {
-      await navigator.share({title: "Post on Micro.fair", url: url.toString()});
+      await navigator.share({title: "Post on HiveLine", url: url.toString()});
     } else if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url.toString());
       showNotification("Post link copied to clipboard.", true);
