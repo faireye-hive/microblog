@@ -559,7 +559,7 @@ export const CustomJsonModalHTML = `
       <div class="community-field">
         <label for="customJsonPayload">JSON payload</label>
         <textarea id="customJsonPayload" class="modal-input community-input community-code-input"
-                  rows="5" spellcheck="false" placeholder='{"app":"HiveLine","v":1,"type":"upvote","content_id":12345}'></textarea>
+                  rows="5" spellcheck="false" placeholder='{"app":"hiveline","v":2,"type":"upvote","content_id":12345}'></textarea>
       </div>
       <div id="customJsonValidationResults" class="custom-json-validation"
            role="status" aria-live="polite">Enter a Custom JSON ID and payload to validate.</div>
