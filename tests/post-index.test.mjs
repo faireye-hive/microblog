@@ -73,7 +73,7 @@ test("render, state and routing use shared indexed lookups",()=>{
   assert.match(render,/getDirectReplies\(allPosts, parentId\)/);
   assert.match(render,/getPostById\(allPosts, parsed\.reply_to\)/);
   assert.match(state,/getPostIndex\(allPosts\)\.replyCounts/);
-  assert.match(state,/const postPool = activeChannel \? getChannelPosts\(activeChannel\) : allPosts/);
+  assert.match(state,/const postPool = feedPostPoolOverride \|\| \(activeChannel \? getChannelPosts\(activeChannel\) : allPosts\)/);
   assert.match(state,/buildPostCard\(p, postPool, voteCounts, mutedPostIds\)/);
   assert.match(routing,/getPostById\(allPosts, postId\)/);
   assert.doesNotMatch(render,/allPosts\.filter\(/);
