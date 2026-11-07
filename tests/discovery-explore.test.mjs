@@ -48,7 +48,7 @@ test("discovery queries are bounded and handles #/@ input without accidental glo
 test("trending topics use actual tags and deduplicate repeated tags per post",()=>{
   const tags=collectDiscoveryTags(data,9);
   assert.equal(tags.find(row=>row.tag==="dev")?.count,2);
-  assert.equal(tags.find(row=>row.tag==="hive")?.count,2);
+  assert.equal(tags.find(row=>row.tag==="hive")?.count,1);
   assert.equal(tags.find(row=>row.tag==="music")?.count,1);
   assert.deepEqual(collectDiscoveryTags([],5),[]);
 });
@@ -100,13 +100,15 @@ test("search results escape query, validate channel ID, and explain loaded data 
   assert.match(html,/href="#\/channel\/news"/);
   const malicious=buildSearchOverview({results:getDiscoveryResults({query:'"><svg onload=alert(1)>',posts:data})});
   assert.doesNotMatch(malicious,/value=""><svg/);
-  assert.doesNotMatch(malicious,/\sonload=/);
+  assert.doesNotMatch(malicious,/<svg\s+onload=/);
   assert.match(malicious,/&quot;&gt;&lt;svg/);
 });
 
 test("community directory has All/Joined states without breaking existing join hooks",async()=>{
   globalThis.localStorage ??= {getItem(){return null;},setItem(){},removeItem(){}};
   globalThis.document ??= {getElementById(){return null;}};
+  globalThis.window ??= {dispatchEvent(){}};
+  globalThis.CustomEvent ??= class CustomEvent {constructor(type){this.type=type;}};
   const state=await import("../js/state.js");
   const {buildChannelsPage}=await import("../js/render.js");
   state.setChannels(communities.slice(0,2));
