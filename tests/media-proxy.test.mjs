@@ -148,6 +148,27 @@ test("proxy bounds parallel upstream work under load",async()=>{
   assert.equal(first.statusCode,200);
 });
 
+test("proxy rate limit returns 429 before further upstream work",async()=>{
+  let fetches=0, now=0;
+  const handler=createImageProxyHandler({
+    maxRequestsPerMinute:2,
+    clock:()=>now,
+    fetchImage:async()=>{fetches++;return {bytes:validPng,contentType:"image/png"};}
+  });
+  const req={socket:{remoteAddress:"192.0.2.99"},query:{url:"https://example.com/a.png"}};
+  await handler(req,responseRecorder());
+  await handler(req,responseRecorder());
+  const limited=responseRecorder();
+  await handler(req,limited);
+  assert.equal(limited.statusCode,429);
+  assert.equal(limited.headers["retry-after"],"60");
+  assert.equal(fetches,1);
+  now=61000;
+  const after=responseRecorder();
+  await handler(req,after);
+  assert.equal(after.statusCode,200);
+});
+
 test("frontend media URLs preserve GitHub Pages until a Render proxy is configured",()=>{
   const gh={origin:"https://faireye-hive.github.io",hostname:"faireye-hive.github.io",port:""};
   assert.equal(imageProxyEndpoint({origin:"",location:gh}),"");
