@@ -30,6 +30,7 @@ export function getDiscoveryResults({query="",posts=[],channels=[],maxPosts=80}=
   const q = normalizeDiscoveryQuery(query).toLowerCase();
   if (!q) return {query:"",posts:[],communities:[],people:[],topics:[],totalPosts:0};
   const needle = q.replace(/^[@#]/, "");
+  if (!needle) return {query:q,posts:[],communities:[],people:[],topics:[],totalPosts:0};
   const matchedPosts = [];
   const peopleCounts = new Map();
   const topicCounts = new Map();
@@ -86,7 +87,7 @@ export function discoveryPostPool(mainPosts=[],loadedChannelPosts=[],blocked=new
     if(!id||seen.has(id))continue;
     seen.add(id);
     const author=safeHiveUsername(post.required_posting_auths?.[0]);
-    if(blocked.has(author)||muted.has(post.id))continue;
+    if(blocked.has(author)||muted.has(post.id)||muted.has(id)||muted.has(Number(id)))continue;
     result.push(post);
   }
   return result;
