@@ -13,6 +13,7 @@ import { safeTag } from "./security/safe-values.js";
 export let allPosts = []; // Todos os posts brutos
 export let voteCounts = {}; // Contagem de votos processada
 export let allPostsToRender = []; // Lista atual de posts (completa ou filtrada) para renderização
+let feedPostPoolOverride = null;
 export let renderedCount = 0;
 export let loading = false;
 export const BATCH_SIZE = 40;
@@ -263,8 +264,9 @@ export function applyFilterAndSort(baseList = allPosts) {
 
 // ---------- Funções de Renderização de Estado ----------
 
-export function renderFeed(postsToRender) {
+export function renderFeed(postsToRender, postPoolOverride = null) {
   allPostsToRender = postsToRender;
+  feedPostPoolOverride = postPoolOverride;
   renderedCount = 0;
 
   const feed = document.getElementById("feed");
@@ -325,7 +327,7 @@ export function renderNextBatch() {
 
   // Channel posts are stored in separate namespaces; their replies must be
   // looked up in the channel pool rather than the global micro.fair feed.
-  const postPool = activeChannel ? getChannelPosts(activeChannel) : allPosts;
+  const postPool = feedPostPoolOverride || (activeChannel ? getChannelPosts(activeChannel) : allPosts);
   next.forEach((p) => feed.appendChild(buildPostCard(p, postPool, voteCounts, mutedPostIds)));
 
   renderedCount += next.length;
@@ -373,9 +375,11 @@ export function updateTags() {
   }
 
   sorted.forEach(([t, c], idx) => {
-    const div = document.createElement("div");
+    const div = document.createElement("button");
+    div.type = "button";
     div.className = "trending-tag-row";
     div.setAttribute("data-tag", t);
+    div.setAttribute("aria-label", `Open #${t}: ${c} posts`);
     const formattedCount = c >= 1000 ? (c / 1000).toFixed(1) + "k" : c;
     div.innerHTML = `
       <div class="trending-tag-left">
