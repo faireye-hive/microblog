@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="./css/community.css" />
     <link rel="stylesheet" href="./css/editorial.css" />
     <link rel="stylesheet" href="./css/feed-experience.css" />
+    <link rel="stylesheet" href="./css/feedback.css" />
   </head>
   
   <body>
@@ -37,8 +38,9 @@
         <div id="composer-root"></div>
         <div id="feed-filters-root"></div>
         <section id="feed" class="feed-container"></section>
-        <div id="loadingIndicator" class="loading-state hidden">
-          Loading more posts...
+        <div id="loadingIndicator" class="loading-state hidden" aria-live="off">
+          <span class="load-more-mark" aria-hidden="true"></span>
+          <span>Keep scrolling for more posts</span>
         </div>
       </main>
 

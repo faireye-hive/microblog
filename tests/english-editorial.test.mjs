@@ -13,7 +13,7 @@ test("English is the document language and international SEO copy is consistent"
   assert.match(html, /Skip to content/);
   assert.match(html, /aria-label="Mobile navigation"/);
   assert.match(html, /data-mobile-section="channels" href="#\/channels" aria-label="Communities"/);
-  assert.match(html, /Loading more posts/);
+  assert.match(html, /Keep scrolling for more posts/);
 });
 
 test("editorial theme is loaded last and has accent-aware, responsive interaction states", () => {

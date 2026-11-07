@@ -5,6 +5,7 @@ import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./util
 import { ADMIN } from "./config.js";
 import { getChannelPostsCacheKey } from "./data/cache-keys.js";
 import { writePostCache } from "./data/post-cache.js";
+import { hideFeedSkeleton } from "./ui/feed-loading.js";
 import { getPostIndex } from "./data/post-index.js";
 import { safeTag } from "./security/safe-values.js";
 
@@ -268,6 +269,7 @@ export function renderFeed(postsToRender) {
 
   const feed = document.getElementById("feed");
   if (!feed) return;
+  hideFeedSkeleton(feed);
   feed.innerHTML = "";
   if (allPostsToRender.length === 0) {
     feed.innerHTML = `

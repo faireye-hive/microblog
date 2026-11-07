@@ -221,32 +221,67 @@ export function linkifyText(text) {
   return sanitizeSafeHtml(linkedText);
 }
 
+/**
+ * Compact, accessible toast stack. Messages are always inserted as text,
+ * never HTML — on-chain/network error strings are not trusted markup.
+ * Boolean success/error arguments are retained for existing call sites.
+ */
 export function showNotification(message, isSuccess = true) {
-  let container = document.getElementById('notification-container');
+  const doc = globalThis.document;
+  if (!doc?.body) return;
+  let container = doc.getElementById("notification-container");
   if (!container) {
-    container = document.createElement('div');
-    container.id = 'notification-container';
-    container.className = 'fixed top-4 right-4 z-[90] flex flex-col gap-2';
-    document.body.appendChild(container);
+    container = doc.createElement("div");
+    container.id = "notification-container";
+    container.className = "app-toast-stack";
+    container.setAttribute("aria-label", "Notifications");
+    doc.body.appendChild(container);
   }
-  
-  const notification = document.createElement('div');
-  const baseClasses = 'p-3 rounded-lg shadow-lg text-sm transition-opacity duration-300';
-  
-  if (isSuccess) {
-    notification.className = `${baseClasses} bg-green-500 text-white`;
-  } else {
-    notification.className = `${baseClasses} bg-red-600 text-white`;
+  // This previously used Tailwind utility classes, which are not loaded.
+  container.className = "app-toast-stack";
+
+  const toast = doc.createElement("div");
+  toast.className = `app-toast ${isSuccess ? "app-toast-success" : "app-toast-error"}`;
+  toast.setAttribute("role", isSuccess ? "status" : "alert");
+  toast.setAttribute("aria-atomic", "true");
+
+  const icon = doc.createElement("span");
+  icon.className = "app-toast-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = isSuccess ? "✓" : "!";
+  toast.appendChild(icon);
+
+  const body = doc.createElement("span");
+  body.className = "app-toast-text";
+  const plainText = String(message ?? "").replace(/^(?:✅|❌|⚠️|🔒|🔖|🗑️)\s*/u, "").trim();
+  body.textContent = plainText;
+  toast.appendChild(body);
+
+  const close = doc.createElement("button");
+  close.type = "button";
+  close.className = "app-toast-close";
+  close.setAttribute("aria-label", "Dismiss notification");
+  close.textContent = "\u00d7";
+  toast.appendChild(close);
+  container.appendChild(toast);
+
+  let dismissalTimer;
+  let removed = false;
+  function dismiss() {
+    if (removed) return;
+    removed = true;
+    clearTimeout(dismissalTimer);
+    toast.classList.add("app-toast-leaving");
+    setTimeout(() => toast.remove(), 180);
   }
-  
-  notification.textContent = String(message || "");
-  container.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.classList.remove('opacity-100');
-    notification.classList.add('opacity-0');
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
-  }, 4000);
+  close.addEventListener("click", dismiss);
+  dismissalTimer = setTimeout(dismiss, isSuccess ? 4500 : 6500);
+
+  // Avoid an unlimited wall of notifications during rapid sync events.
+  const items = container.querySelectorAll?.(".app-toast") || [];
+  if (items.length > 3) {
+    for (const old of Array.from(items).slice(0, items.length - 3)) {
+      old.querySelector(".app-toast-close")?.click();
+    }
+  }
 }
