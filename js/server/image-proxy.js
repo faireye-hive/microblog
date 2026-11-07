@@ -9,11 +9,15 @@ export function createImageProxyHandler({
   fetchImage = fetchProxiedImage,
   clock = () => Date.now(),
   maxConcurrent = 8,
+  maxRequestsPerMinute = 600,
   cacheSizeBytes = 24 * 1024 * 1024,
   maxCacheEntries = 128,
   ttlMs = 60 * 60 * 1000,
 } = {}) {
   const cached = new Map();
+  // Bounded fixed-window throttle. Use the socket address rather than trusting
+  // a user-supplied X-Forwarded-For header.
+  const clients = new Map();
   let cachedBytes = 0;
   let inFlight = 0;
 
@@ -25,6 +29,20 @@ export function createImageProxyHandler({
   }
 
   return async function imageProxyHandler(req, res) {
+    const client = req.socket?.remoteAddress || req.ip || "unknown";
+    const timestamp = clock();
+    let bucket = clients.get(client);
+    if (!bucket || timestamp - bucket.since >= 60000) {
+      bucket = { since: timestamp, count: 0 };
+      clients.delete(client);
+      clients.set(client, bucket);
+    }
+    bucket.count++;
+    if (clients.size > 1024) clients.delete(clients.keys().next().value);
+    if (bucket.count > maxRequestsPerMinute) {
+      return res.status(429).set("Retry-After", "60").send("Image request limit reached");
+    }
+
     let url;
     try {
       if (typeof req.query.url !== "string") {
