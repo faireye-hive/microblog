@@ -5,6 +5,7 @@ import { extractCspMeta, cspHttpHeader } from "../js/security/csp-policy.js";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const server = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+const notFoundHtml = readFileSync(new URL("../404.html", import.meta.url), "utf8");
 const policy = extractCspMeta(html);
 const directives = new Map(policy.split(";").map(entry => {
   const parts = entry.trim().split(/\s+/);
@@ -75,6 +76,14 @@ test("active HTML templates have no forbidden inline event handlers", () => {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");
     assert.doesNotMatch(source, /\son(?:click|load|error|focus|mouseover)=["']/i, path);
   }
+});
+
+test("404 fallback carries the same CSP and no longer loads legacy remote scripts", () => {
+  assert.equal(extractCspMeta(notFoundHtml), policy);
+  assert.match(notFoundHtml, /<meta name="referrer" content="no-referrer"/);
+  assert.doesNotMatch(notFoundHtml, /<script\b/i);
+  assert.doesNotMatch(notFoundHtml, /cdn\.tailwindcss\.com/i);
+  assert.match(notFoundHtml, /https:\/\/faireye-hive\.github\.io\/microblog\//);
 });
 
 test("missing CSP meta fails closed on server startup", () => {
