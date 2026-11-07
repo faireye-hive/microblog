@@ -6,6 +6,16 @@ A principal arquitetura do projeto foca em separar as responsabilidades da inter
 
 -----
 
+## 📡 Protocolo Hive (Custom JSON)
+
+Todos os IDs históricos e operações de post, resposta, voto, moderação, follow/block e comunidades estão centralizados no registro [`js/hive/registry.js`](js/hive/registry.js). Os exemplos de JSON são gerados pelos mesmos builders usados para publicar.
+
+- **Página interativa no app:** navegue para `#/protocol` (menu **More → Protocol Reference**).
+- **Documento técnico:** [Hive Protocol v1 — IDs, tipos, exemplos e regras de migração](docs/hive-protocol.md).
+- **Compatibilidade:** `js/config.js` mantém os exports anteriores; os IDs `micro.fair.interation` e `micro.fair.adpmuted` são históricos e não devem ser renomeados.
+
+-----
+
 ## 🚀 Arquitetura e Modularização
 
 O projeto utiliza o sistema de módulos JavaScript (ES Modules, `type="module"`) para garantir uma estrutura limpa e de fácil manutenção.
