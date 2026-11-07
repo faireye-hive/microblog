@@ -27,7 +27,7 @@ test("refined neutral light theme loads last and keeps structural routes",()=>{
 });
 
 test("top tabs focus on feed and following while sidebar keeps essential routes",()=>{
-  assert.equal((TopNavHTML.match(/class="top-nav-tab/g)||[]).length,2);
+  assert.equal((TopNavHTML.match(/class="top-nav-tab(?: active)?"/g)||[]).length,2);
   assert.match(TopNavHTML,/id="tabForYou">Para você/);
   assert.match(TopNavHTML,/id="tabFollowing">Seguindo/);
   assert.match(TopNavHTML,/id="topSearchInput"/);
