@@ -1,67 +1,52 @@
-# Micro.fair → New Brand: v2 Protocol Migration Plan
+# HiveLine v2 — Fresh Start and Legacy Isolation
 
-**Status: proposal only. No rebranding, new on-chain IDs, or v2 broadcasting is active.**
+**Status: ACTIVE (v2) for new tests.** Product display name: **HiveLine**.
+On-chain payload app: `hiveline`; version: `2`. The repo still lives at
+`faireye-hive/microblog` so existing GitHub Pages URLs remain functional.
 
-This plan separates three different decisions that should not be conflated:
+## Why no previous posts appear
 
-1. **Product name, logo, URL and repository name** — can change independently from Hive messages.
-2. **Application namespace / custom_json IDs** — changes where new Hive transactions are stored, leaving historical posts and votes under their original IDs.
-3. **Protocol payload v2** — a separate schema/versioning decision. A new marketing name does **not** inherently require `v:2`, and v2 does not retroactively migrate previous blockchain operations.
+This is a **fresh start**, not a blockchain data deletion. The new client
+only queries `hiveline.posts` and newly registered community namespaces
+`hiveline.c.<slug>`, with an additional validation gate requiring
+`app: "hiveline"`, `v:2` and a matching outer post ID.
 
-## What is live now
+- Old `micro.fair` posts, replies, votes and account relations are **not read**.
+- Old bare community namespaces and `micro.fair.channels` records are **not read**.
+- Existing on-chain history remains accessible through legacy Hive interfaces.
+- The new IndexedDB `hiveline-v2-posts` and localStorage `hivelineV2...`
+  prevent older cached data from resurfacing.
+- Favorite posts and locally joined communities also start from empty v2 keys.
+- Users' Hive Keychain authentication is **not** reset: account identities and
+  blockchain credentials are independent of app content namespaces.
 
-The deployed Micro.fair v1 reader and writer continue using historical namespaces: `micro.fair`, `micro.fair.interation`, `micro.fair.adpmuted`, `micro.fair.channels`, user-scoped `micro.fair.{user}.follow` / `.block` and the exact community custom_json IDs. The in-app `#/protocol` page documents them.
+## Active v2 namespaces
 
-The validator in `js/hive/validator.js` checks the registered v1 payloads offline. The advanced Custom JSON dialog requires a successful structural check before signing. An unrelated custom_json operation can only be sent after explicitly acknowledging that the app does not recognize it. **This does not verify account authority or blockchain acceptance.**
+| Feature | Namespace |
+| --- | --- |
+| Main posts and replies | `hiveline.posts` |
+| Community posts | `hiveline.c.<slug>` |
+| Community registry | `hiveline.communities` |
+| Votes | `hiveline.votes` |
+| Admin moderation | `hiveline.moderation` |
+| Follow/unfollow/block/unblock | `hiveline.relationships` |
 
-## Proposed v2 naming conventions
+Communities use a maximum 21-character slug. Follow/Block identities are
+scoped by the transaction signer's `required_posting_auths` and by the
+action `type`, not by a username embedded in the outer ID.
 
-The *draft-only* generator in `js/hive/v2-plan.js` accepts a provisional lowercase app identifier, e.g. `newbrand`, and illustrates these cleaner IDs:
+## Compatibility and safety
 
-| Proposed function | Draft v2 ID | Historical data to keep reading |
-| --- | --- | --- |
-| Main posts & replies | `newbrand.posts` | `micro.fair` |
-| Votes | `newbrand.votes` | `micro.fair.interation` |
-| Post moderation | `newbrand.moderation` | `micro.fair.adpmuted` |
-| Community registry | `newbrand.communities` | `micro.fair.channels` |
-| Follow/block actions | `newbrand.relationships` | Per-signer `micro.fair.{user}.follow` and `.block` |
-| Community posts | **Undecided** | Existing per-community IDs such as `hive.micro` |
+Historic data has not been transferred or rewritten. Vote and reply
+references in v2 must identify new v2 posts; the new feed only displays those.
+A future archive viewer could deliberately load legacy records with a
+separate switch, but the new test feed must not implicitly mix protocols.
 
-The final product/namespace name is **not yet selected**, and these names are not registered or deployed. The v2 planner returns `enabled: false` and is never imported by the signing path. Namespace names should remain short enough to satisfy the on-chain ID constraints.
+`js/hive/registry.js` is the canonical v2 registry, with
+`LEGACY_MICROFAIR_IDS` exported for historical reference only;
+`js/hive/content-scope.js` controls accepted post data;
+`js/hive/validator.js` blocks accidental signed legacy operations.
 
-## Migration requirements before activating writes
-
-### Stage 1 — Brand without protocol changes
-Change the visible name, page title, logo and product descriptions only after selecting and checking the new brand. Keep all v1 IDs active, avoiding any break in historical posts or connections.
-
-### Stage 2 — Versioned schema and dual reads
-Specify each v2 payload (including `app`, `v`, `type`, content references, follower/block relationships and moderation rules). Create indexed read adapters that query **both** v1 and v2 HAFSQL namespaces. Avoid duplicate posts and double-counting votes when merging, and keep a stable mapping between legacy and v2 content references.
-
-A single shared `newbrand.relationships` namespace replaces user-scoped v1 suffixes only after the reader securely filters by `required_posting_auths`. A namespace string alone is never proof of authorship or moderation authorization.
-
-### Stage 3 — Community strategy
-Plan how post namespaces in communities migrate. Existing community IDs are independent custom_json namespaces and cannot simply be prefixed without changing their identity, length constraints and URLs. Decide whether to retain them or introduce a registry-based mapping before creating v2 community writers.
-
-### Stage 4 — Controlled rollout
-Roll out v2 read support and regression tests **before** enabling v2 writes. Introduce a feature flag with v2 writes disabled by default. Verify on-chain signatures with Hive Keychain and HAFSQL sync. Preserve legacy read and cache support for historical posts, replies, votes and relationships.
-
-### Stage 5 — Deprecation, not deletion
-After confirmed adoption, optionally stop new v1 writes without ever assuming v1 blockchain records can be erased or moved. Keep dual reads or an explicit archival viewer.
-
-## Validation principles
-
-- Never change `micro.fair.interation` or `micro.fair.adpmuted` in-place and call it a correction.
-- Never silently interpret a v2 payload as a v1 message.
-- Never publish a new on-chain namespace merely because a brand name was typed into the planner.
-- Validate field types/operation IDs locally and verify signer authority and acceptance on-chain.
-- Keep the arbitrary Custom JSON editor separate from registered application-protocol broadcast helpers.
-- Record any data versioning change in executable tests and public protocol docs.
-
-## Files
-
-- `js/hive/registry.js` — immutable production v1 namespace registry.
-- `js/hive/protocol.js` — production v1 serialization.
-- `js/hive/validator.js` — structural validation of registered v1 operations.
-- `js/hive/v2-plan.js` — pure draft-only v2 name generator.
-- `js/ui/protocol-validator.js` — validation workbench, migration preview and safe modal gate.
-- `tests/custom-json-validator.test.mjs` — regression suite.
+A brand-name or GitHub repository rename is a separate administrative task.
+**HiveLine is already used elsewhere as a product name**, so trademark and
+domain availability should be assessed before commercial publication.
