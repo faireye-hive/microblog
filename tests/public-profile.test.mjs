@@ -113,7 +113,7 @@ test("profile hero escapes metadata and offers genuine external links",()=>{
   });
   assert.match(html,/id="publicProfileTitle"/);
   assert.match(html,/&lt;img src=x onerror=alert\(1\)&gt;/);
-  assert.match(html,/&lt;script&gt;alert\(2\)&lt;\/script&gt;/);
+  assert.ok(html.includes("I built &lt;script&gt;alert(2)&lt;&#x2F;script&gt; on Hive"));
   assert.match(html,/&lt;svg onload=&quot;bad\(\)&quot;&gt;/);
   assert.doesNotMatch(html,/<script>alert/);
   assert.doesNotMatch(html,/<svg onload/);
