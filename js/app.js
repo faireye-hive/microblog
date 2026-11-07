@@ -448,12 +448,33 @@ function setupGlobalInteractions() {
       }
     }
     
+    // Signed Hive actions from the public profile header.
+    const profileAction = e.target.closest("button[data-profile-action]");
+    if (profileAction) {
+      const action = profileAction.dataset.profileAction;
+      const user = safeHiveUsername(profileAction.dataset.user);
+      if (user === "unknown" || !["follow","unfollow","block","unblock"].includes(action))
+        return;
+      if (!loggedInUser) {
+        document.getElementById("btnMenu")?.click();
+        return;
+      }
+      if (user === loggedInUser) return;
+      const operations = { follow:sendFollow, unfollow:sendUnfollow, block:sendBlock, unblock:sendUnblock };
+      operations[action]?.(user);
+      return;
+    }
+    if (e.target.closest("#btnPublicProfileLogin")) {
+      document.getElementById("btnMenu")?.click();
+      return;
+    }
+
     // Desbloqueio na Página de Perfil
     const profileUnblockBtn = e.target.closest('button[data-action="unblock"]');
     if (profileUnblockBtn && currentPage === "profile") { 
       const targetUser = profileUnblockBtn.dataset.user;
+      // Keep the account visible until the signed on-chain action is confirmed.
       sendUnblock(targetUser);
-      profileUnblockBtn.closest("div")?.remove();
     }
 
     // Close author menus and restore their expanded state when clicking away.
