@@ -19,7 +19,7 @@ export const TopNavHTML = `
         </div>
         <div class="brand-info">
           <span class="brand-title">micro.fair</span>
-          <span class="brand-subtitle">Hive • Share • Build</span>
+          <span class="brand-subtitle">SOCIAL · ON HIVE</span>
         </div>
       </a>
 
@@ -222,7 +222,13 @@ export const ComposerHTML = `
   <div class="composer-top" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
     <div style="display: flex; align-items: center; gap: 0.75rem;">
       <img id="composerAvatar" class="composer-avatar" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="Avatar" data-avatar-fallback="user">
-      <h3 class="composer-title" style="margin: 0;">Create a post</h3>
+      <div class="composer-identity">
+        <span class="composer-eyebrow">YOUR VOICE · ON HIVE</span>
+        <h3 class="composer-title">Start a conversation</h3>
+      </div>
+    </div>
+    <div class="composer-network-pill" aria-label="Posts are published to Hive">
+      <span class="composer-network-dot" aria-hidden="true"></span> On Hive
     </div>
     <div id="composerChannelBadge" class="hidden" style="display: flex; align-items: center; gap: 0.35rem; background: rgba(227, 19, 55, 0.08); border: 1px solid rgba(227, 19, 55, 0.2); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: #e31337;">
       <span>Community:</span>
