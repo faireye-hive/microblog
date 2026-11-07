@@ -274,21 +274,27 @@ export function backToFeed() {
 // Eventos da página de Diretório de Canais
 export function setupChannelsPageEvents() {
   const searchInput = document.getElementById("channelsDirectorySearch");
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
-      const feed = document.getElementById("feed");
-      if (feed && currentPage === "channels") {
-        feed.innerHTML = buildChannelsPage(e.target.value);
-        setupChannelsPageEvents();
-        const newSearch = document.getElementById("channelsDirectorySearch");
-        if (newSearch) {
-          newSearch.focus();
-          newSearch.selectionStart = newSearch.selectionEnd = newSearch.value.length;
-        }
-      }
-    });
-  }
-
+  const currentScope = () => document.querySelector(".channel-scope-tab.active")?.dataset.scope || "all";
+  const redraw = (query, scope, focusSearch = false) => {
+    const feed = document.getElementById("feed");
+    if (!feed || currentPage !== "channels") return;
+    feed.innerHTML = buildChannelsPage(query, scope);
+    setupChannelsPageEvents();
+    if (focusSearch) {
+      const next = document.getElementById("channelsDirectorySearch");
+      next?.focus();
+      next?.setSelectionRange?.(next.value.length, next.value.length);
+    } else {
+      document.querySelector(`.channel-scope-tab[data-scope="${scope}"]`)?.focus();
+    }
+  };
+  searchInput?.addEventListener("input", event => redraw(event.target.value, currentScope(), true));
+  document.querySelectorAll(".channel-scope-tab").forEach(tab => {
+    tab.addEventListener("click", () => redraw(searchInput?.value || "", tab.dataset.scope));
+  });
+  document.getElementById("btnBrowseAllCommunities")?.addEventListener("click", () =>
+    redraw(searchInput?.value || "", "all"));
+  
   const openModal = (prefillName = "") => {
       const modal = document.getElementById("createChannelModal");
       if (modal) {
@@ -347,8 +353,9 @@ window.addEventListener("refreshChannelsPage", () => {
   if (currentPage === "channels") {
     const feed = document.getElementById("feed");
     const search = document.getElementById("channelsDirectorySearch")?.value || "";
+    const scope = document.querySelector(".channel-scope-tab.active")?.dataset.scope || "all";
     if (feed) {
-      feed.innerHTML = buildChannelsPage(search);
+      feed.innerHTML = buildChannelsPage(search, scope);
       setupChannelsPageEvents();
     }
   }
