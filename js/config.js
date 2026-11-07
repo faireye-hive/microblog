@@ -1,3 +1,5 @@
+import { buildHafsqlCustomJsonUrl } from "./data/hafsql.js";
+
 // /js/config.js
 
 export const APP_ID = "micro.fair";
@@ -11,12 +13,9 @@ export const LIMIT = 1000;
 
 
 
-const API_BASE = "https://rpc.mahdiyari.info/hafsql/operations/custom_json"; // RENOMEADA
-
-// NOVO: Função para construir a URL da API
+// Compatibility shim: existing API URLs stay the same, including {user} templates.
 function buildApiUrl(customId) {
-    // Retorna a URL completa com o limite padrão
-    return `${API_BASE}/${customId}?limit=${LIMIT}`;
+    return buildHafsqlCustomJsonUrl(customId, { limit: LIMIT });
 }
 
 // URLs FINAIS: Usando a função helper

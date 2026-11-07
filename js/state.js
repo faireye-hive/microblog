@@ -3,6 +3,7 @@
 import { buildPostCard } from "./render.js";
 import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./utils.js";
 import { ADMIN } from "./config.js";
+import { getChannelPostsCacheKey } from "./data/cache-keys.js";
 
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
 export let allPosts = []; // Todos os posts brutos
@@ -46,7 +47,7 @@ export function getChannelPosts(channelId) {
     return channelPostsMap.get(clean);
   }
   try {
-    const raw = localStorage.getItem(`hiveAppChannelPosts_${clean}`);
+    const raw = localStorage.getItem(getChannelPostsCacheKey(clean));
     if (raw) {
       const arr = JSON.parse(raw);
       channelPostsMap.set(clean, arr);
@@ -65,7 +66,7 @@ export function addChannelPostLocally(channelId, post) {
   }
   channelPostsMap.set(clean, list);
   try {
-    localStorage.setItem(`hiveAppChannelPosts_${clean}`, JSON.stringify(list.slice(0, 1000)));
+    localStorage.setItem(getChannelPostsCacheKey(clean), JSON.stringify(list.slice(0, 1000)));
   } catch (e) {}
 }
 

@@ -9,6 +9,22 @@ import {
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
+import {
+    buildHafsqlCustomJsonUrl,
+    withHafsqlCursor,
+    fetchHafsqlPayload,
+    getHafsqlRows,
+} from "./data/hafsql.js";
+import {
+    POSTS_CACHE_KEY, VOTES_CACHE_KEY, MUTES_CACHE_KEY, BLOCKS_CACHE_KEY,
+    FOLLOWS_CACHE_KEY, CHANNELS_CACHE_KEY, getUserCacheKey,
+    getChannelPostsCacheKey
+} from "./data/cache-keys.js";
+import {
+    buildPostPayload, buildVotePayload, buildMutePayload,
+    buildUserActionPayload, buildChannelCreatePayload
+} from "./hive/protocol.js";
+import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
 import { processChannelsData } from "./helpers/channels.js";
 export { processChannelsData } from "./helpers/channels.js";
 import { 
@@ -78,8 +94,7 @@ async function conditionalFetch(urlTemplate, customId, defaultValue = []) {
             .replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`)
             .replace('{user}', loggedInUser); 
             
-        const res = await fetch(url);
-        return res.json();
+        return fetchHafsqlPayload(url);
     } catch (e) {
         console.error(`Erro ao buscar dados para ${customId}:`, e);
         return defaultValue;
@@ -114,18 +129,8 @@ function processUserTargetOps(opData) {
     return finalSet;
 }
 
-const LOCAL_STORAGE_KEY = 'hiveAppPostsCache';
-const API_LIMIT = 1000; 
-const MAX_OPS_TO_FETCH = 20000; // Limite alto para garantir completude dos votos, mutes, etc.
-
-
-const POSTS_CACHE_KEY = 'hiveAppPostsCache';
-const VOTES_CACHE_KEY = 'hiveAppVotesCache';
-const MUTES_CACHE_KEY = 'hiveAppMutesCache';
-// Opcional, dependendo da necessidade de cache para Blocks/Follows
-const BLOCKS_CACHE_KEY = 'hiveAppBlocksCache'; 
-const FOLLOWS_CACHE_KEY = 'hiveAppFollowsCache'; 
-const CHANNELS_CACHE_KEY = 'hiveAppChannelsCache';
+const API_LIMIT = 1000;
+const MAX_OPS_TO_FETCH = 20000; // Keep the existing pagination cap.
 
 // /js/api.js
 
@@ -136,7 +141,7 @@ async function syncAndGetTargetOps(baseCacheKey, urlTemplate, customId) {
     }
     
     // 1. Constrói a CHAVE DE CACHE EXCLUSIVA PARA ESTE USUÁRIO
-    const userSpecificCacheKey = `${baseCacheKey}.${loggedInUser}`;
+    const userSpecificCacheKey = getUserCacheKey(baseCacheKey, loggedInUser);
 
     // 2. Constrói a URL para a API
     const finalUrl = urlTemplate
@@ -185,18 +190,12 @@ async function syncAndGetAuxData(cacheKey, apiUrl) {
         // 2. Constrói a URL para Sincronização
         if (startIdForSync) {
             // Se o cache existir, faz a busca reversa (sync)
-            const url = new URL(apiUrl);
-            url.searchParams.delete('limit');
-            url.searchParams.set('limit', '-1000'); // Busca reversa rápida
-            url.searchParams.set('start', startIdForSync);
-            syncApiUrl = url.toString();
+            syncApiUrl = withHafsqlCursor(apiUrl, { limit: -1000, start: startIdForSync });
         } 
         // Se startIdForSync for null (primeira carga), syncApiUrl usa a URL padrão (limit=1000)
 
-        const res = await fetch(syncApiUrl);
-        const syncDataRaw = await res.json();
-        
-        const newRecords = (Array.isArray(syncDataRaw) ? syncDataRaw : syncDataRaw.rows || []);
+        const syncDataRaw = await fetchHafsqlPayload(syncApiUrl);
+        const newRecords = getHafsqlRows(syncDataRaw);
 
         // 3. Consolidação
         if (newRecords.length > 0) {
@@ -233,13 +232,11 @@ async function fetchDataInLoopGeneric(baseUrl) {
         let apiUrl = baseUrl;
         if (startId) {
             // A URL base já contém o limite (ex: ?limit=1000)
-            apiUrl = `${baseUrl.replace(`limit=${API_LIMIT}`, `limit=${API_LIMIT}`)}&start=${startId}`;
+            apiUrl = withHafsqlCursor(baseUrl, { limit: API_LIMIT, start: startId });
         }
         
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        
-        const newRows = (Array.isArray(data) ? data : data.rows || []);
+        const data = await fetchHafsqlPayload(apiUrl);
+        const newRows = getHafsqlRows(data);
         
         const currentBatchCount = newRows.length;
         
@@ -306,7 +303,7 @@ export async function fetchData() {
         url.searchParams.set('limit', '-1000');
         url.searchParams.set('start', startIdForSync);
         
-        postSyncPromise = fetch(url.toString()).then(res => res.json());
+        postSyncPromise = fetchHafsqlPayload(url.toString());
         
     } else {
         // Cache Vazio: Busca completa em loop (mantida para a 1ª carga)
@@ -350,7 +347,7 @@ export async function fetchData() {
     
     if (isCacheHit) {
         // ... (Lógica de concatenação dos posts)
-        const newPosts = (Array.isArray(syncDataRaw) ? syncDataRaw : syncDataRaw.rows || [])
+        const newPosts = getHafsqlRows(syncDataRaw)
             .filter((x) => x.custom_id === APP_ID);
         
         newPostsCount = newPosts.length;
@@ -399,7 +396,7 @@ export async function fetchChannelPosts(channelId) {
     const cleanId = parseChannelCustomId(channelId);
     if (!cleanId) return [];
 
-    const cacheKey = `hiveAppChannelPosts_${cleanId}`;
+    const cacheKey = getChannelPostsCacheKey(cleanId);
     let cached = [];
     try {
         const raw = localStorage.getItem(cacheKey);
@@ -411,10 +408,9 @@ export async function fetchChannelPosts(channelId) {
     }
 
     try {
-        const url = `https://rpc.mahdiyari.info/hafsql/operations/custom_json/${encodeURIComponent(cleanId)}?limit=1000`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const rows = Array.isArray(data) ? data : (data.rows || []);
+        const url = buildHafsqlCustomJsonUrl(cleanId, { limit: API_LIMIT });
+        const data = await fetchHafsqlPayload(url);
+        const rows = getHafsqlRows(data);
 
         // Filtra estritamente operações onde o Custom JSON ID é exatamente o ID do canal
         const validOps = rows.filter(op => (op.custom_id || "").toLowerCase() === cleanId);
@@ -461,27 +457,18 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
         tags.unshift(customId);
     }
 
-    const payload = {
-        app: APP_ID,
-        v: 1,
-        type: replyTo ? "reply" : "post",
-        channel: customId,
-        content,
-        reply_to: replyTo,
-        mentions,
-        tags,
-    };
-    const json = JSON.stringify(payload);
+    const json = JSON.stringify(buildPostPayload({
+        content, replyTo, channel: customId, mentions, tags
+    }));
 
     const actionText = customId === APP_ID
         ? (replyTo ? "Responder no Feed Principal" : "Postar no Feed Principal")
         : (replyTo ? `Responder em #${customId}` : `Postar em #${customId}`);
 
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
+    if (hasHiveKeychain()) {
+        requestHiveCustomJson(
             username,
-            customId, // <=== ID DO CANAL NA BLOCKCHAIN HIVE!
-            "Posting",
+            customId, // On-chain namespace, e.g. hive.micro.
             json,
             actionText,
             (res) => {
@@ -565,9 +552,7 @@ function sendCustomJsonAction(type, targetUser, actionText) {
     const username = localStorage.getItem("hiveUser");
     if (!username) return showNotification("🔒 Faça login para realizar esta ação.", false);
 
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: type, target_user: targetUser,
-    });
+    const json = JSON.stringify(buildUserActionPayload(type, targetUser));
 
     let customId;
     if (type === 'block' || type === 'unblock') {
@@ -578,9 +563,9 @@ function sendCustomJsonAction(type, targetUser, actionText) {
         return showNotification("Erro interno: Ação desconhecida.", false);
     }
     
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, customId, "Posting", json, actionText,
+    if (hasHiveKeychain()) {
+        requestHiveCustomJson(
+            username, customId, json, actionText,
             (res) => {
                 if (res.success) {
                     showNotification(`✅ Sucesso! ${actionText}`, true);
@@ -628,9 +613,9 @@ function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false
         return showNotification("Apenas administradores podem realizar esta ação.", false);
     }
     
-    if (window.hive_keychain) {
-        window.hive_keychain.requestCustomJson(
-            username, customId, "Posting", jsonPayload, actionText,
+    if (hasHiveKeychain()) {
+        requestHiveCustomJson(
+            username, customId, jsonPayload, actionText,
             (res) => {
                 if (res.success) {
                     showNotification(`✅ ${actionText} enviado com sucesso!`, true);
@@ -653,24 +638,18 @@ function sendDataAction(customId, jsonPayload, actionText, requiresAdmin = false
 // ----------------------------------------------------
 
 export function sendVote(contentId, voteType) {
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: voteType, content_id: contentId,
-    });
+    const json = JSON.stringify(buildVotePayload(contentId, voteType));
     sendDataAction(VOTE_CUSTOM_ID, json, "Votar");
 }
 
 export function sendMute(contentId, cause) {
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "mute", cause: cause, content_id: contentId,
-    });
+    const json = JSON.stringify(buildMutePayload(contentId, "mute", cause));
     // O último argumento true indica que é necessária a autoridade de ADMIN
     sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Mutar Post", true); 
 }
 
 export function sendUnmute(contentId) {
-    const json = JSON.stringify({
-        app: APP_ID, v: 1, type: "unmute", content_id: contentId,
-    });
+    const json = JSON.stringify(buildMutePayload(contentId, "unmute"));
     // O último argumento true indica que é necessária a autoridade de ADMIN
     sendDataAction(ADMIN_PMUTE_CUSTOM_ID, json, "Desmutar Post", true);
 }
@@ -698,28 +677,21 @@ export function sendCreateChannel(channelId, channelName, description = "") {
 
     const cleanDesc = (description || `Canal #${cleanId} criado na blockchain Hive por @${username}`).trim();
 
-    const payload = {
-        app: APP_ID,
-        v: 1,
-        type: "create_channel",
-        action: "create_channel",
-        id: cleanId,
-        name: cleanName,
-        description: cleanDesc,
-        created_at: new Date().toISOString()
-    };
+    const payload = buildChannelCreatePayload({
+        id: cleanId, name: cleanName, description: cleanDesc,
+        createdAt: new Date().toISOString()
+    });
 
     const actionText = `Criar Canal #${cleanId}`;
 
-    if (!window.hive_keychain) {
+    if (!hasHiveKeychain()) {
         showNotification("❌ Hive Keychain não detectado no navegador!", false);
         return;
     }
 
-    window.hive_keychain.requestCustomJson(
+    requestHiveCustomJson(
         username,
         CHANNELS_CUSTOM_ID,
-        "Posting",
         JSON.stringify(payload),
         actionText,
         (res) => {

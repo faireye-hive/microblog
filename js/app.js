@@ -5,6 +5,7 @@ import {
   parseEmbeddedJson,
 } from "./utils.js";
 import { buildRepliesRecursive } from "./render.js";
+import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
 import { setupAuthListeners, setAuthCallbacks } from "./auth.js";
 import {
   TopNavHTML,
@@ -569,13 +570,12 @@ function setupSidebarControls() {
     const customId = document.getElementById("customJsonId")?.value.trim() || "microblog_v1";
     const payload = document.getElementById("customJsonPayload")?.value.trim();
     if (!payload) return showNotification("⚠️ Digite o conteúdo JSON!", false);
-    if (!window.hive_keychain) return showNotification("❌ Hive Keychain não detectado!", false);
+    if (!hasHiveKeychain()) return showNotification("❌ Hive Keychain não detectado!", false);
     if (!loggedInUser) return showNotification("🔒 Faça login para transmitir Custom JSON!", false);
 
-    window.hive_keychain.requestCustomJson(
+    requestHiveCustomJson(
       loggedInUser,
       customId,
-      "Posting",
       payload,
       "Broadcast Custom JSON",
       (res) => {
