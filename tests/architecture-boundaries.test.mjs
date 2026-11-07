@@ -24,28 +24,28 @@ test("production protocol generates HiveLine custom_json v2", () => {
   assert.deepEqual(buildPostPayload({
     content: "Olá #hive", channel: "hive.micro", mentions: ["bob"], tags: ["hive"]
   }), {
-    app: "hiveline", v: 1, type: "post", channel: "hive.micro",
+    app: "hiveline", v: 2, type: "post", channel: "hive.micro",
     content: "Olá #hive", reply_to: null, mentions: ["bob"], tags: ["hive"]
   });
   assert.equal(buildPostPayload({content: "response", replyTo: 123}).type, "reply");
   assert.deepEqual(buildVotePayload(123,"upvote"), {
-    app:"hiveline",v:1,type:"upvote",content_id:123
+    app:"hiveline",v:2,type:"upvote",content_id:123
   });
   assert.deepEqual(buildMutePayload(8,"mute","spam"), {
-    app:"hiveline",v:1,type:"mute",cause:"spam",content_id:8
+    app:"hiveline",v:2,type:"mute",cause:"spam",content_id:8
   });
   assert.deepEqual(buildMutePayload(8,"unmute"), {
-    app:"hiveline",v:1,type:"unmute",content_id:8
+    app:"hiveline",v:2,type:"unmute",content_id:8
   });
   assert.deepEqual(buildUserActionPayload("follow","alice"), {
-    app:"hiveline",v:1,type:"follow",target_user:"alice"
+    app:"hiveline",v:2,type:"follow",target_user:"alice"
   });
   const channel = buildChannelCreatePayload({
     id:"hive.micro",name:"Hive Micro",description:"The original channel",
     createdAt:"2026-11-07T00:00:00Z"
   });
   assert.deepEqual(channel,{
-    app:"hiveline",v:1,type:"create_channel",action:"create_channel",
+    app:"hiveline",v:2,type:"create_channel",action:"create_channel",
     id:"hive.micro",name:"Hive Micro",description:"The original channel",
     created_at:"2026-11-07T00:00:00Z"
   });
