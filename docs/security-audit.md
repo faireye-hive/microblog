@@ -25,6 +25,12 @@ Escopo: frontend ativo de `faireye-hive/microblog`, armazenamento público e int
 
 `npm test` cobre URLs perigosas e atributos, imagens, nomes de conta, campos malformados, assinatura de mute/unmute, substituição indevida de canais e saída HTML.
 
+## Etapa posterior: CSP restritiva (PR de CSP)
+
+A CSP foi adicionada em `index.html`, `404.html` e no cabeçalho do Express. Scripts são restritos a `'self'`, sem `unsafe-inline` e sem `unsafe-eval`. A lista de conexões de rede é restrita à origem do aplicativo e à HAFSQL. O Express também envia cabeçalhos de privacidade. Consulte [CSP e proxy de imagens](csp.md) para fontes permitidas, limitações e o checklist de validação da Hive Keychain.
+
+**Atenção:** a compatibilidade com extensões reais ainda exige teste em navegador antes de tratar a CSP como validada funcionalmente.
+
 ## Limitações e itens pendentes
 
 1. **CSP (Content Security Policy):** não habilitamos uma política agressiva às cegas. Precisamos validar no navegador a compatibilidade com a injeção/ponte do Hive Keychain, fontes externas e RPCs para evitar bloquear login e publicações. O trabalho de remoção de scripts inline prepara esse passo.

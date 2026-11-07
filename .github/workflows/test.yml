@@ -18,5 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install runtime dependencies for HTTP smoke tests
+        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Execute regression tests
         run: npm test
