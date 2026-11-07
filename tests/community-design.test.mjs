@@ -14,6 +14,8 @@ globalThis.localStorage ??= {
   removeItem() {},
 };
 globalThis.document ??= { getElementById() { return null; } };
+globalThis.window ??= { dispatchEvent() {} };
+globalThis.CustomEvent ??= class CustomEvent { constructor(type) { this.type=type; } };
 
 const state = await import("../js/state.js");
 const { buildProfilePage, buildChannelsPage } = await import("../js/render.js");
