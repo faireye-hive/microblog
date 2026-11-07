@@ -7,13 +7,15 @@ import { buildHafsqlCustomJsonUrl } from "./data/hafsql.js";
 // GitHub Pages keeps its current image URLs while this is empty.
 export const IMAGE_PROXY_ORIGIN = "";
 
-export const APP_ID = "micro.fair";
+// One canonical protocol registry; preserve these named exports for old modules.
+import { HIVE_APP_ID, HIVE_CUSTOM_JSON_IDS } from "./hive/registry.js";
+export const APP_ID = HIVE_APP_ID;
 export const ADMIN = "faireye";
-export const VOTE_CUSTOM_ID = `${APP_ID}.interation`;
-export const ADMIN_PMUTE_CUSTOM_ID = `${APP_ID}.adpmuted`;
-export const BLOCK_USER_CUSTOM_ID = `${APP_ID}.{user}.block`;
-export const FOLLOW_USER_CUSTOM_ID = `${APP_ID}.{user}.follow`;
-export const CHANNELS_CUSTOM_ID = `${APP_ID}.channels`;
+export const VOTE_CUSTOM_ID = HIVE_CUSTOM_JSON_IDS.VOTES;
+export const ADMIN_PMUTE_CUSTOM_ID = HIVE_CUSTOM_JSON_IDS.MODERATION;
+export const BLOCK_USER_CUSTOM_ID = HIVE_CUSTOM_JSON_IDS.BLOCK_TEMPLATE;
+export const FOLLOW_USER_CUSTOM_ID = HIVE_CUSTOM_JSON_IDS.FOLLOW_TEMPLATE;
+export const CHANNELS_CUSTOM_ID = HIVE_CUSTOM_JSON_IDS.CHANNEL_REGISTRY;
 export const LIMIT = 1000;
 
 
