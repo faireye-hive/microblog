@@ -1,5 +1,6 @@
 // /js/render.js
 import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
+import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { 
   loggedInUser, 
   mutedPostIds, 
@@ -415,6 +416,7 @@ export function buildProfilePage() {
 // Constrói a página do diretório de Canais Hive
 export function buildChannelsPage(searchFilter = "") {
   const query = (searchFilter || "").toLowerCase().trim();
+  const directId = parseChannelCustomId(query.replace(/^#/, ""));
   const filtered = channels.filter(c => {
     if (!query) return true;
     return c.id.toLowerCase().includes(query) ||
@@ -460,7 +462,7 @@ export function buildChannelsPage(searchFilter = "") {
           <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--text-faint);">
             <div style="display: flex; align-items: center; gap: 0.35rem;">
               <span>Criado por</span>
-              <a href="#/user/${c.creator}" class="author-name" style="font-weight: 700;">@${c.creator}</a>
+              <a href="#/user/${encodeURIComponent(c.creator)}" class="author-name" style="font-weight: 700;">@${escapeHtml(c.creator)}</a>
             </div>
             <span style="font-weight: 600; color: var(--text);">${postLabel}</span>
           </div>
@@ -529,6 +531,11 @@ export function buildChannelsPage(searchFilter = "") {
             <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔍</div>
             <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem;">Nenhum canal encontrado</h4>
             <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">Nenhum canal corresponde a "${escapeHtml(searchFilter)}".</p>
+            ${directId ? `
+              <button id="btnOpenChannelById" class="btn-outline-small" style="display: inline-flex; margin-right: 0.5rem; margin-bottom: 0.5rem;">
+                Abrir Custom JSON #${escapeHtml(directId)}
+              </button>
+            ` : ""}
             <button id="btnCreateChannelNotFound" class="btn-post" style="display: inline-flex;">
               + Criar Canal com este nome
             </button>
