@@ -110,7 +110,7 @@ test("nested replies are escaped, readable and individually replyable",()=>{
   assert.match(html,/data-id="131"/);
   assert.match(html,/aria-label="Reply to @peak.snaps"/);
   assert.doesNotMatch(html,/<img src=x onerror=alert\(1\)>/);
-  assert.match(html,/&amp;lt;img src=x onerror=alert\(1\)&amp;gt;/);
+  assert.ok(html.includes("&lt;img src=x onerror=alert(1)&gt;"));
   const context=buildThreadAbove(reply,pool);
   assert.match(context,/class="view-thread post-context-author"/);
   assert.match(context,/data-id="130"/);
