@@ -448,7 +448,7 @@ export async function handleRoute() {
     const loadedChannelPosts = [...channelPostsMap.values()].flat();
     const pool = discoveryPostPool(allPosts, loadedChannelPosts, blockedUsers, mutedPostIds);
     const results = getDiscoveryResults({query,posts:pool,channels,maxPosts:300});
-    renderFeed(results.posts);
+    renderFeed(results.posts, pool);
     feed.insertAdjacentHTML("afterbegin", buildSearchOverview({results}));
     setupDiscoveryPageEvents();
   } else if (["explore", "trending", "active"].includes(newPage)) {
