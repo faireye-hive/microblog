@@ -119,7 +119,7 @@ export function removeImageFromContent(content, url) {
   return next.replace(/\n{3,}/g,"\n\n").trim();
 }
 
-export function buildComposerMediaHTML(value="") {
+export function buildComposerMediaHTML(value="", {editable=true}={}) {
   const all=extractImages(value);
   const imgs=[...new Set(all)].slice(0,6);
   if(!imgs.length)return "";
@@ -129,10 +129,10 @@ export function buildComposerMediaHTML(value="") {
       <div class="composer-media-card">
         <img src="${escapeAttr(proxiedImageUrl(img))}"
              loading="lazy" alt="Attached image ${index+1}">
-        <button type="button" class="composer-media-remove" data-image-index="${index}"
+${editable ? `<button type="button" class="composer-media-remove" data-image-index="${index}"
                 aria-label="Remove image ${index+1}" title="Remove image">
           <span aria-hidden="true">&times;</span>
-        </button>
+        </button>` : ""}
       </div>`).join("")}</div>`;
 }
 
@@ -141,7 +141,7 @@ export function buildComposerPreviewHTML(content="", options={}) {
   const author=safeHiveUsername(options.author);
   const channel=typeof options.channel==="string"?safeTag(options.channel):"";
   const body=cleanMediaText(text);
-  const media=buildComposerMediaHTML(text);
+  const media=buildComposerMediaHTML(text,{editable:false});
   return `
     <article class="composer-preview-card" aria-label="Post preview">
       <div class="composer-preview-identity">
