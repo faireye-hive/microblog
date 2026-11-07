@@ -96,7 +96,7 @@ function showMuteReasonModal(contentId) {
     <div id="muteReasonModal" class="modal-overlay">
       <div class="modal-dialog">
         <h3 class="modal-title">Mute post</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">Insira o motivo para mutar este post:</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">Enter a reason for muting this post:</p>
         <textarea id="muteReasonInput" class="modal-input" rows="3" placeholder="Reason (required)"></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
           <button id="cancelMute" class="btn-outline-small">
@@ -202,7 +202,7 @@ function setupFeedDelegation() {
       replyBox.querySelector(".cancel-reply").addEventListener("click", () => replyBox.remove());
       replyBox.querySelector(".send-reply").addEventListener("click", () => {
         const text = textarea.value.trim();
-        if (!text) return showNotification("⚠️ Digite algo para responder!", false);
+        if (!text) return showNotification("⚠️ Write a reply before submitting!", false);
         const targetPost = allPosts.find(p => p.id == id) || (activeChannel ? getChannelPosts(activeChannel).find(p => p.id == id) : null);
         const postChannel = (targetPost && targetPost.custom_id) ? targetPost.custom_id : activeChannel;
         sendPost(text, parseInt(id) || id, postChannel);
