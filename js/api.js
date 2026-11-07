@@ -111,7 +111,7 @@ function processUserTargetOps(opData, family = "follow") {
 
     relevantOps.forEach(op => {
         const json = parseEmbeddedJson(op.json);
-        if (!json || typeof json !== "object") return;
+        if (!json || typeof json !== "object" || json.app !== APP_ID || json.v !== 2) return;
         const type = json.type;
 
         if (typeof json.target_user !== "string") return;
@@ -317,11 +317,10 @@ export function sendPost(content, replyTo = null, channelOverride = null, callba
     // Each HiveLine community has a fresh v2 namespace, distinct from legacy
     // community IDs. The optional override can be a slug or a post namespace.
     const targetChannel = channelOverride !== null ? channelOverride : activeChannel;
-    const communitySlug = targetChannel
-        ? normalizeHiveLineChannel(targetChannel) : "";
     const customId = resolveCustomJsonId(replyTo ? "reply" : "post", {
         channel: targetChannel || POSTS_CUSTOM_ID
     });
+    const communitySlug = customId === POSTS_CUSTOM_ID ? "" : channelFromCustomJsonId(customId);
     if (!customId) {
         showNotification("⚠️ Invalid community ID. Nothing was broadcast.", false);
         return false;
@@ -346,7 +345,7 @@ export function sendPost(content, replyTo = null, channelOverride = null, callba
     if (hasHiveKeychain()) {
         requestHiveCustomJson(
             username,
-            customId, // On-chain namespace, e.g. hive.micro.
+            customId, // HiveLine v2 outer namespace.
             json,
             actionText,
             (res) => {
@@ -520,7 +519,7 @@ export function sendCreateChannel(channelId, channelName, description = "") {
 
     const cleanId = normalizeHiveLineChannel(channelId);
     if (!cleanId) {
-        showNotification("⚠️ Invalid ID: use up to 32 letters, numbers, dots, hyphens, or underscores.", false);
+        showNotification("⚠️ Invalid ID: use up to 21 letters, numbers, dots, hyphens, or underscores.", false);
         return;
     }
 
