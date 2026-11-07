@@ -451,7 +451,7 @@ export async function handleRoute() {
     return;
   }
 
-  // Quando não estiver em um canal específico, volta para o canal principal (micro.fair)
+  // Quando não estiver em um canal específico, volta para o feed principal do HiveLine
   setActiveChannel(null);
 
   if (tagMatch) {
@@ -592,7 +592,7 @@ function setupDiscoveryPageEvents() {
 }
 
 function getRouteData(path) {
-  // Posts do feed principal pertencentes estritamente ao micro.fair (isolando canais específicos)
+  // Posts from the HiveLine v2 feed only; legacy Micro.fair operations are excluded.
   const mainFeedPosts = allPosts.filter(p => {
     const cid = (p.custom_id || "").toLowerCase();
     return cid === HIVE_CUSTOM_JSON_IDS.POSTS;
