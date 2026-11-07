@@ -1,6 +1,7 @@
 // /js/auth.js
 
-import { showNotification } from "./utils.js";
+import { showNotification, escapeAttr } from "./utils.js";
+import { safeHiveUsername, hiveAvatarUrl } from "./security/safe-values.js";
 
 function toggleModal(modalId, show = true) {
     const modal = document.getElementById(modalId);
@@ -19,7 +20,9 @@ export function setAuthCallbacks(loginCb, logoutCb) {
 }
 
 export function updateLoginUI() {
-    const user = localStorage.getItem("hiveUser");
+    const savedUser = localStorage.getItem("hiveUser");
+    const user = savedUser && safeHiveUsername(savedUser) !== "unknown"
+        ? safeHiveUsername(savedUser) : null;
     const label = document.getElementById("menuUserLabel");
     const btnLogin = document.getElementById("menuLogin");
     const btnLogout = document.getElementById("menuLogout");
@@ -43,10 +46,10 @@ export function updateLoginUI() {
             if (link) link.classList.remove("hidden");
         });
         if (navUserAvatar) {
-            navUserAvatar.innerHTML = `<img src="https://images.hive.blog/u/${user}/avatar" alt="@${user}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'">`;
+            navUserAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'">`;
         }
         if (composerAvatar) {
-            composerAvatar.innerHTML = `<img src="https://images.hive.blog/u/${user}/avatar" alt="@${user}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'">`;
+            composerAvatar.innerHTML = `<img src="${escapeAttr(hiveAvatarUrl(user))}" alt="@${escapeAttr(user)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'">`;
         }
     } else {
         if (label) label.textContent = "Login";
@@ -66,6 +69,7 @@ function handleLogin() {
         .value.trim()
         .toLowerCase();
     if (!username) return showNotification("⚠️ Digite seu usuário Hive!", false);
+    if (safeHiveUsername(username) !== username) return showNotification("⚠️ Nome de conta Hive inválido.", false);
     if (!window.hive_keychain) return showNotification("❌ Hive Keychain não detectado!", false);
 
     window.hive_keychain.requestSignBuffer(
