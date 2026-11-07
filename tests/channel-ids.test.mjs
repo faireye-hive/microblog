@@ -59,12 +59,14 @@ test("channel registry preserves distinct hive.micro and hivemicro IDs", () => {
 
 test("channel API and routing reuse the canonical identifier helper", () => {
   const api = readFileSync(new URL("../js/api.js", import.meta.url), "utf8");
+  const transport = readFileSync(new URL("../js/data/hafsql.js", import.meta.url), "utf8");
   const routes = readFileSync(new URL("../js/routing.js", import.meta.url), "utf8");
   const html = readFileSync(new URL("../js/templates.js", import.meta.url), "utf8");
 
   assert.match(api, /parseChannelCustomId\(channelId\)/);
   assert.match(api, /parseChannelCustomId\(targetChannel \|\| APP_ID\)/);
-  assert.match(api, /encodeURIComponent\(cleanId\)/);
+  assert.match(api, /buildHafsqlCustomJsonUrl\(cleanId/);
+  assert.match(transport, /encodeURIComponent\(id\)/);
   assert.match(routes, /parseChannelCustomId\(channelId\)/);
   assert.match(routes, /\[a-z0-9\._-\]\+/);
   assert.match(html, /hive\.micro/);
