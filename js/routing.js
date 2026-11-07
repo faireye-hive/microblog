@@ -3,6 +3,7 @@
 import { 
   allPosts, 
   voteCounts, 
+  blockedUsers, 
   renderFeed, 
   mutedPostIds, 
   loggedInUser, 
@@ -25,6 +26,8 @@ import { getPostById, countDirectReplies } from "./data/post-index.js";
 import { buildPostCard, buildRepliesRecursive, buildProfilePage, buildChannelsPage } from "./render.js";
 import { rankPostsByVotes, rankPostsByComments } from "./helpers/ranking.js";
 import { ADMIN } from "./config.js";
+import { getDiscoveryResults, normalizeDiscoveryQuery, discoveryPostPool } from "./helpers/discovery.js";
+import { buildExploreOverview, buildSearchOverview } from "./ui/discovery.js";
 
 export let currentPage = "feed";
 
@@ -44,7 +47,7 @@ export function updateNavSelection(newPage) {
   document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
   if (newPage === "feed") {
     document.getElementById("leftNavHome")?.classList.add("active");
-  } else if (newPage === "trending" || newPage === "explore") {
+  } else if (["trending", "explore", "active", "search"].includes(newPage)) {
     document.getElementById("leftNavExplore")?.classList.add("active");
   } else if (newPage === "channels") {
     document.getElementById("leftNavChannels")?.classList.add("active");
@@ -362,6 +365,7 @@ export async function handleRoute() {
   }
 
   const path = window.location.hash.substring(1);
+  const searchRoute = path.match(/^\/search(?:\?(.*))?$/i);
   
   // CORREÇÃO: Adicionado o ponto (.) nas expressões regulares para capturar corretamente as rotas de canais e tags
   const tagMatch = path.match(/^\/(?:hashtag|tag)\/([a-z0-9._-]+)$/i);
@@ -400,10 +404,10 @@ export async function handleRoute() {
   }
 
   // Configuração da UI de visualização
-  const isSpecialView = ["profile", "custom-json", "notifications", "messages", "channels"].includes(newPage);
+  const isSpecialView = ["profile", "custom-json", "notifications", "messages", "channels", "explore", "trending", "active", "search"].includes(newPage);
   
   if (feedHeaderBar) {
-    if (["feed", "profile", "channels"].includes(newPage)) {
+    if (["feed", "profile", "channels", "explore", "trending", "active", "search"].includes(newPage)) {
       // Profile and directory already have their own clear page header.
       feedHeaderBar.classList.add("hidden");
     } else {
@@ -430,6 +434,24 @@ export async function handleRoute() {
   if (newPage === "channels") {
     feed.innerHTML = buildChannelsPage();
     setupChannelsPageEvents();
+  } else if (newPage === "search" && searchRoute) {
+    const query = normalizeDiscoveryQuery(new URLSearchParams(searchRoute[1] || "").get("q") || "");
+    // Only search content actually loaded by this client, across main feed and
+    // previously visited communities. Suppress blocked and muted authors/posts.
+    const loadedChannelPosts = [...channelPostsMap.values()].flat();
+    const pool = discoveryPostPool(allPosts, loadedChannelPosts, blockedUsers, mutedPostIds);
+    const results = getDiscoveryResults({query,posts:pool,channels,maxPosts:300});
+    renderFeed(results.posts);
+    feed.insertAdjacentHTML("afterbegin", buildSearchOverview({results}));
+    setupDiscoveryPageEvents();
+  } else if (["explore", "trending", "active"].includes(newPage)) {
+    const visibleMainPosts = discoveryPostPool(
+      allPosts.filter(post => !post.custom_id || post.custom_id === "micro.fair"),
+      [], blockedUsers, mutedPostIds);
+    const mode = newPage === "trending" ? "popular" : newPage === "active" ? "discussed" : "latest";
+    renderFeed(finalPosts);
+    feed.insertAdjacentHTML("afterbegin", buildExploreOverview({posts:visibleMainPosts,channels,mode}));
+    setupDiscoveryPageEvents();
   } else if (newPage === "profile") {
     feed.innerHTML = buildProfilePage(); 
   } else if (newPage === "notifications" || newPage === "messages") {
@@ -464,6 +486,27 @@ export async function handleRoute() {
 
   updateNavSelection(newPage);
   window.scrollTo(0, 0);
+}
+
+function setupDiscoveryPageEvents() {
+  const submit = input => {
+    const query = normalizeDiscoveryQuery(input?.value || "");
+    window.location.hash = query ? `#/search?q=${encodeURIComponent(query)}` : "#/explore";
+  };
+  for (const [fieldId, buttonId] of [
+    ["exploreSearchInput", "exploreSearchButton"],
+    ["searchPageInput", "searchPageSubmit"]
+  ]) {
+    const input = document.getElementById(fieldId);
+    const button = document.getElementById(buttonId);
+    button?.addEventListener("click", () => submit(input));
+    input?.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit(input);
+      }
+    });
+  }
 }
 
 function getRouteData(path) {
@@ -534,14 +577,23 @@ function getRouteData(path) {
       const replyTo = parseEmbeddedJson(p.json)?.reply_to;
       return !isMyPost && replyTo && myPostIds.has(Number(replyTo));
     });
-  } else if (path === "/trending" || path === "/explore") {
+  } else if (path === "/explore") {
     route.title = "Explore";
+    route.postsToRender = [...mainFeedPosts].sort((a,b) =>
+      (Date.parse(b.timestamp) || 0) - (Date.parse(a.timestamp) || 0));
+    route.newPage = "explore";
+  } else if (path === "/trending") {
+    route.title = "Popular";
     route.postsToRender = rankPostsByVotes(mainFeedPosts);
     route.newPage = "trending";
   } else if (path === "/active") {
     route.title = "Most discussed";
     route.postsToRender = rankPostsByComments(mainFeedPosts);
     route.newPage = "active";
+  } else if (path === "/search" || path.startsWith("/search?")) {
+    route.title = "Search";
+    route.postsToRender = [];
+    route.newPage = "search";
   } else if (path === "/muted") {
     route.title = "Muted posts";
     route.postsToRender = allPosts.filter(p => mutedPostIds.has(p.id));
