@@ -138,6 +138,10 @@ function setupLoginModalListeners() {
         });
     }
 
+    document.getElementById("cancelLoginModal")?.addEventListener("click", () => {
+        toggleModal("loginModal", false);
+    });
+
     const confirmLogin = document.getElementById("confirmLogin");
     if (confirmLogin) {
         confirmLogin.addEventListener("click", handleLogin);
