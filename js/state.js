@@ -97,10 +97,10 @@ export function updateComposerChannelUI() {
     if (badge) badge.classList.add("hidden");
     if (nameEl) nameEl.textContent = "";
     if (textarea) {
-      textarea.placeholder = "O que você está pensando? (Canal Principal micro.fair)";
+      textarea.placeholder = "O que você quer compartilhar?";
     }
     if (btnPostSpan) {
-      btnPostSpan.textContent = "Post";
+      btnPostSpan.textContent = "Publicar";
     }
   }
 }
