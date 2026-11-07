@@ -194,7 +194,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
 
     previewBoxHtml = `
       <a href="${escapeAttr(firstUrl)}" target="_blank" rel="noopener noreferrer" class="preview-box">
-        <img src="${previewThumb}" alt="Preview" class="preview-thumb" onerror="this.style.display='none'">
+        <img src="${previewThumb}" alt="Preview" class="preview-thumb" data-hide-on-error="true">
         <div class="preview-content">
           <div class="preview-title">${escapeHtml(previewTitle)}</div>
           <div class="preview-desc">${escapeHtml(previewDesc)}</div>
@@ -225,7 +225,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       src="${escapeAttr(hiveAvatarUrl(author))}" 
       alt="@${escapeAttr(author)}" 
       class="post-card-avatar post-avatar"
-      onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23cbd5e1\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'22\\' text-anchor=\\'middle\\'>👤</text></svg>'"
+      data-avatar-fallback="user"
     >
 
     <!-- Post Main Content -->
@@ -344,7 +344,7 @@ function buildUserListHTML(usersSet, type) {
   return users.map(user => `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="${escapeAttr(hiveAvatarUrl(user))}" style="width: 28px; height: 28px; border-radius: 50%;" onerror="this.style.display='none'">
+        <img src="${escapeAttr(hiveAvatarUrl(user))}" style="width: 28px; height: 28px; border-radius: 50%;" data-hide-on-error="true">
         <span style="font-weight: 600; font-size: 0.9rem;">@${escapeHtml(user)}</span>
       </div>
       ${actionButton(user)}
@@ -377,7 +377,7 @@ export function buildProfilePage() {
             src="${escapeAttr(hiveAvatarUrl(profileUser))}" 
             alt="@${escapeAttr(profileUser)}" 
             style="width: 68px; height: 68px; border-radius: 50%; border: 2px solid var(--border);"
-            onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 48 48\\'><rect width=\\'48\\' height=\\'48\\' fill=\\'%23ffd600\\'/><text x=\\'24\\' y=\\'32\\' font-size=\\'24\\' text-anchor=\\'middle\\'>🐝</text></svg>'"
+            data-avatar-fallback="hive"
           >
           <div>
             <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
