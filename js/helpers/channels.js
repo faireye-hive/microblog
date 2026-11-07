@@ -1,9 +1,9 @@
 import { parseEmbeddedJson } from "../utils.js";
-import { parseChannelCustomId } from "./channel-id.js";
+import { normalizeHiveLineChannel, HIVE_APP_ID, HIVE_PROTOCOL_VERSION } from "../hive/registry.js";
 import { CHANNELS_CUSTOM_ID } from "../config.js";
 import { safeHiveUsername } from "../security/safe-values.js";
 
-// Convert the public channel registry (micro.fair.channels) into UI records.
+// Convert the public HiveLine community registry (hiveline.communities) into UI records.
 // The on-chain custom_json ID must be preserved; never strip periods or merge IDs.
 export function processChannelsData(channelsData) {
   const channelMap = new Map();
@@ -25,7 +25,8 @@ export function processChannelsData(channelsData) {
       if (!json || typeof json !== "object" || Array.isArray(json)) return;
       if (json.type && json.type !== "create_channel" && json.action !== "create_channel") return;
 
-      const id = parseChannelCustomId(json.id || json.channel_id || "");
+      if (json.app !== HIVE_APP_ID || json.v !== HIVE_PROTOCOL_VERSION) return;
+      const id = normalizeHiveLineChannel(json.id || json.channel_id || "");
       if (!id) return;
 
       const name = String(json.name || json.channel_name || id).trim();
