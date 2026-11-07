@@ -89,7 +89,8 @@ test("upstream redirects, SVG, wrong signatures and oversized media are rejected
     [{contentType:"image/svg+xml",bytes:Buffer.from("<svg/>")},415],
     [{contentType:"image/png",bytes:Buffer.from("<html>")},415],
     [{declaredLength:MAX_IMAGE_BYTES+1},413],
-    [{bytes:Buffer.alloc(64)},415]
+    [{bytes:Buffer.alloc(64)},413],
+    [{bytes:Buffer.alloc(16)},415]
   ]){
     const t=mockTransport(payload);
     await assert.rejects(()=>fetchProxiedImage("https://media.example.com/image",{
