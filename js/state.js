@@ -5,6 +5,7 @@ import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./util
 import { ADMIN } from "./config.js";
 import { getChannelPostsCacheKey } from "./data/cache-keys.js";
 import { writePostCache } from "./data/post-cache.js";
+import { getPostIndex } from "./data/post-index.js";
 
 // ---------- Variáveis de Estado (Centralizadas aqui) ----------
 export let allPosts = []; // Todos os posts brutos
@@ -248,11 +249,11 @@ export function applyFilterAndSort(baseList = allPosts) {
       return vb - va;
     });
   } else if (currentSort === "comments") {
-    filtered.sort((a, b) => {
-      const ra = allPosts.filter(r => parseEmbeddedJson(r.json)?.reply_to == a.id).length;
-      const rb = allPosts.filter(r => parseEmbeddedJson(r.json)?.reply_to == b.id).length;
-      return rb - ra;
-    });
+    // Index once, then each comparator uses O(1) direct-reply counts.
+    const replyCounts = getPostIndex(allPosts).replyCounts;
+    filtered.sort((a, b) =>
+      (replyCounts.get(String(b.id)) || 0) - (replyCounts.get(String(a.id)) || 0)
+    );
   }
 
   renderFeed(filtered);
