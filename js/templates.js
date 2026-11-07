@@ -25,10 +25,9 @@ export const TopNavHTML = `
 
       <!-- Center Tabs -->
       <nav class="top-nav-tabs">
-        <a href="#/" class="top-nav-tab active" data-tab="for-you" id="tabForYou">For You</a>
-        <a href="#/followed" class="top-nav-tab" data-tab="following" id="tabFollowing">Following</a>
-        <a href="#/channels" class="top-nav-tab" data-tab="channels" id="tabChannels">Channels</a>
-        <a href="#/trending" class="top-nav-tab" data-tab="explore" id="tabExplore">Explore</a>
+        <a href="#/" class="top-nav-tab active" data-tab="for-you" id="tabForYou">Para você</a>
+        <a href="#/followed" class="top-nav-tab" data-tab="following" id="tabFollowing">Seguindo</a>
+
       </nav>
     </div>
 
@@ -40,21 +39,20 @@ export const TopNavHTML = `
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" id="topSearchInput" class="top-search-input" placeholder="Search posts, users, channels..." autocomplete="off">
+        <input type="text" id="topSearchInput" class="top-search-input" placeholder="Buscar posts, pessoas e canais..." aria-label="Buscar posts, pessoas e canais" autocomplete="off">
         <span class="search-shortcut-badge">Ctrl + K</span>
       </div>
 
       <!-- Notifications Bell -->
-      <button class="icon-btn" id="btnNotificationsTop" title="Notifications">
+      <button class="icon-btn" id="btnNotificationsTop" title="Notificações" aria-label="Notificações">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
-        <span class="notification-badge-dot"></span>
       </button>
 
       <!-- User Menu Trigger -->
-      <div class="user-menu-trigger" id="btnMenu">
+      <div class="user-menu-trigger" id="btnMenu" role="button" tabindex="0" aria-label="Abrir menu da conta" aria-expanded="false" aria-controls="userMenuDropdown">
         <img id="navUserAvatar" class="user-avatar-sm" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="Avatar" data-avatar-fallback="user">
         <svg class="chevron-down-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
@@ -102,7 +100,7 @@ export const LeftSidebarHTML = `
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
       </span>
-      <span class="nav-item-text">Home</span>
+      <span class="nav-item-text">Início</span>
     </div>
   </a>
 
@@ -114,7 +112,7 @@ export const LeftSidebarHTML = `
           <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
         </svg>
       </span>
-      <span class="nav-item-text">Explore</span>
+      <span class="nav-item-text">Explorar</span>
     </div>
   </a>
 
@@ -128,10 +126,45 @@ export const LeftSidebarHTML = `
           <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>
       </span>
-      <span class="nav-item-text">Channels</span>
+      <span class="nav-item-text">Canais</span>
     </div>
   </a>
 
+  <a href="#/bookmarks" class="nav-item" id="leftNavBookmarks">
+    <div class="nav-item-content">
+      <span class="nav-item-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
+        </svg>
+      </span>
+      <span class="nav-item-text">Salvos</span>
+    </div>
+  </a>
+
+  <a href="#/profile" class="nav-item" id="leftNavProfile">
+    <div class="nav-item-content">
+      <span class="nav-item-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </span>
+      <span class="nav-item-text">Perfil</span>
+    </div>
+  </a>
+
+  <details class="nav-more" id="leftNavMoreMenu">
+    <summary class="nav-item nav-more-summary" id="leftNavMore" aria-label="Mostrar navegação adicional">
+      <span class="nav-item-content">
+        <span class="nav-item-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle>
+          </svg>
+        </span>
+        <span class="nav-item-text">Mais</span>
+      </span>
+    </summary>
+    <div class="nav-more-links">
   <a href="#/custom-json" class="nav-item" id="leftNavCustomJson">
     <div class="nav-item-content">
       <span class="nav-item-icon">
@@ -144,6 +177,7 @@ export const LeftSidebarHTML = `
     </div>
   </a>
 
+
   <a href="#/notifications" class="nav-item" id="leftNavNotifications">
     <div class="nav-item-content">
       <span class="nav-item-icon">
@@ -152,10 +186,10 @@ export const LeftSidebarHTML = `
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
       </span>
-      <span class="nav-item-text">Notifications</span>
+      <span class="nav-item-text">Notificações</span>
     </div>
-    <span class="nav-badge">3</span>
   </a>
+
 
   <a href="#/messages" class="nav-item" id="leftNavMessages">
     <div class="nav-item-content">
@@ -165,75 +199,24 @@ export const LeftSidebarHTML = `
           <polyline points="22,6 12,13 2,6"></polyline>
         </svg>
       </span>
-      <span class="nav-item-text">Messages</span>
+      <span class="nav-item-text">Mensagens</span>
     </div>
   </a>
-
-  <a href="#/bookmarks" class="nav-item" id="leftNavBookmarks">
-    <div class="nav-item-content">
-      <span class="nav-item-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
-        </svg>
-      </span>
-      <span class="nav-item-text">Bookmarks</span>
     </div>
-  </a>
-
-  <a href="#/profile" class="nav-item" id="leftNavProfile">
-    <div class="nav-item-content">
-      <span class="nav-item-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-      </span>
-      <span class="nav-item-text">Profile</span>
-    </div>
-  </a>
-
-  <div class="nav-item" id="leftNavMore" style="cursor: pointer;">
-    <div class="nav-item-content">
-      <span class="nav-item-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="1"></circle>
-          <circle cx="19" cy="12" r="1"></circle>
-          <circle cx="5" cy="12" r="1"></circle>
-        </svg>
-      </span>
-      <span class="nav-item-text">More</span>
-    </div>
-  </div>
+  </details>
 </div>
 
 <!-- Your Channels Section -->
 <div class="sidebar-section-header">
-  <span class="sidebar-section-title">Your Channels</span>
-  <button class="sidebar-add-btn" id="btnAddChannel" title="Add Channel">+</button>
+  <span class="sidebar-section-title">Seus canais</span>
+  <button class="sidebar-add-btn" id="btnAddChannel" title="Adicionar canal" aria-label="Adicionar canal">+</button>
 </div>
 
 <div class="channels-list" id="yourChannelsList">
   <!-- Renderizado dinamicamente pelo state.js -->
 </div>
 
-<!-- Powered by Hive Promotion Card -->
-<div class="hive-promo-card">
-  <div class="hive-promo-header">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e31337" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-    </svg>
-    <span>Powered by Hive</span>
-  </div>
-  <p class="hive-promo-text">Real content. Real people. No middlemen.</p>
-  <div class="hive-promo-logo">
-    <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/>
-      <path d="M11 10L8 16L11 22H14L11 16L14 10H11Z" fill="#e31337"/>
-      <path d="M18 10L15 16L18 22H21L18 16L21 10H18Z" fill="#e31337"/>
-    </svg>
-    <span>Hive Blockchain</span>
-  </div>
-</div>
+
 `;
 
 export const ComposerHTML = `
