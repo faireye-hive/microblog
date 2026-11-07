@@ -1,16 +1,16 @@
 /**
- * Hive custom_json protocol (v1).
+ * HiveLine custom_json protocol (v2).
  *
  * Keep on-chain field names and operation IDs stable. These builders only
  * assemble payloads; they do not sign, store data or access the DOM.
  */
-import { APP_ID } from "../config.js";
+import { APP_ID, POSTS_CUSTOM_ID } from "../config.js";
 import { HIVE_PROTOCOL_VERSION, HIVE_ACTION_TYPES } from "./registry.js";
 
 export function buildPostPayload({
   content,
   replyTo = null,
-  channel = APP_ID,
+  channel = POSTS_CUSTOM_ID,
   mentions = [],
   tags = [],
 }) {
