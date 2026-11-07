@@ -80,7 +80,7 @@ function setupFakeDOM() {
     click(){this.dispatch("click");}
     focus(){globalThis.document.activeElement=this;}
     querySelector(){return elements.menuProfile;}
-    querySelectorAll(){return [];}
+    querySelectorAll(selector){return selector==="a.dropdown-link" ? [elements.menuProfile,elements.menuMyVotes,elements.menuMyComments,elements.menuMyReplies] : [];}
     appendChild(child){this.lastChild=child;return child;}
     remove(){}
     closest(selector){return selector==="#btnMenu"&&this.id==="btnMenu"?this:null;}
