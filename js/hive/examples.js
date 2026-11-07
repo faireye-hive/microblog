@@ -4,7 +4,7 @@
  * All payloads are built with the SAME functions used for real broadcasts.
  * A change to a payload builder therefore updates the reference examples.
  */
-import { HIVE_APP_ID, HIVE_ACTION_TYPES, getHiveAction, resolveCustomJsonId } from "./registry.js";
+import { HIVE_APP_ID, HIVE_CUSTOM_JSON_IDS, HIVE_ACTION_TYPES, getHiveAction, resolveCustomJsonId } from "./registry.js";
 import { ADMIN } from "../config.js";
 import {
   buildPostPayload, buildVotePayload, buildMutePayload,
@@ -37,9 +37,9 @@ export function getExampleForAction(key, {
       payload = buildPostPayload({
         content: isReply ? "Thanks for sharing! #hive" : "Hello Hive! #hive @bob",
         replyTo: isReply ? PROTOCOL_EXAMPLE_CONTENT_ID : null,
-        channel: isCommunity ? id : HIVE_APP_ID,
+        channel: isCommunity ? id : HIVE_CUSTOM_JSON_IDS.POSTS,
         mentions: isReply ? [] : ["bob"],
-        tags: isCommunity ? [id, "hive"] : ["hive"]
+        tags: isCommunity ? [community, "hive"] : ["hive"]
       });
       break;
     }
