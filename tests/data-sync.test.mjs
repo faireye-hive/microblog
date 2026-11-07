@@ -19,9 +19,9 @@ const logger = {error() {}};
 
 test("first auxiliary sync caches results under the legacy key", async () => {
   const storage = fakeStorage();
-  const url = buildHafsqlCustomJsonUrl("micro.fair.interation");
+  const url = buildHafsqlCustomJsonUrl("hiveline.votes");
   const visited = [];
-  const results = await syncAuxiliaryData("hiveAppVotesCache", url, {
+  const results = await syncAuxiliaryData("hivelineV2VotesCache", url, {
     storage, logger,
     load: async nextUrl => {
       visited.push(nextUrl);
@@ -30,16 +30,16 @@ test("first auxiliary sync caches results under the legacy key", async () => {
   });
   assert.deepEqual(visited,[url]);
   assert.deepEqual(results,[{id:42},{id:41}]);
-  assert.equal(storage.getItem("hiveAppVotesCache"),JSON.stringify(results));
+  assert.equal(storage.getItem("hivelineV2VotesCache"),JSON.stringify(results));
 });
 
 test("cached auxiliary sync requests reverse cursor and preserves old records", async () => {
   const storage = fakeStorage({
-    hiveAppVotesCache: JSON.stringify([{id:40},{id:39}])
+    hivelineV2VotesCache: JSON.stringify([{id:40},{id:39}])
   });
   const visited=[];
-  const url=buildHafsqlCustomJsonUrl("micro.fair.interation");
-  const result=await syncAuxiliaryData("hiveAppVotesCache",url,{
+  const url=buildHafsqlCustomJsonUrl("hiveline.votes");
+  const result=await syncAuxiliaryData("hivelineV2VotesCache",url,{
     storage,logger,
     load:async nextUrl=>{
       visited.push(nextUrl);
@@ -52,18 +52,18 @@ test("cached auxiliary sync requests reverse cursor and preserves old records", 
 });
 
 test("sync falls back to cached records on network failure", async () => {
-  const storage=fakeStorage({hiveAppVotesCache:JSON.stringify([{id:20}])});
-  const result=await syncAuxiliaryData("hiveAppVotesCache",
-    buildHafsqlCustomJsonUrl("micro.fair.interation"),{
+  const storage=fakeStorage({hivelineV2VotesCache:JSON.stringify([{id:20}])});
+  const result=await syncAuxiliaryData("hivelineV2VotesCache",
+    buildHafsqlCustomJsonUrl("hiveline.votes"),{
       storage,logger,load:async()=>{throw new Error("offline");}
     });
   assert.deepEqual(result,[{id:20}]);
-  assert.equal(storage.getItem("hiveAppVotesCache"),JSON.stringify([{id:20}]));
+  assert.equal(storage.getItem("hivelineV2VotesCache"),JSON.stringify([{id:20}]));
 });
 
 test("user-scoped block and follow sync never share caches", async () => {
   const storage=fakeStorage();
-  const url=buildHafsqlCustomJsonUrl("micro.fair.{user}.follow");
+  const url=buildHafsqlCustomJsonUrl("hiveline.relationships");
   const called=[];
   const options={
     storage,logger,
@@ -72,18 +72,18 @@ test("user-scoped block and follow sync never share caches", async () => {
       return {rows:[{id:1}]};
     }
   };
-  await syncUserTargetOps("hiveAppFollowsCache",url,"alice",options);
-  await syncUserTargetOps("hiveAppFollowsCache",url,"bob",options);
+  await syncUserTargetOps("hivelineV2FollowsCache",url,"alice",options);
+  await syncUserTargetOps("hivelineV2FollowsCache",url,"bob",options);
   assert.equal(called.length,2);
-  assert.ok(called[0].includes("micro.fair.alice.follow"));
-  assert.ok(called[1].includes("micro.fair.bob.follow"));
-  assert.ok(storage.getItem("hiveAppFollowsCache.alice"));
-  assert.ok(storage.getItem("hiveAppFollowsCache.bob"));
-  assert.deepEqual(await syncUserTargetOps("hiveAppFollowsCache",url,null,options),[]);
+  assert.ok(called[0].includes("hiveline.relationships"));
+  assert.ok(called[1].includes("hiveline.relationships"));
+  assert.ok(storage.getItem("hivelineV2FollowsCache.alice"));
+  assert.ok(storage.getItem("hivelineV2FollowsCache.bob"));
+  assert.deepEqual(await syncUserTargetOps("hivelineV2FollowsCache",url,null,options),[]);
 });
 
 test("paginated initial sync follows the last operation ID",async()=>{
-  const url=buildHafsqlCustomJsonUrl("micro.fair",{limit:2});
+  const url=buildHafsqlCustomJsonUrl("hiveline.posts",{limit:2});
   const calls=[];
   const payloads=[
     [{id:6},{id:5}],
