@@ -61,7 +61,9 @@ test("authenticated profile uses real lists, counts and safe usernames", () => {
   assert.doesNotMatch(output, /<img src=x onerror=alert\(1\)>/);
   assert.match(output, /data-action="unblock"/);
   assert.match(output, /data-user="bad.user"/);
-  assert.doesNotMatch(output, /href="#\/user\//);
+  assert.match(output, /href="#\\/user\\/sm-silva"/);
+  assert.match(output, /href="#\\/user\\/peak\\.snaps"/);
+  assert.match(output, /View public profile/);
   state.setFollowedUsers(new Set());
   state.setBlockedUsers(new Set());
   const empty = buildProfilePage();
