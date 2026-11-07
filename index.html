@@ -3,17 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>micro.feed — Hive • Share • Build</title>
-    <meta name="description" content="Microblogging decentralized app with threads and Hive Keychain authentication." />
-    <meta property="og:title" content="micro.feed — Hive • Share • Build" />
-    <meta property="og:description" content="Microblogging decentralized app with threads and Hive Keychain authentication." />
+    <title>micro.fair — Conversas na Hive</title>
+    <meta name="description" content="Uma rede social descentralizada na blockchain Hive, com conversas, canais e autenticação via Hive Keychain." />
+    <meta property="og:title" content="micro.fair — Conversas na Hive" />
+    <meta property="og:description" content="Uma rede social descentralizada na blockchain Hive, com conversas, canais e autenticação via Hive Keychain." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/modern.css" />
   </head>
   
   <body>
+    <a class="skip-link" href="#mainArea">Pular para o conteúdo</a>
     <!-- Top Header Navbar -->
     <div id="top-nav-root"></div>
 
@@ -23,7 +25,7 @@
       <aside id="left-sidebar-root" class="left-sidebar"></aside>
 
       <!-- Center Feed Column -->
-      <main id="mainArea" class="main-content">
+      <main id="mainArea" class="main-content" tabindex="-1">
         <div id="feed-header-root"></div>
         <div id="composer-root"></div>
         <div id="feed-filters-root"></div>
@@ -37,11 +39,37 @@
       <aside id="right-sidebar-root" class="right-sidebar"></aside>
     </div>
 
+
+    <!-- Mobile navigation: routes are shared with the desktop sidebar. -->
+    <nav id="mobileBottomNav" class="mobile-bottom-nav" aria-label="Navegação principal para celular">
+      <a class="mobile-nav-link active" data-mobile-section="home" href="#/" aria-label="Início" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+        <span>Início</span>
+      </a>
+      <a class="mobile-nav-link" data-mobile-section="explore" href="#/trending" aria-label="Explorar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.4 8.6-2.6 4.2-4.2 2.6 2.6-4.2z"/></svg>
+        <span>Explorar</span>
+      </a>
+      <a class="mobile-nav-link" data-mobile-section="channels" href="#/channels" aria-label="Canais">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2zM17 5a3 3 0 0 1 0 6m1 3a5 5 0 0 1 3 5v1"/></svg>
+        <span>Canais</span>
+      </a>
+      <a class="mobile-nav-link" data-mobile-section="bookmarks" href="#/bookmarks" aria-label="Salvos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4z"/></svg>
+        <span>Salvos</span>
+      </a>
+      <a class="mobile-nav-link" data-mobile-section="profile" href="#/profile" aria-label="Perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Perfil</span>
+      </a>
+    </nav>
+
     <!-- Modals & Dialogs -->
     <div id="modal-root"></div>
     <div id="logout-root"></div>
     <div id="extra-modal-root"></div>
 
     <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/mobile-nav.js"></script>
   </body>
 </html>
