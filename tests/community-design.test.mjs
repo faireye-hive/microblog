@@ -125,5 +125,5 @@ test("filter and channel empty state use the same design vocabulary", () => {
   assert.match(routingJs,/showFeedSkeleton\(feed\)/);
   assert.match(routingJs,/id="btnFocusChannelComposer"/);
   assert.match(routingJs,/isJoined \? "Joined" : "Join"/);
-  assert.match(routingJs, /\["feed", "profile", "channels"\]\.includes\(newPage\)/);
+  assert.match(routingJs, /\["feed", "profile", "channels", "explore", "trending", "active", "search"\]\.includes\(newPage\)/);
 });
