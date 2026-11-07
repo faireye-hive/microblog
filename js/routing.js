@@ -33,6 +33,7 @@ import { fetchPublicHiveAccount } from "./hive/public-profile.js";
 import { buildPublicProfilePage, collectPublicProfilePosts } from "./ui/public-profile.js";
 
 export let currentPage = "feed";
+let publicProfileRenderVersion = 0;
 
 // Atualiza a seleção visual das abas do topo e da barra lateral
 export function updateNavSelection(newPage) {
@@ -369,6 +370,7 @@ window.addEventListener("refreshChannelsPage", () => {
  * communities; public account metadata comes from the authorized Hive RPC.
  */
 export function showPublicUserProfile(rawUser, tab = "posts") {
+  const renderVersion = ++publicProfileRenderVersion;
   const user = safeHiveUsername(rawUser);
   const feed = document.getElementById("feed");
   if (!feed) return;
@@ -404,7 +406,7 @@ export function showPublicUserProfile(rawUser, tab = "posts") {
   // Never let a late response from one profile overwrite another route.
   const routeHash = window.location.hash;
   void fetchPublicHiveAccount(user).then(result => {
-    if (window.location.hash !== routeHash) return;
+    if (window.location.hash !== routeHash || renderVersion !== publicProfileRenderVersion) return;
     const shell = document.querySelector(".public-profile-page");
     if (!shell) return;
     shell.outerHTML = buildPublicProfilePage({
