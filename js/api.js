@@ -9,6 +9,7 @@ import {
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
+import { safeHiveUsername } from "./security/safe-values.js";
 import {
     buildHafsqlCustomJsonUrl,
     withHafsqlCursor,
@@ -389,8 +390,12 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
 function sendCustomJsonAction(type, targetUser, actionText) {
     const username = localStorage.getItem("hiveUser");
     if (!username) return showNotification("🔒 Sign in to perform this action.", false);
+    const target = safeHiveUsername(targetUser);
+    if (target === "unknown" || target === safeHiveUsername(username)) {
+        return showNotification("Choose another valid Hive account.", false);
+    }
 
-    const json = JSON.stringify(buildUserActionPayload(type, targetUser));
+    const json = JSON.stringify(buildUserActionPayload(type, target));
 
     let customId;
     if (type === 'block' || type === 'unblock') {
