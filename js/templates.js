@@ -51,38 +51,36 @@ export const TopNavHTML = `
         </svg>
       </button>
 
-      <!-- User Menu Trigger -->
-      <div class="user-menu-trigger" id="btnMenu" role="button" tabindex="0" aria-label="Abrir menu da conta" aria-expanded="false" aria-controls="userMenuDropdown">
-        <img id="navUserAvatar" class="user-avatar-sm" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="Avatar" data-avatar-fallback="user">
-        <svg class="chevron-down-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-      </div>
-
-      <!-- User Dropdown Menu -->
-      <div id="userMenuDropdown" class="user-menu-dropdown hidden">
-        <button id="menuLogin" class="dropdown-link">
-          <span>🔑</span> <span>Entrar via Keychain</span>
+      <div class="account-menu-shell">
+        <button type="button" id="btnMenu" class="user-menu-trigger"
+                aria-haspopup="true" aria-expanded="false" aria-controls="userMenuDropdown"
+                aria-label="Abrir menu da conta">
+          <span class="account-trigger-avatar">
+            <span id="accountGuestIcon" class="account-guest-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 12h6m-2.5-2.5L15 12l-2.5 2.5"/></svg></span>
+            <img id="navUserAvatar" class="user-avatar-sm hidden" src="${escapeAttr(proxiedImageUrl("https://images.hive.blog/u/hive/avatar"))}" alt="" data-avatar-fallback="user">
+          </span>
+          <span id="accountTriggerLabel" class="account-trigger-label">Entrar</span>
+          <svg class="chevron-down-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <a id="menuProfile" href="#/profile" class="dropdown-link hidden">
-          <span>👤</span> <span id="menuUserLabel">Meu Perfil</span>
-        </a>
-        <a id="menuMyVotes" href="#/my-votes" class="dropdown-link hidden">
-          <span>👍</span> <span>Meus Votos</span>
-        </a>
-        <a id="menuMyComments" href="#/my-comments" class="dropdown-link hidden">
-          <span>💬</span> <span>Meus Comentários</span>
-        </a>
-        <a id="menuMyReplies" href="#/my-replies" class="dropdown-link hidden">
-          <span>↩️</span> <span>Minhas Respostas</span>
-        </a>
-        <div class="dropdown-divider"></div>
-        <button id="clearCacheButton" class="dropdown-link">
-          <span>🧹</span> <span>Limpar Cache Local</span>
-        </button>
-        <button id="menuLogout" class="dropdown-link hidden" style="color: #dc2626;">
-          <span>🚪</span> <span>Sair</span>
-        </button>
+        <div id="userMenuDropdown" class="user-menu-dropdown hidden" aria-label="Opções da conta">
+          <div class="account-menu-heading">
+            <span class="account-menu-heading-kicker">MICRO.FAIR · HIVE</span>
+            <strong id="accountMenuName" class="account-menu-name">Sua conta</strong>
+            <span id="accountMenuStatus" class="account-menu-status">Entre para publicar e interagir</span>
+          </div>
+          <div class="account-menu-items">
+            <button id="menuLogin" type="button" class="dropdown-link account-login-action"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 12h6m-2.5-2.5L15 12l-2.5 2.5"/></svg><span>Entrar com Keychain</span><span class="account-login-arrow" aria-hidden="true">→</span></button>
+            <span id="accountMenuSectionLabel" class="account-menu-section-label hidden">Minha atividade</span>
+            <a id="menuProfile" href="#/profile" class="dropdown-link hidden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg><span id="menuUserLabel">Meu perfil</span></a>
+            <a id="menuMyVotes" href="#/my-votes" class="dropdown-link hidden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8.5 10.5 2.5-5.5c.8-1.7 3-1.2 3 1v4h5c1.6 0 2.5 1.5 2.1 2.9L19.5 20H9v-9.5Z"/><path d="M4 10.5h5V20H4z"/></svg><span>Meus votos</span></a>
+            <a id="menuMyComments" href="#/my-comments" class="dropdown-link hidden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 1-8 8c-1.5 0-2.8-.3-4-1l-4 2 1.5-4A8 8 0 1 1 20 11Z"/></svg><span>Meus comentários</span></a>
+            <a id="menuMyReplies" href="#/my-replies" class="dropdown-link hidden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9 4 13l5 4M4 13h10a6 6 0 0 1 6 6"/></svg><span>Minhas respostas</span></a>
+          </div>
+          <div class="account-menu-footer">
+            <button id="clearCacheButton" type="button" class="dropdown-link account-menu-muted"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3m3 0-1 13H7L6 7"/><path d="M10 11v5m4-5v5"/></svg><span>Limpar cache local</span></button>
+            <button id="menuLogout" type="button" class="dropdown-link account-menu-logout hidden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5m10-6H9m6-4 4 4-4 4"/></svg><span>Sair da conta</span></button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -385,25 +383,38 @@ export const RightSidebarHTML = `
 `;
 
 export const LoginModalHTML = `
-<div id="loginModal" class="modal-overlay hidden">
-  <div class="modal-dialog">
-    <button class="modal-close" id="closeLoginModal">&times;</button>
-    <h3 class="modal-title">Entrar com Hive Keychain</h3>
-    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
-      Insira seu nome de usuário Hive para assinar com a extensão Keychain.
-    </p>
-
-    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">USUÁRIO HIVE</label>
-    <input type="text" id="loginUsername" class="modal-input" placeholder="ex: faireye" />
-
-    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-      <button id="cancelLoginModal" class="btn-outline-small">
-        Cancelar
-      </button>
-      <button id="confirmLogin" class="btn-post">
-        Entrar
-      </button>
+<div id="loginModal" class="modal-overlay auth-modal-overlay hidden"
+     role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-describedby="loginDescription">
+  <div class="modal-dialog auth-dialog">
+    <button type="button" class="modal-close auth-modal-close" id="closeLoginModal" aria-label="Fechar janela de login">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+    </button>
+    <div class="auth-dialog-symbol" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><path d="M16 2 3 9.5v13L16 30l13-7.5v-13L16 2Z" fill="#262b35"/><path d="m11 10-3 6 3 6h3l-3-6 3-6h-3Zm7 0-3 6 3 6h3l-3-6 3-6h-3Z" fill="#c72e4a"/></svg>
     </div>
+    <span class="auth-dialog-eyebrow">BEM-VINDO AO MICRO.FAIR</span>
+    <h2 id="loginTitle" class="modal-title auth-dialog-title">Entre na sua conta</h2>
+    <p id="loginDescription" class="auth-dialog-description">Conecte sua conta Hive para publicar, votar e participar das conversas.</p>
+    <form id="loginForm" class="auth-login-form" novalidate>
+      <label class="auth-field-label" for="loginUsername">Nome de usuário Hive</label>
+      <div class="auth-input-wrap">
+        <span class="auth-input-prefix" aria-hidden="true">@</span>
+        <input type="text" name="username" id="loginUsername" class="modal-input auth-username-input"
+               placeholder="seu-usuario" autocomplete="username" autocapitalize="none" spellcheck="false"
+               maxlength="24" aria-describedby="authUsernameHint" required>
+      </div>
+      <p id="authUsernameHint" class="auth-field-hint">Digite somente o nome, sem o @.</p>
+      <button id="confirmLogin" type="submit" class="btn-post auth-submit">
+        <span class="auth-submit-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 12h6m-2.5-2.5L15 12l-2.5 2.5"/></svg></span>
+        <span id="loginSubmitLabel">Continuar com Keychain</span>
+        <span class="auth-submit-arrow" aria-hidden="true">→</span>
+      </button>
+    </form>
+    <p class="auth-security-note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      A assinatura é feita pela Hive Keychain. Não solicitamos suas chaves.
+    </p>
+    <button id="cancelLoginModal" type="button" class="auth-dismiss-btn">Agora não</button>
   </div>
 </div>
 `;
