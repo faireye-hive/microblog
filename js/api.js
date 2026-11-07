@@ -32,6 +32,7 @@ import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
 import { processMuteData } from "./hive/moderation.js";
 import { readPostCache, writePostCache, clearPostCaches } from "./data/post-cache.js";
 import { mergePostSnapshots } from "./data/post-merge.js";
+import { showFeedSkeleton, hideFeedSkeleton } from "./ui/feed-loading.js";
 import { processChannelsData } from "./helpers/channels.js";
 export { processChannelsData } from "./helpers/channels.js";
 import { 
@@ -133,11 +134,44 @@ async function fetchDataInLoop() {
 
 // /js/api.js (Apenas o bloco fetchData)
 
-export async function fetchData() {
-    document.getElementById("feed").innerHTML =
-        '<div class="card p-4 text-center small-muted">Loading...</div>';
+let feedSyncPromise = null;
+let initialFeedSyncFinished = false;
 
-    // 1. Lê IndexedDB; na primeira execução importa o cache antigo do localStorage.
+// Deduplicate overlapping route changes and refreshes on the same Hive sync.
+export function hasFinishedFeedSync() {
+    return initialFeedSyncFinished;
+}
+
+export function fetchData() {
+    if (feedSyncPromise) return feedSyncPromise;
+
+    feedSyncPromise = syncFeedData()
+        .catch(error => {
+            console.error("Could not synchronize the Hive feed:", error);
+            const feed = document.getElementById("feed");
+            if (feed?.querySelector(".feed-skeletons")) {
+                hideFeedSkeleton(feed);
+                feed.innerHTML = `
+                    <section class="feed-load-error" role="status">
+                        <strong>Can't load posts right now</strong>
+                        <p>Check your connection and try refreshing the page.</p>
+                    </section>`;
+            }
+            showNotification("Could not sync posts. Please check your connection.", false);
+            throw error;
+        })
+        .finally(() => {
+            initialFeedSyncFinished = true;
+            feedSyncPromise = null;
+            hideFeedSkeleton(document.getElementById("feed"));
+        });
+    return feedSyncPromise;
+}
+
+async function syncFeedData() {
+    showFeedSkeleton(document.getElementById("feed"));
+
+    // Read IndexedDB, importing older localStorage data when available.
     const cachedPosts = await readPostCache(APP_ID);
     const startIdForSync = cachedPosts[0]?.id ?? null;
     if (cachedPosts.length > 0) setAllPosts(cachedPosts);
@@ -232,12 +266,12 @@ export async function fetchData() {
     
     // 4. FINALIZAÇÃO
     window.dispatchEvent(new Event('hashchange'));
-    showNotification(
-        networkAvailable
-          ? `Synced successfully. ${newPostsCount} new posts.`
-          : "HAFSQL is offline. Showing available cached posts.",
-        networkAvailable
-    );
+    // Avoid a success toast every time the user revisits or refreshes a quiet feed.
+    if (networkAvailable && newPostsCount > 0) {
+        showNotification(`${newPostsCount} new ${newPostsCount === 1 ? "post" : "posts"} synced.`, true);
+    } else if (!networkAvailable) {
+        showNotification("HAFSQL is offline. Showing available cached posts.", false);
+    }
 }
 
 // Busca posts de um canal específico na Hive blockchain
