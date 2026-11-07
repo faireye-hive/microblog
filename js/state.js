@@ -271,8 +271,15 @@ export function renderFeed(postsToRender) {
   feed.innerHTML = "";
   if (allPostsToRender.length === 0) {
     feed.innerHTML = `
-      <div class="composer-card" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-        <p style="margin: 0; font-size: 1rem;">Nenhum post encontrado nesta visualização.</p>
+      <div class="community-empty-state">
+        <span class="community-empty-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>
+          </svg>
+        </span>
+        <h2>Nada por aqui ainda</h2>
+        <p>Não encontramos publicações nesta visualização. Experimente outro filtro ou explore os canais.</p>
       </div>
     `;
     const indicator = document.getElementById("loadingIndicator");
@@ -301,8 +308,15 @@ export function renderNextBatch() {
 
   if (next.length === 0 && renderedCount === 0) {
     feed.innerHTML = `
-      <div class="composer-card" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-        <p style="margin: 0; font-size: 1rem;">Nenhum post encontrado nesta visualização.</p>
+      <div class="community-empty-state">
+        <span class="community-empty-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>
+          </svg>
+        </span>
+        <h2>Nada por aqui ainda</h2>
+        <p>Não encontramos publicações nesta visualização. Experimente outro filtro ou explore os canais.</p>
       </div>
     `;
   }

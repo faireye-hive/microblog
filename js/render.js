@@ -325,218 +325,230 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   return el;
 }
 
+
 function buildUserListHTML(usersSet, type) {
-  if (usersSet.size === 0) {
-    return `<p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Nenhum usuário ${type === 'blocked' ? 'bloqueado' : 'seguido'}.</p>`;
-  }
-  
-  const users = Array.from(usersSet).map(safeHiveUsername).filter(u => u !== "unknown").sort(); 
-  const actionButton = (user) => type === 'blocked' 
-    ? `<button data-action="unblock" data-user="${escapeAttr(user)}" class="btn-outline-small" style="color: #16a34a; font-size: 0.75rem;">✅ Desbloquear</button>`
-    : '';
-      
-  return users.map(user => `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}" style="width: 28px; height: 28px; border-radius: 50%;" data-hide-on-error="true">
-        <span style="font-weight: 600; font-size: 0.9rem;">@${escapeHtml(user)}</span>
+  const blocked = type === "blocked";
+  const users = Array.from(usersSet).map(safeHiveUsername)
+    .filter(user => user !== "unknown").sort();
+
+  if (!users.length) {
+    return `
+      <div class="profile-list-empty">
+        <span class="profile-list-empty-icon" aria-hidden="true">
+          ${blocked ? "✓" : "＋"}
+        </span>
+        <strong>${blocked ? "Nenhuma conta bloqueada" : "Você ainda não segue ninguém"}</strong>
+        <p>${blocked
+          ? "Suas contas bloqueadas aparecerão aqui."
+          : "Encontre pessoas interessantes nas conversas e siga seus perfis."}</p>
       </div>
-      ${actionButton(user)}
+    `;
+  }
+
+  return users.map(user => `
+    <div class="profile-person-row">
+      <span class="profile-person-main">
+        <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(user)))}"
+             alt="" class="profile-person-avatar" loading="lazy"
+             data-avatar-fallback="user">
+        <span class="profile-person-name">@${escapeHtml(user)}</span>
+      </span>
+      ${blocked ? `<button type="button" data-action="unblock"
+        data-user="${escapeAttr(user)}" class="profile-unblock-btn">Desbloquear</button>` : ""}
     </div>
-  `).join('');
+  `).join("");
 }
 
 export function buildProfilePage() {
   if (!loggedInUser) {
     return `
-      <div class="composer-card" style="padding: 2.5rem; text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔑</div>
-        <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">Faça login com sua conta Hive</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Conecte sua conta Hive via Keychain para visualizar seu perfil, votos e comunidades.</p>
-        <button id="btnProfileLogin" class="btn-post" style="display: inline-flex;">Entrar via Keychain</button>
-      </div>
+      <section class="profile-page profile-guest">
+        <div class="profile-guest-icon" aria-hidden="true">
+          <svg width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>
+          </svg>
+        </div>
+        <span class="profile-eyebrow">SEU ESPAÇO NA HIVE</span>
+        <h2>Seu perfil começa aqui</h2>
+        <p>Entre com sua conta Hive para acompanhar as pessoas que você segue e gerenciar suas preferências.</p>
+        <button type="button" id="btnProfileLogin" class="btn-post profile-primary-action">Entrar com Keychain
+          <span aria-hidden="true">→</span>
+        </button>
+        <span class="profile-guest-footnote">A autenticação é feita pela extensão Hive Keychain.</span>
+      </section>
     `;
   }
 
   const profileUser = safeHiveUsername(loggedInUser);
-  const followedListHtml = buildUserListHTML(followedUsers, 'followed');
-  const blockedListHtml = buildUserListHTML(blockedUsers, 'blocked');
+  // Keep visible list counters consistent with the validated accounts shown.
+  const followedCount = [...followedUsers].filter(name => safeHiveUsername(name) !== "unknown").length;
+  const blockedCount = [...blockedUsers].filter(name => safeHiveUsername(name) !== "unknown").length;
+  const followedListHtml = buildUserListHTML(followedUsers, "followed");
+  const blockedListHtml = buildUserListHTML(blockedUsers, "blocked");
 
   return `
-    <div style="display: flex; flex-direction: column; gap: 1.25rem; width: 100%;">
-      <!-- Profile Header Card -->
-      <div class="composer-card" style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 1.25rem;">
-          <img 
-            src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(profileUser)))}" 
-            alt="@${escapeAttr(profileUser)}" 
-            style="width: 68px; height: 68px; border-radius: 50%; border: 2px solid var(--border);"
-            data-avatar-fallback="hive"
-          >
-          <div>
-            <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
-              @${escapeHtml(profileUser)}
-              <span class="hive-user-badge">
-                <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/><path d="M11 10L8 16L11 22H14L11 16L14 10H11Z" fill="#e31337"/><path d="M18 10L15 16L18 22H21L18 16L21 10H18Z" fill="#e31337"/></svg>
-              </span>
-            </h1>
-            <span style="font-size: 0.8rem; color: var(--text-faint);">Conta Autenticada Hive</span>
+    <div class="profile-page">
+      <section class="profile-hero" aria-labelledby="profileUsername">
+        <div class="profile-hero-content">
+          <img src="${escapeAttr(proxiedImageUrl(hiveAvatarUrl(profileUser)))}"
+               alt="Avatar de @${escapeAttr(profileUser)}" class="profile-hero-avatar"
+               data-avatar-fallback="user">
+          <div class="profile-identity">
+            <span class="profile-eyebrow">MEU PERFIL</span>
+            <h1 id="profileUsername">@${escapeHtml(profileUser)}</h1>
+            <span class="profile-connected">
+              <span class="profile-status-dot" aria-hidden="true"></span>
+              Conectado com Hive Keychain
+            </span>
           </div>
         </div>
-        <button id="btnProfileLogout" class="btn-outline-small" style="color: #dc2626;">Sair da Conta</button>
+        <button type="button" id="btnProfileLogout" class="profile-logout-btn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/>
+            <path d="M9 12h10m-4-4 4 4-4 4"/>
+          </svg>
+          Sair
+        </button>
+      </section>
+
+      <div class="profile-summary" aria-label="Resumo das conexões">
+        <div class="profile-stat">
+          <strong>${followedCount}</strong>
+          <span>Seguindo</span>
+        </div>
+        <span class="profile-summary-divider" aria-hidden="true"></span>
+        <div class="profile-stat">
+          <strong>${blockedCount}</strong>
+          <span>Bloqueados</span>
+        </div>
       </div>
 
-      <!-- Followed & Blocked Cards -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
-        <div class="composer-card">
-          <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.75rem;">⭐ Usuários Seguidos (${followedUsers.size})</h3>
-          <div id="followedUsersList" style="max-height: 380px; overflow-y: auto;">
+      <div class="profile-panels">
+        <section class="profile-panel" aria-labelledby="profileFollowingTitle">
+          <div class="profile-panel-head">
+            <div>
+              <span class="profile-panel-kicker">CONEXÕES</span>
+              <h2 id="profileFollowingTitle">Pessoas que você segue</h2>
+            </div>
+            <span class="profile-count-badge">${followedCount}</span>
+          </div>
+          <div id="followedUsersList" class="profile-people-list">
             ${followedListHtml}
           </div>
-        </div>
+        </section>
 
-        <div class="composer-card">
-          <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.25rem;">🚫 Usuários Bloqueados (${blockedUsers.size})</h3>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">Usuários bloqueados ficam ocultos no seu feed.</p>
-          <div id="blockedUsersList" style="max-height: 380px; overflow-y: auto;">
+        <section class="profile-panel" aria-labelledby="profileBlockedTitle">
+          <div class="profile-panel-head">
+            <div>
+              <span class="profile-panel-kicker">PRIVACIDADE</span>
+              <h2 id="profileBlockedTitle">Contas bloqueadas</h2>
+            </div>
+            <span class="profile-count-badge">${blockedCount}</span>
+          </div>
+          <p class="profile-panel-description">Publicações das contas bloqueadas ficam ocultas do seu feed.</p>
+          <div id="blockedUsersList" class="profile-people-list">
             ${blockedListHtml}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   `;
 }
 
-// Constrói a página do diretório de Canais Hive
+// Diretório de canais: layout simplificado, sem placeholders de canais fictícios.
 export function buildChannelsPage(searchFilter = "") {
   const query = (searchFilter || "").toLowerCase().trim();
   const directId = parseChannelCustomId(query.replace(/^#/, ""));
-  const filtered = channels.filter(c => {
+  const filtered = channels.filter(channel => {
     if (!query) return true;
-    return c.id.toLowerCase().includes(query) ||
-           (c.name && c.name.toLowerCase().includes(query)) ||
-           (c.description && c.description.toLowerCase().includes(query)) ||
-           (c.creator && c.creator.toLowerCase().includes(query));
+    return channel.id.toLowerCase().includes(query) ||
+      (channel.name && channel.name.toLowerCase().includes(query)) ||
+      (channel.description && channel.description.toLowerCase().includes(query)) ||
+      (channel.creator && channel.creator.toLowerCase().includes(query));
   });
 
-  const cardsHtml = filtered.map(c => {
-    const isJoined = joinedChannels.has(c.id);
-    const icon = getChannelIcon(c.id);
-    const count = getChannelPostCount(c.id);
-    const postLabel = count === 1 ? "1 post" : `${count} posts`;
+  const cardsHtml = filtered.map(channel => {
+    const isJoined = joinedChannels.has(channel.id);
+    const icon = getChannelIcon(channel.id);
+    const count = getChannelPostCount(channel.id);
+    const creator = safeHiveUsername(channel.creator);
+    const path = `#/channel/${encodeURIComponent(channel.id)}`;
 
     return `
-      <div class="composer-card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.25rem;">
-        <div>
-          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(227, 19, 55, 0.08); color: #e31337; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
-                ${escapeHtml(icon)}
-              </div>
-              <div>
-                <a href="#/channel/${encodeURIComponent(c.id)}" style="text-decoration: none; color: var(--text); font-weight: 800; font-size: 1.05rem; display: block; line-height: 1.2;">
-                  ${escapeHtml(c.name || c.id)}
-                </a>
-                <span style="font-size: 0.75rem; font-weight: 700; color: #e31337;">
-                  #${escapeHtml(c.id)}
-                </span>
-              </div>
-            </div>
-            <button class="btn-join ${isJoined ? 'joined' : ''}" data-channel="${escapeAttr(c.id)}" style="font-size: 0.8rem; padding: 0.35rem 0.85rem;">
-              ${isJoined ? 'Joined' : 'Join'}
-            </button>
-          </div>
-
-          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin-bottom: 1rem;">
-            ${escapeHtml(c.description || "Canal público descentralizado na Hive.")}
-          </p>
+      <article class="channel-tile">
+        <div class="channel-tile-top">
+          <span class="channel-tile-icon" aria-hidden="true">${escapeHtml(icon)}</span>
+          <button type="button" class="btn-join channel-follow ${isJoined ? "joined" : ""}"
+                  data-channel="${escapeAttr(channel.id)}">
+            ${isJoined ? "Participando" : "Participar"}
+          </button>
         </div>
-
-        <div>
-          <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--text-faint);">
-            <div style="display: flex; align-items: center; gap: 0.35rem;">
-              <span>Criado por</span>
-              <a href="#/user/${encodeURIComponent(safeHiveUsername(c.creator))}" class="author-name" style="font-weight: 700;">@${escapeHtml(safeHiveUsername(c.creator))}</a>
-            </div>
-            <span style="font-weight: 600; color: var(--text);">${postLabel}</span>
-          </div>
-
-          <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
-            <a href="#/channel/${encodeURIComponent(c.id)}" class="btn-outline-small" style="flex: 1; text-align: center; text-decoration: none; justify-content: center; padding: 0.45rem;">
-              Ver Feed
-            </a>
-            <button class="btn-post btn-post-in-channel" data-channel="${escapeAttr(c.id)}" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
-              Postar
-            </button>
-          </div>
+        <div class="channel-tile-main">
+          <a href="${escapeAttr(path)}" class="channel-tile-title">${escapeHtml(channel.name || channel.id)}</a>
+          <span class="channel-tile-tag">#${escapeHtml(channel.id)}</span>
+          <p class="channel-tile-description">${escapeHtml(channel.description || "Espaço público para conversas na Hive.")}</p>
         </div>
-      </div>
+        <div class="channel-tile-meta">
+          <span>${creator === "unknown" ? "Comunidade Hive" : `Criado por @${escapeHtml(creator)}`}</span>
+          <span>${count} ${count === 1 ? "publicação" : "publicações"}</span>
+        </div>
+        <div class="channel-tile-actions">
+          <a href="${escapeAttr(path)}" class="btn-outline-small channel-open-btn">Explorar</a>
+          <button type="button" class="btn-post btn-post-in-channel" data-channel="${escapeAttr(channel.id)}">Publicar</button>
+        </div>
+      </article>
     `;
   }).join("");
 
   return `
-    <div style="display: flex; flex-direction: column; gap: 1.25rem; width: 100%;">
-      <!-- Hero / Header Card -->
-      <div class="composer-card" style="padding: 1.5rem; background: linear-gradient(135deg, rgba(227, 19, 55, 0.03) 0%, rgba(15, 23, 42, 0.02) 100%);">
-        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem;">
+    <section class="channels-page" aria-label="Diretório de canais">
+      <div class="channels-hero">
+        <div class="channels-hero-top">
           <div>
-            <h1 style="font-size: 1.35rem; font-weight: 800; margin: 0 0 0.35rem 0; display: flex; align-items: center; gap: 0.5rem;">
-              <span>Canais & Comunidades Hive</span>
-              <span style="font-size: 0.75rem; font-weight: 700; background: rgba(227, 19, 55, 0.1); color: #e31337; padding: 2px 8px; border-radius: 999px;">
-                ${channels.length} canais
-              </span>
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; max-width: 620px; line-height: 1.4;">
-              Descubra canais ou crie novos tópicos registrados de forma permanente na Hive via Custom JSON (<code>micro.fair.channels</code>).
-            </p>
+            <span class="channels-eyebrow">COMUNIDADES NA HIVE</span>
+            <h1>Encontre seu espaço <span class="channels-total">${channels.length}</span></h1>
+            <p>Explore conversas por assunto e participe dos canais que mais combinam com você.</p>
           </div>
-
-          <button id="btnCreateChannelFromPage" class="btn-post" style="box-shadow: 0 4px 12px rgba(227, 19, 55, 0.2);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            <span>Criar Novo Canal</span>
+          <button id="btnCreateChannelFromPage" type="button" class="btn-post channels-create-btn">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Criar canal
           </button>
         </div>
-
-        <!-- Search Bar -->
-        <div style="position: relative; max-width: 100%;">
-          <svg style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: #94a3b8;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <div class="channels-search">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>
           </svg>
-          <input 
-            type="text" 
-            id="channelsDirectorySearch" 
-            class="modal-input" 
-            style="padding-left: 2.35rem; margin: 0; background: var(--bg-card);" 
-            placeholder="Buscar canais por nome, #tag ou criador..." 
-            value="${escapeHtml(searchFilter)}"
-            autocomplete="off"
-          />
+          <input type="search" id="channelsDirectorySearch" class="channels-search-input"
+                 placeholder="Buscar por nome, tag ou criador" aria-label="Buscar canais"
+                 value="${escapeAttr(searchFilter)}" autocomplete="off" spellcheck="false">
         </div>
       </div>
 
-      <!-- Channels Grid -->
-      <div id="channelsDirectoryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
-        ${filtered.length > 0 ? cardsHtml : `
-          <div class="composer-card" style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">
-            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔍</div>
-            <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem;">Nenhum canal encontrado</h4>
-            <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">Nenhum canal corresponde a "${escapeHtml(searchFilter)}".</p>
-            ${directId ? `
-              <button id="btnOpenChannelById" class="btn-outline-small" style="display: inline-flex; margin-right: 0.5rem; margin-bottom: 0.5rem;">
-                Abrir Custom JSON #${escapeHtml(directId)}
-              </button>
-            ` : ""}
-            <button id="btnCreateChannelNotFound" class="btn-post" style="display: inline-flex;">
-              + Criar Canal com este nome
-            </button>
+      <div id="channelsDirectoryGrid" class="channels-grid">
+        ${filtered.length ? cardsHtml : `
+          <div class="community-empty-state">
+            <span class="community-empty-icon" aria-hidden="true">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>
+            </span>
+            <h2>${query ? "Nenhum canal encontrado" : "Seja o primeiro a criar um canal"}</h2>
+            <p>${query ? `Não encontramos canais para “${escapeHtml(searchFilter)}”. Tente outro termo ou explore um ID válido.`
+                        : "Quando os primeiros canais forem publicados, eles aparecerão aqui."}</p>
+            <div class="community-empty-actions">
+              ${directId ? `
+                <button type="button" id="btnOpenChannelById" class="btn-outline-small">
+                  Abrir #${escapeHtml(directId)}
+                </button>
+              ` : ""}
+              <button type="button" id="btnCreateChannelNotFound" class="btn-post">Criar canal</button>
+            </div>
           </div>
         `}
       </div>
-    </div>
+    </section>
   `;
 }
-

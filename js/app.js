@@ -279,11 +279,13 @@ function setupFeedDelegation() {
     }
 
     // 10. LOGIN/LOGOUT ON PROFILE PAGE
-    if (e.target.id === "btnProfileLogin") {
-      document.getElementById("loginModal")?.classList.remove("hidden");
+    if (e.target.closest("#btnProfileLogin")) {
+      // Reuse the accessible account flow so focus lands in the username input.
+      document.getElementById("btnMenu")?.click();
     }
-    if (e.target.id === "btnProfileLogout") {
-      document.getElementById("logoutConfirmModal")?.classList.remove("hidden");
+    if (e.target.closest("#btnProfileLogout")) {
+      // Reuse the existing confirmation logic and keyboard focus management.
+      document.getElementById("menuLogout")?.click();
     }
   });
 }
@@ -398,6 +400,7 @@ function setupComposerControls() {
         }
       } else if (mode === "json") {
         document.getElementById("customJsonModal")?.classList.remove("hidden");
+        document.getElementById("customJsonId")?.focus();
       }
     });
   });
@@ -599,6 +602,34 @@ function setupSidebarControls() {
   });
 }
 
+// Shared keyboard/backdrop behavior for dialogs outside the Keychain flow.
+function setupSecondaryDialogAccessibility() {
+  for (const id of ["customJsonModal", "createChannelModal"]) {
+    const modal = document.getElementById(id);
+    if (!modal) continue;
+    modal.addEventListener("click", event => {
+      if (event.target === modal) modal.classList.add("hidden");
+    });
+    modal.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        modal.classList.add("hidden");
+        document.getElementById(id === "createChannelModal" ? "btnCreateChannelTrigger" : "btnMenu")?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...modal.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled])")];
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    });
+  }
+}
+
 // ---------- MONTAGEM DO DOM INICIAL ----------
 
 function setupInitialDOM() {
@@ -658,6 +689,7 @@ setAuthCallbacks(
   }
 );
 setupAuthListeners();
+setupSecondaryDialogAccessibility();
 
 // 3. Listeners e modais
 setupEventListeners();

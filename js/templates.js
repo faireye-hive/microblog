@@ -419,106 +419,118 @@ export const LoginModalHTML = `
 </div>
 `;
 
+
 export const LogoutModalHTML = `
-<div id="logoutConfirmModal" class="modal-overlay hidden">
-  <div class="modal-dialog">
-    <h3 class="modal-title">Confirmar Saída</h3>
-    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
-      Deseja realmente sair da sua conta Hive?
+<div id="logoutConfirmModal" class="modal-overlay community-dialog-overlay hidden"
+     role="dialog" aria-modal="true" aria-labelledby="logoutDialogTitle"
+     aria-describedby="logoutDialogDescription">
+  <div class="modal-dialog community-dialog community-dialog-compact">
+    <span class="community-dialog-icon community-dialog-icon-muted" aria-hidden="true">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5m-1-6h10m-4-4 4 4-4 4"/>
+      </svg>
+    </span>
+    <span class="community-dialog-eyebrow">SUA CONTA</span>
+    <h2 id="logoutDialogTitle" class="modal-title community-dialog-title">Sair do Micro.fair?</h2>
+    <p id="logoutDialogDescription" class="community-dialog-description">
+      Você poderá entrar novamente com sua conta Hive quando quiser.
     </p>
-    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-      <button id="cancelLogout" class="btn-outline-small">
-        Cancelar
-      </button>
-      <button id="confirmLogout" class="btn-post" style="background: #dc2626;">
-        Sair
-      </button>
+    <div class="community-dialog-actions">
+      <button id="cancelLogout" type="button" class="btn-outline-small community-secondary-btn">Continuar conectado</button>
+      <button id="confirmLogout" type="button" class="community-danger-btn">Sair da conta</button>
     </div>
   </div>
 </div>
 `;
 
 export const CustomJsonModalHTML = `
-<div id="customJsonModal" class="modal-overlay hidden">
-  <div class="modal-dialog" style="max-width: 500px;">
-    <button class="modal-close" id="closeCustomJsonModal">&times;</button>
-    <h3 class="modal-title">Hive Custom JSON</h3>
-    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
-      Envie operações Custom JSON autenticadas diretamente para a blockchain Hive.
+<div id="customJsonModal" class="modal-overlay community-dialog-overlay hidden"
+     role="dialog" aria-modal="true" aria-labelledby="customJsonDialogTitle"
+     aria-describedby="customJsonDialogDescription">
+  <div class="modal-dialog community-dialog community-dialog-wide">
+    <button type="button" class="modal-close community-dialog-close" id="closeCustomJsonModal"
+            aria-label="Fechar janela de Custom JSON">&times;</button>
+    <span class="community-dialog-icon" aria-hidden="true">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/>
+      </svg>
+    </span>
+    <span class="community-dialog-eyebrow">FERRAMENTAS DA HIVE</span>
+    <h2 id="customJsonDialogTitle" class="modal-title community-dialog-title">Enviar Custom JSON</h2>
+    <p id="customJsonDialogDescription" class="community-dialog-description">
+      Transmita uma operação personalizada para a blockchain usando sua conta Hive.
     </p>
-
-    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">CUSTOM ID</label>
-    <input type="text" id="customJsonId" class="modal-input" value="microblog_v1" placeholder="ex: microblog_v1" />
-
-    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">JSON PAYLOAD</label>
-    <textarea id="customJsonPayload" class="modal-input" rows="4" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;" placeholder='{"type": "micro_post", "content": "Hello Hive!"}'></textarea>
-
-    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-      <button class="btn-outline-small" id="cancelCustomJson">Cancelar</button>
-      <button id="submitCustomJson" class="btn-post">Transmitir</button>
+    <div class="community-dialog-form">
+      <div class="community-field">
+        <label for="customJsonId">Identificador da operação</label>
+        <input type="text" id="customJsonId" class="modal-input community-input"
+               value="microblog_v1" placeholder="ex: microblog_v1" autocomplete="off">
+      </div>
+      <div class="community-field">
+        <label for="customJsonPayload">Conteúdo JSON</label>
+        <textarea id="customJsonPayload" class="modal-input community-input community-code-input"
+                  rows="5" spellcheck="false" placeholder='{"type": "post", "content": "Olá, Hive!"}'></textarea>
+      </div>
+    </div>
+    <p class="community-dialog-note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
+      Revise o conteúdo antes de assinar. Operações publicadas na Hive são permanentes.
+    </p>
+    <div class="community-dialog-actions">
+      <button id="cancelCustomJson" type="button" class="btn-outline-small community-secondary-btn">Cancelar</button>
+      <button id="submitCustomJson" type="button" class="btn-post community-submit-btn">Transmitir operação</button>
     </div>
   </div>
 </div>
 `;
 
 export const CreateChannelModalHTML = `
-<div id="createChannelModal" class="modal-overlay hidden">
-  <div class="modal-dialog" style="max-width: 480px;">
-    <button class="modal-close" id="closeCreateChannelModal">&times;</button>
-    
-    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
-      <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(227, 19, 55, 0.1); color: #e31337; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 800;">#</div>
-      <div>
-        <h3 class="modal-title" style="margin: 0; font-size: 1.15rem;">Criar Novo Canal</h3>
-        <span style="font-size: 0.75rem; color: var(--text-faint);">Registro Descentralizado na Hive Blockchain</span>
-      </div>
-    </div>
-
-    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem; line-height: 1.4;">
-      Crie um canal público para sua comunidade ou tópico. A operação é gravada na blockchain Hive via <strong>Custom JSON</strong> (<code style="background: var(--bg-card-hover); padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.8rem;">micro.fair.channels</code>) e fica acessível permanentemente.
+<div id="createChannelModal" class="modal-overlay community-dialog-overlay hidden"
+     role="dialog" aria-modal="true" aria-labelledby="createChannelDialogTitle"
+     aria-describedby="createChannelDialogDescription">
+  <div class="modal-dialog community-dialog community-dialog-wide">
+    <button type="button" class="modal-close community-dialog-close" id="closeCreateChannelModal"
+            aria-label="Fechar criação de canal">&times;</button>
+    <span class="community-dialog-icon" aria-hidden="true">#</span>
+    <span class="community-dialog-eyebrow">COMUNIDADES · MICRO.FAIR</span>
+    <h2 id="createChannelDialogTitle" class="modal-title community-dialog-title">Criar um canal</h2>
+    <p id="createChannelDialogDescription" class="community-dialog-description">
+      Reúna pessoas em torno de um assunto. O canal será registrado na Hive.
     </p>
-
-    <div style="display: flex; flex-direction: column; gap: 1rem;">
-      <div>
-        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
-          NOME DO CANAL
-        </label>
-        <input type="text" id="newChannelName" class="modal-input" placeholder="ex: Linux & Open Source, Rust Brasil, Memes" maxlength="50" autocomplete="off" />
+    <div class="community-dialog-form">
+      <div class="community-field">
+        <label for="newChannelName">Nome do canal</label>
+        <input type="text" id="newChannelName" class="modal-input community-input"
+               placeholder="Ex.: Design & Tecnologia" maxlength="50" autocomplete="off">
       </div>
-
-      <div>
-        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
-          ID / TAG DO CANAL
-          <span style="font-weight: 400; font-size: 0.75rem; color: var(--text-faint); margin-left: 0.5rem;">(Identificador único usado nos posts)</span>
-        </label>
-        <div style="position: relative;">
-          <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: #94a3b8; font-size: 0.9rem;">#</span>
-          <input type="text" id="newChannelId" class="modal-input" style="padding-left: 1.85rem;" placeholder="linux, rust-brasil, hive.micro" maxlength="32" autocomplete="off" />
+      <div class="community-field">
+        <label for="newChannelId">Identificador do canal</label>
+        <div class="community-input-prefix-wrap">
+          <span class="community-input-prefix" aria-hidden="true">#</span>
+          <input type="text" id="newChannelId" class="modal-input community-input"
+                 placeholder="design-tecnologia" maxlength="32" autocomplete="off" spellcheck="false"
+                 aria-describedby="newChannelIdHelp">
         </div>
+        <small id="newChannelIdHelp">Identificador único usado nos posts deste canal.</small>
       </div>
-
-      <div>
-        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
-          DESCRIÇÃO DO CANAL
-        </label>
-        <textarea id="newChannelDesc" class="modal-input" rows="2" placeholder="Descreva sobre o que é este canal e o que compartilhar..." maxlength="180"></textarea>
-      </div>
-
-      <div style="background: var(--bg-card-hover); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; font-size: 0.775rem; color: var(--text-muted); line-height: 1.45;">
-        <span style="font-weight: 700; color: var(--text);">ℹ️ Como funciona:</span>
-        O Hive Keychain solicitará sua assinatura de <em>Posting Key</em> para gravar o ID e Nome na Hive. Assim que confirmado na rede, qualquer usuário poderá visualizar e interagir com este canal.
+      <div class="community-field">
+        <label for="newChannelDesc">Descrição <span class="community-field-optional">opcional</span></label>
+        <textarea id="newChannelDesc" class="modal-input community-input" rows="3"
+                  placeholder="Sobre o que sua comunidade vai conversar?" maxlength="180"></textarea>
       </div>
     </div>
-
-    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-      <button class="btn-outline-small" id="cancelCreateChannel">
-        Cancelar
-      </button>
-      <button id="confirmCreateChannel" class="btn-post">
-        <span>Criar Canal na Hive</span>
-      </button>
+    <p class="community-dialog-note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
+      A criação utiliza uma assinatura Hive Keychain e registra o canal na blockchain.
+    </p>
+    <div class="community-dialog-actions">
+      <button id="cancelCreateChannel" type="button" class="btn-outline-small community-secondary-btn">Cancelar</button>
+      <button id="confirmCreateChannel" type="button" class="btn-post community-submit-btn">Criar canal</button>
     </div>
   </div>
 </div>
 `;
-
