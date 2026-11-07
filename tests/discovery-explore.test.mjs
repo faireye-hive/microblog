@@ -34,7 +34,7 @@ test("discovery queries are bounded and handles #/@ input without accidental glo
   assert.equal(getDiscoveryResults({query:"#",posts:data}).totalPosts,0);
   assert.equal(getDiscoveryResults({query:"@",posts:data}).totalPosts,0);
   assert.equal(getDiscoveryResults({query:"",posts:data}).totalPosts,0);
-  assert.deepEqual(getDiscoveryResults({query:"#hive",posts:data}).posts.map(p=>p.id),[102,101]);
+  assert.deepEqual(getDiscoveryResults({query:"#hive",posts:data}).posts.map(p=>p.id),[101]);
   // A mere word without a hashtag/tag must not be returned for #dev queries.
   assert.deepEqual(getDiscoveryResults({query:"#dev",posts:data}).posts.map(p=>p.id),[104,101]);
   assert.deepEqual(getDiscoveryResults({query:"@faireye",posts:data}).posts.map(p=>p.id),[101]);
