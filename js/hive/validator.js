@@ -174,7 +174,7 @@ export function validateCustomJsonOperation(draft = {}) {
            !Number.isFinite(Date.parse(payload.created_at)))
           push(errors,"created_at","Provide a valid ISO timestamp in created_at.");
       }
-      const allowed=knownFields[type]||[];
+      const allowed=own(knownFields,type)?knownFields[type]:[];
       const extras=Object.keys(payload).filter(key=>!allowed.includes(key));
       if(extras.length)push(warnings,"json","Extra fields not defined in v1: "+extras.slice(0,8).join(", ")+".");
       if(errors.length===0)push(warnings,"signature",
