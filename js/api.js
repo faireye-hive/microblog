@@ -8,6 +8,9 @@ import {
       CHANNELS_CUSTOM_ID, CHANNELS_API_URL
 } from "./config.js";
 import { parseEmbeddedJson, extractTagsFromText, extractMentionsFromText, showNotification } from "./utils.js";
+import { parseChannelCustomId } from "./helpers/channel-id.js";
+import { processChannelsData } from "./helpers/channels.js";
+export { processChannelsData } from "./helpers/channels.js";
 import { 
     setAllPosts, setVoteCounts, setMutedPostIds, updateTags, renderFeed, 
     allPosts, setBlockedUsers, loggedInUser, setFollowedUsers,
@@ -123,40 +126,6 @@ const MUTES_CACHE_KEY = 'hiveAppMutesCache';
 const BLOCKS_CACHE_KEY = 'hiveAppBlocksCache'; 
 const FOLLOWS_CACHE_KEY = 'hiveAppFollowsCache'; 
 const CHANNELS_CACHE_KEY = 'hiveAppChannelsCache';
-
-// Processa os canais descobertos na Hive via Custom JSON (sem canais demonstrativos fictícios)
-export function processChannelsData(channelsData) {
-    const channelMap = new Map();
-
-    if (Array.isArray(channelsData)) {
-        // Ordena por timestamp crescente para que criações e atualizações prevaleçam
-        const sorted = [...channelsData].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
-        sorted.forEach((op) => {
-            const creator = op.required_posting_auths?.[0] || op.required_auths?.[0] || "user";
-            const json = parseEmbeddedJson(op.json);
-            if (!json) return;
-
-            // Extrai id e nome conforme o formato do Custom JSON
-            const rawId = json.id || json.channel_id || "";
-            const id = rawId.toString().toLowerCase().trim().replace(/[^a-z0-9_-]/g, "");
-            const name = (json.name || json.channel_name || id).toString().trim();
-            const description = (json.description || json.desc || `Canal #${id} registrado na Hive`).toString().trim();
-
-            if (id && name) {
-                channelMap.set(id, {
-                    id,
-                    name,
-                    description,
-                    creator,
-                    timestamp: op.timestamp || json.created_at || new Date().toISOString()
-                });
-            }
-        });
-    }
-
-    return Array.from(channelMap.values());
-} 
-
 
 // /js/api.js
 
@@ -427,7 +396,7 @@ export async function fetchData() {
 
 // Busca posts de um canal específico na Hive blockchain
 export async function fetchChannelPosts(channelId) {
-    const cleanId = (channelId || "").toLowerCase().trim();
+    const cleanId = parseChannelCustomId(channelId);
     if (!cleanId) return [];
 
     const cacheKey = `hiveAppChannelPosts_${cleanId}`;
@@ -442,7 +411,7 @@ export async function fetchChannelPosts(channelId) {
     }
 
     try {
-        const url = `https://rpc.mahdiyari.info/hafsql/operations/custom_json/${cleanId}?limit=1000`;
+        const url = `https://rpc.mahdiyari.info/hafsql/operations/custom_json/${encodeURIComponent(cleanId)}?limit=1000`;
         const res = await fetch(url);
         const data = await res.json();
         const rows = Array.isArray(data) ? data : (data.rows || []);
@@ -478,7 +447,11 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
     // Exemplo: se estiver no canal 'fairmemes', o custom_id do blockchain Hive será 'fairmemes'.
     // Se for o canal principal, usa APP_ID ('micro.fair').
     const targetChannel = channelOverride !== null ? channelOverride : activeChannel;
-    const customId = (targetChannel && targetChannel !== APP_ID) ? targetChannel : APP_ID;
+    const customId = parseChannelCustomId(targetChannel || APP_ID);
+    if (!customId) {
+        showNotification("⚠️ Identificador de canal inválido. Nenhuma operação foi enviada.", false);
+        return;
+    }
 
     const tags = extractTagsFromText(content);
     const mentions = extractMentionsFromText(content);
@@ -711,9 +684,9 @@ export function sendCreateChannel(channelId, channelName, description = "") {
         return;
     }
 
-    const cleanId = (channelId || "").toLowerCase().trim().replace(/[^a-z0-9_-]/g, "");
+    const cleanId = parseChannelCustomId(channelId);
     if (!cleanId) {
-        showNotification("⚠️ O ID do canal é obrigatório (apenas letras minúsculas, números e hífen)!", false);
+        showNotification("⚠️ ID inválido: use até 32 caracteres (letras, números, ponto, hífen ou _).", false);
         return;
     }
 

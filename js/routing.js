@@ -18,7 +18,8 @@ import {
   channelPostsMap
 } from "./state.js";
 import { fetchData, fetchChannelPosts } from "./api.js";
-import { parseEmbeddedJson, showNotification } from "./utils.js";
+import { parseEmbeddedJson, showNotification, escapeHtml } from "./utils.js";
+import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { buildPostCard, buildRepliesRecursive, buildProfilePage, buildChannelsPage } from "./render.js";
 import { rankPostsByVotes, rankPostsByComments } from "./helpers/ranking.js";
 import { ADMIN } from "./config.js";
@@ -158,12 +159,15 @@ export function filterByTag(tag, pushHistory = true) {
 
 // Filtra o feed estritamente pelos posts de um canal específico (isolado por Custom JSON ID)
 export async function filterByChannel(channelId, pushHistory = false) {
-  if (pushHistory) {
-    window.location.hash = `/channel/${channelId}`;
+  const cleanId = parseChannelCustomId(channelId);
+  if (!cleanId) {
+    showNotification("Canal inválido: informe um ID Custom JSON válido.", false);
     return;
   }
-
-  const cleanId = channelId.toLowerCase().trim();
+  if (pushHistory) {
+    window.location.hash = `#/channel/${encodeURIComponent(cleanId)}`;
+    return;
+  }
   setActiveChannel(cleanId);
 
   const channelObj = channels.find(c => c.id === cleanId) || {
@@ -180,7 +184,7 @@ export async function filterByChannel(channelId, pushHistory = false) {
     pageTitle.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
         <span style="color: #e31337; font-weight: 800; font-size: 1.25rem;">#${cleanId}</span>
-        <span style="font-weight: 600; font-size: 1.05rem; color: var(--text);">${channelObj.name || cleanId}</span>
+        <span style="font-weight: 600; font-size: 1.05rem; color: var(--text);">${escapeHtml(channelObj.name || cleanId)}</span>
         <span style="font-size: 0.72rem; font-weight: 700; background: rgba(227, 19, 55, 0.08); color: #e31337; padding: 2px 8px; border-radius: 6px;">
           Custom JSON: ${cleanId}
         </span>
@@ -295,6 +299,12 @@ export function setupChannelsPageEvents() {
       }
   };
 
+  document.getElementById("btnOpenChannelById")?.addEventListener("click", () => {
+    const query = document.getElementById("channelsDirectorySearch")?.value?.trim() || "";
+    const channelId = parseChannelCustomId(query.replace(/^#/, ""));
+    if (channelId) window.location.hash = `#/channel/${encodeURIComponent(channelId)}`;
+  });
+
   document.getElementById("btnCreateChannelFromPage")?.addEventListener("click", () => openModal());
   document.getElementById("btnCreateChannelNotFound")?.addEventListener("click", () => {
     const searchVal = document.getElementById("channelsDirectorySearch")?.value || "";
@@ -352,8 +362,8 @@ export async function handleRoute() {
   const path = window.location.hash.substring(1);
   
   // CORREÇÃO: Adicionado o ponto (.) nas expressões regulares para capturar corretamente as rotas de canais e tags
-  const tagMatch = path.match(/^\/(?:hashtag|tag)\/([a-z0-9-_\.]+)$/i);
-  const channelMatch = path.match(/^\/channel\/([a-z0-9-_\.]+)$/i);
+  const tagMatch = path.match(/^\/(?:hashtag|tag)\/([a-z0-9._-]+)$/i);
+  const channelMatch = path.match(/^\/channel\/([a-z0-9._-]+)$/i);
   const postMatch = path.match(/^\/thread\/(\d+)$/i);
 
   const feedHeaderBar = document.getElementById("feedHeaderBar");

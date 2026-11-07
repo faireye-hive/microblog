@@ -532,7 +532,7 @@ export const CreateChannelModalHTML = `
         </label>
         <div style="position: relative;">
           <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: #94a3b8; font-size: 0.9rem;">#</span>
-          <input type="text" id="newChannelId" class="modal-input" style="padding-left: 1.85rem;" placeholder="linux, rust-brasil, memes" maxlength="28" autocomplete="off" />
+          <input type="text" id="newChannelId" class="modal-input" style="padding-left: 1.85rem;" placeholder="linux, rust-brasil, hive.micro" maxlength="32" autocomplete="off" />
         </div>
       </div>
 
