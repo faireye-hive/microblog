@@ -10,6 +10,7 @@ O frontend continua **Vanilla JavaScript (ES Modules)**, compatível com GitHub 
 | Assinatura Hive | `js/hive/keychain.js` | Envia operações via Posting Key/Keychain, sem UI |
 | Consulta HAFSQL | `js/data/hafsql.js` | Monta URLs, aplica cursor, busca JSON e normaliza respostas |
 | Cache | `js/data/cache-keys.js` | Mantém nomes históricos do `localStorage` |
+| Sincronização | `js/data/sync.js` | Busca paginada, cache auxiliar incremental e dados por usuário |
 | Identidade de canais | `js/helpers/channel-id.js` | Validação sem transformar `hive.micro` em `hivemicro` |
 | Registro de canais | `js/helpers/channels.js` | Converte operações do registro em objetos de canal |
 | Orquestração antiga | `js/api.js` | Ainda coordena sync, cache e efeitos de UI; migração futura |
@@ -33,6 +34,7 @@ js/
   data/
     hafsql.js        # transporte HAFSQL
     cache-keys.js    # nomes de cache
+    sync.js          # HAFSQL sync incremental e paginação
   helpers/
     channel-id.js
     channels.js
@@ -54,9 +56,9 @@ tests/
 4. **Canais com ponto são distintos:** `hive.micro` e `hivemicro` nunca devem ser reunidos automaticamente.
 5. **Isolar mudanças:** migrar uma feature por PR com testes, sem reescrever várias páginas de uma vez.
 
-## Fases posteriores (não incluídas neste PR)
+## Fases posteriores (após esta etapa)
 
-- **Etapa 2 — Cache e sincronização:** extrair `syncAndGetAuxData`, `fetchDataInLoopGeneric` e `fetchData` do orquestrador; paginação robusta, deduplicação e IndexedDB.
+- **Etapa 2 concluída parcialmente — Cache e sincronização:** extraídos `syncAndGetAuxData` e `fetchDataInLoopGeneric` de `js/api.js` para `js/data/sync.js`. `fetchData` ainda permanece no orquestrador, e a deduplicação/IndexedDB são alterações futuras.
 - **Etapa 3 — Features:** separar `features/channels`, `features/feed`, `features/threads` e `features/profile`, com adaptadores de compatibilidade.
 - **Etapa 4 — UI:** dividir templates e estilos em componentes, sem alterar os payloads Hive.
 - **Etapa 5 — Segurança e performance:** CSP, sanitização/DOM seguro, índices de replies e virtualização do feed, com testes específicos.
