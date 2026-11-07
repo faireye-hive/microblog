@@ -68,7 +68,7 @@ test("right sidebar preserves active widgets but removes redundant cards",()=>{
   for(const id of ["btnCreateChannelTrigger","sidebarChannelsList","trendingList","btnRefreshTags"]){
     assert.ok(RightSidebarHTML.includes('id="'+id+'"'),id);
   }
-  assert.match(RightSidebarHTML,/>Em alta</);
+  assert.match(RightSidebarHTML,/>Trending</);
   assert.doesNotMatch(RightSidebarHTML,/quick-actions-grid/);
   assert.doesNotMatch(RightSidebarHTML,/create-channel-box/);
   assert.match(app,/btnCreateChannelTrigger/);
@@ -97,7 +97,7 @@ test("first line of a multi-line post is not repeated as body text",async()=>{
   const markup=buildPostCard(post,[post]).innerHTML;
   assert.equal((markup.match(/Simple title/g)||[]).length,1);
   assert.match(markup,/<h4 class="post-headline">Simple title<\/h4>/);
-  assert.match(markup,/Texto do post com informações adicionais/);
+  assert.match(markup,/The post body with further details/);
 });
 
 test("design changes do not add inline JavaScript or weaken CSP",()=>{
