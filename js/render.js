@@ -504,7 +504,7 @@ export function buildChannelsPage(searchFilter = "") {
           <span class="channel-tile-icon" aria-hidden="true">${escapeHtml(icon)}</span>
           <button type="button" class="btn-join channel-follow ${isJoined ? "joined" : ""}"
                   data-channel="${escapeAttr(channel.id)}">
-            ${isJoined ? "Participando" : "Participar"}
+            ${isJoined ? "Joined" : "Join"}
           </button>
         </div>
         <div class="channel-tile-main">
