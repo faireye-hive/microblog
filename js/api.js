@@ -16,8 +16,12 @@ import {
     getHafsqlRows,
 } from "./data/hafsql.js";
 import {
+    PAGE_SIZE, fetchPaginatedOperations,
+    syncAuxiliaryData, syncUserTargetOps
+} from "./data/sync.js";
+import {
     POSTS_CACHE_KEY, VOTES_CACHE_KEY, MUTES_CACHE_KEY, BLOCKS_CACHE_KEY,
-    FOLLOWS_CACHE_KEY, CHANNELS_CACHE_KEY, getUserCacheKey,
+    FOLLOWS_CACHE_KEY, CHANNELS_CACHE_KEY,
     getChannelPostsCacheKey
 } from "./data/cache-keys.js";
 import {
@@ -83,24 +87,6 @@ function processVoteData(voteData) {
     return finalCounts;
 }
 
-// NOVO: Função para abstrair a lógica de busca condicional
-async function conditionalFetch(urlTemplate, customId, defaultValue = []) {
-    if (!loggedInUser) {
-        return defaultValue;
-    }
-    try {
-        // Substitui o placeholder no template se necessário
-        const url = urlTemplate
-            .replace(BLOCK_USER_CUSTOM_ID, `${APP_ID}.${loggedInUser}.block`)
-            .replace('{user}', loggedInUser); 
-            
-        return fetchHafsqlPayload(url);
-    } catch (e) {
-        console.error(`Erro ao buscar dados para ${customId}:`, e);
-        return defaultValue;
-    }
-}
-
 function processUserTargetOps(opData) {
     const finalSet = new Set();
     
@@ -129,137 +115,10 @@ function processUserTargetOps(opData) {
     return finalSet;
 }
 
-const API_LIMIT = 1000;
-const MAX_OPS_TO_FETCH = 20000; // Keep the existing pagination cap.
-
-// /js/api.js
-
-async function syncAndGetTargetOps(baseCacheKey, urlTemplate, customId) {
-    // É crucial checar o login aqui
-    if (!loggedInUser) {
-        return []; 
-    }
-    
-    // 1. Constrói a CHAVE DE CACHE EXCLUSIVA PARA ESTE USUÁRIO
-    const userSpecificCacheKey = getUserCacheKey(baseCacheKey, loggedInUser);
-
-    // 2. Constrói a URL para a API
-    const finalUrl = urlTemplate
-        .replace('{user}', loggedInUser); 
-        
-    // 3. Chama a lógica de cache e sincronização com a chave específica
-    try {
-        // Passamos a chave específica do usuário
-        const data = await syncAndGetAuxData(userSpecificCacheKey, finalUrl); 
-        return data;
-    } catch (e) {
-        console.error(`Erro ao sincronizar target ops para ${customId}:`, e);
-        return [];
-    }
-}
-
-/**
- * Carrega dados auxiliares do cache, sincroniza apenas os novos (limit=-1000)
- * e retorna o conjunto consolidado.
- * @param {string} cacheKey - Chave de LocalStorage (VOTES_CACHE_KEY, etc.)
- * @param {string} apiUrl - URL da API (VOTE_API_URL, ADMIN_POST_MUTE_API_URL, etc.)
- * @returns {Promise<Array<Object>>} - Dados auxiliares consolidados
- */
-async function syncAndGetAuxData(cacheKey, apiUrl) {
-    let cachedData = [];
-    let startIdForSync = null;
-
-    // 1. Tenta carregar do cache
-    try {
-        const cachedJson = localStorage.getItem(cacheKey);
-        if (cachedJson) {
-            cachedData = JSON.parse(cachedJson);
-            // O registro mais novo está no índice 0
-            if (cachedData.length > 0) {
-                startIdForSync = cachedData[0].id;
-            }
-        }
-    } catch (e) {
-        console.error(`Erro ao carregar cache ${cacheKey}:`, e);
-    }
-
-    let allUpdatedData = [...cachedData];
-    let syncApiUrl = apiUrl; 
-
-    try {
-        // 2. Constrói a URL para Sincronização
-        if (startIdForSync) {
-            // Se o cache existir, faz a busca reversa (sync)
-            syncApiUrl = withHafsqlCursor(apiUrl, { limit: -1000, start: startIdForSync });
-        } 
-        // Se startIdForSync for null (primeira carga), syncApiUrl usa a URL padrão (limit=1000)
-
-        const syncDataRaw = await fetchHafsqlPayload(syncApiUrl);
-        const newRecords = getHafsqlRows(syncDataRaw);
-
-        // 3. Consolidação
-        if (newRecords.length > 0) {
-            // Concatena os novos (mais recentes) na frente do cache antigo
-            allUpdatedData = newRecords.concat(cachedData);
-            
-            // Limita o tamanho total do cache (ex: 20000 operações de voto/mute)
-            allUpdatedData = allUpdatedData.slice(0, 20000); 
-            
-            // Salva o novo cache
-            localStorage.setItem(cacheKey, JSON.stringify(allUpdatedData));
-        } else if (!startIdForSync) {
-             // Se não havia cache e não vieram dados, salvamos um array vazio para o futuro
-             localStorage.setItem(cacheKey, JSON.stringify([]));
-        }
-
-    } catch (e) {
-        console.error(`Erro ao sincronizar dados auxiliares para ${cacheKey}:`, e);
-        // Em caso de falha, retorna os dados cacheados (se existirem)
-    }
-
-    return allUpdatedData;
-}
-/**
- * Helper genérico para buscar TODOS os registros de um custom_json em loop.
- * @param {string} baseUrl - URL da API base (ex: VOTE_API_URL).
- */
-async function fetchDataInLoopGeneric(baseUrl) {
-    let hasMore = true;
-    let startId = null;
-    const allFetchedData = [];
-    
-    do {
-        let apiUrl = baseUrl;
-        if (startId) {
-            // A URL base já contém o limite (ex: ?limit=1000)
-            apiUrl = withHafsqlCursor(baseUrl, { limit: API_LIMIT, start: startId });
-        }
-        
-        const data = await fetchHafsqlPayload(apiUrl);
-        const newRows = getHafsqlRows(data);
-        
-        const currentBatchCount = newRows.length;
-        
-        if (currentBatchCount > 0) {
-            allFetchedData.push(...newRows);
-            // Usa o 'id' do último registro (mais antigo) para a próxima paginação
-            startId = newRows[newRows.length - 1].id; 
-        }
-
-        hasMore = currentBatchCount === API_LIMIT && allFetchedData.length < MAX_OPS_TO_FETCH;
-        
-        if (hasMore) await new Promise(resolve => setTimeout(resolve, 50)); 
-        
-    } while (hasMore);
-    
-    return allFetchedData;
-}
-
-
 // A função fetchDataInLoop é agora uma versão especializada da genérica para posts
 async function fetchDataInLoop() {
     // Usamos a função genérica e filtramos apenas os custom_id corretos
-    const allRawPosts = await fetchDataInLoopGeneric(API_URL);
+    const allRawPosts = await fetchPaginatedOperations(API_URL);
     return allRawPosts.filter((x) => x.custom_id === APP_ID);
 }
 /**
@@ -311,14 +170,14 @@ export async function fetchData() {
     }
 
     // 2b. Sincronização de Dados Auxiliares (USANDO O NOVO HELPER)
-    const voteResPromise = syncAndGetAuxData(VOTES_CACHE_KEY, VOTE_API_URL);
-    const muteResPromise = syncAndGetAuxData(MUTES_CACHE_KEY, ADMIN_POST_MUTE_API_URL);
-    const channelResPromise = syncAndGetAuxData(CHANNELS_CACHE_KEY, CHANNELS_API_URL);
+    const voteResPromise = syncAuxiliaryData(VOTES_CACHE_KEY, VOTE_API_URL);
+    const muteResPromise = syncAuxiliaryData(MUTES_CACHE_KEY, ADMIN_POST_MUTE_API_URL);
+    const channelResPromise = syncAuxiliaryData(CHANNELS_CACHE_KEY, CHANNELS_API_URL);
     
     // Blocos e Follows (Podem ser simples fetch ou o novo helper, dependendo do volume)
     // Usaremos o novo helper para consistência (embora o conditionalFetch original pudesse ser mantido se fosse mais leve)
-    const blockResPromise = syncAndGetTargetOps(BLOCKS_CACHE_KEY, USER_BLOCK_API_URL, BLOCK_USER_CUSTOM_ID);
-    const followResPromise = syncAndGetTargetOps(FOLLOWS_CACHE_KEY, USER_FOLLOW_API_URL, FOLLOW_USER_CUSTOM_ID);
+    const blockResPromise = syncUserTargetOps(BLOCKS_CACHE_KEY, USER_BLOCK_API_URL, loggedInUser);
+    const followResPromise = syncUserTargetOps(FOLLOWS_CACHE_KEY, USER_FOLLOW_API_URL, loggedInUser);
     
     
     // 3. AGUARDA E PROCESSA TUDO
@@ -408,7 +267,7 @@ export async function fetchChannelPosts(channelId) {
     }
 
     try {
-        const url = buildHafsqlCustomJsonUrl(cleanId, { limit: API_LIMIT });
+        const url = buildHafsqlCustomJsonUrl(cleanId, { limit: PAGE_SIZE });
         const data = await fetchHafsqlPayload(url);
         const rows = getHafsqlRows(data);
 
