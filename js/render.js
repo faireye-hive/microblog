@@ -165,15 +165,15 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   el.className = `post-card card ${isMuted ? 'opacity-70' : ''}`; 
   el.setAttribute('data-id', p.id);
 
-  // Formata o texto principal
-  const mainContentHtml = linkifyText(escapeHtml(text)).replace(/\n/g, "<br>");
-
-  // Título em destaque se existir markdown title ou texto longo com quebra
-  let headlineHtml = '';
-  const lines = text.split('\n').filter(l => l.trim().length > 0);
+  // A short first line is presented as a headline only once.
+  let headlineHtml = "";
+  let bodyText = text;
+  const lines = text.split("\n").filter(line => line.trim().length > 0);
   if (lines.length > 1 && lines[0].length < 80) {
     headlineHtml = `<h4 class="post-headline">${escapeHtml(lines[0])}</h4>`;
+    bodyText = text.slice(text.indexOf(lines[0]) + lines[0].length).trimStart();
   }
+  const mainContentHtml = linkifyText(escapeHtml(bodyText)).replace(/\n/g, "<br>");
 
   // Link Preview Box se existir URL
   let previewBoxHtml = '';
@@ -235,13 +235,6 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
       <div class="post-card-header post-meta">
         <div class="post-author-row">
           <span class="post-author-name author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
-          <span class="hive-user-badge" title="Hive verified account">
-            <svg width="13" height="13" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 2L3 9.5V22.5L16 30L29 22.5V9.5L16 2Z" fill="#0f172a"/>
-              <path d="M11 10L8 16L11 22H14L11 16L14 10H11Z" fill="#e31337"/>
-              <path d="M18 10L15 16L18 22H21L18 16L21 10H18Z" fill="#e31337"/>
-            </svg>
-          </span>
           <span class="post-timestamp">• ${fmtDate(p.timestamp)}</span>
           ${isMuted ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 700; margin-left: 0.25rem;">(Mutado)</span>' : ''}
           ${buildUserPopover(author, isBlocked)}
