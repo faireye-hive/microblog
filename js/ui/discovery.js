@@ -177,7 +177,7 @@ export function buildSearchSuggestions(results) {
   }
   for(const entry of r.topics.slice(0,2)){
     const tag=safeTag(entry.tag);
-    if(tag)push("#"+tag,pathForTag(tag),"#","${entry.count} related posts".replace("\\${entry.count}",String(entry.count)));
+    if(tag)push("#"+tag,pathForTag(tag),"#",`${entry.count} related posts`);
   }
   for(const entry of r.people.slice(0,2)){
     const user=safeHiveUsername(entry.user);
