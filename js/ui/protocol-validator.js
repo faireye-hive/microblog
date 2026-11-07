@@ -51,7 +51,7 @@ export function buildProtocolValidatorSection() {
   </section>
 
   <details class="protocol-v2-workbench">
-    <summary>HiveLine v2 identity &amp; future namespace experiments <span class="protocol-draft-badge">PROPOSAL ONLY</span></summary>
+    <summary>HiveLine v2 identity &amp; future namespace experiments <span class="protocol-draft-badge">ACTIVE · V2</span></summary>
     <div class="protocol-v2-body">
       <p>Enter a possible new application ID to preview clearer namespaces.
          HiveLine v2 IDs are now active. Other names are proposals; no further blockchain
@@ -73,7 +73,7 @@ Choose a name to preview.</pre>
 
 function formatValidation(report) {
   const title=report.valid
-    ? report.recognized?"✓ Registered HiveLine v1 operation":"⚠ Unregistered custom_json operation"
+    ? report.recognized?"✓ Registered HiveLine v2 operation":"⚠ Unregistered custom_json operation"
     : "✕ Operation requires corrections";
   const lines=[title];
   if(report.actionKey)lines.push("Action: "+report.actionKey);
