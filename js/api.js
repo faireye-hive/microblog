@@ -59,6 +59,7 @@ function processVoteData(voteData) {
         const author = vote.required_posting_auths?.[0];
         const timestamp = new Date(vote.timestamp).getTime();
         const voteJson = parseEmbeddedJson(vote.json);
+        if (vote.custom_id !== VOTE_CUSTOM_ID || voteJson?.app !== APP_ID || voteJson?.v !== 2) return;
         const postId = voteJson?.content_id;
         const type = voteJson?.type;
 
