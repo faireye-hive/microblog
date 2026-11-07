@@ -250,7 +250,7 @@ export async function filterByChannel(channelId, pushHistory = false) {
           <p style="font-size: 0.88rem; max-width: 480px; margin: 0 auto 1.25rem auto; line-height: 1.5; color: var(--text-muted);">
             Todas as publicações enviadas aqui são registradas na Hive com o Custom JSON ID <code>${cleanId}</code>, mantendo o conteúdo isolado do canal principal.
           </p>
-          <button class="btn-post" onclick="document.getElementById('newPostContent')?.focus(); document.getElementById('newPostContent')?.scrollIntoView({behavior:'smooth'});" style="display: inline-flex;">
+          <button id="btnFocusChannelComposer" class="btn-post" style="display: inline-flex;">
             Publicar primeiro post em #${cleanId}
           </button>
         </div>
@@ -258,6 +258,11 @@ export async function filterByChannel(channelId, pushHistory = false) {
     } else {
       renderFeed(finalPosts);
     }
+    document.getElementById("btnFocusChannelComposer")?.addEventListener("click", () => {
+      const textarea = document.getElementById("newPostContent");
+      textarea?.focus();
+      textarea?.scrollIntoView({ behavior: "smooth" });
+    });
   }
 
   updateNavSelection("channels");
