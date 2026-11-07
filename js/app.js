@@ -5,6 +5,8 @@ import {
   parseEmbeddedJson,
 } from "./utils.js";
 import { buildRepliesRecursive } from "./render.js";
+import { setupComposerStudio } from "./ui/composer-controller.js";
+import { POST_CHARACTER_LIMIT, cleanMediaText, renderSafePostText, wrapTextSelection } from "./ui/composer-tools.js";
 import { getDiscoveryResults, normalizeDiscoveryQuery, discoveryPostPool } from "./helpers/discovery.js";
 import { buildSearchSuggestions } from "./ui/discovery.js";
 import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
@@ -278,8 +280,16 @@ function setupFeedDelegation() {
           <span class="reply-compose-target">Write a reply</span>
           <button type="button" class="reply-compose-close cancel-reply" aria-label="Close reply editor">&times;</button>
         </div>
+        <div class="reply-format-toolbar" role="toolbar" aria-label="Format reply">
+          <button type="button" class="reply-format-btn" data-reply-format="bold"
+                  aria-label="Bold selected reply text" title="Bold"><strong>B</strong></button>
+          <button type="button" class="reply-format-btn" data-reply-format="italic"
+                  aria-label="Italic selected reply text" title="Italic"><em>I</em></button>
+          <button type="button" class="reply-preview-toggle" aria-expanded="false">Preview</button>
+        </div>
         <textarea class="reply-input-textarea" rows="3" maxlength="2048"
                   aria-label="Write a reply" placeholder="Share your thoughts on Hive..."></textarea>
+        <div class="reply-preview-content hidden" aria-label="Reply preview"></div>
         <div class="reply-compose-bottom">
           <span class="reply-compose-count" aria-live="off">0 / 2048</span>
           <div class="reply-compose-actions">
@@ -295,9 +305,40 @@ function setupFeedDelegation() {
       if (author) replyTarget.textContent = `Replying to ${author}`;
       const textarea = replyBox.querySelector(".reply-input-textarea");
       const count = replyBox.querySelector(".reply-compose-count");
-      textarea.addEventListener("input", () => {
-        count.textContent = `${textarea.value.length} / 2048`;
+      const replyPreview = replyBox.querySelector(".reply-preview-content");
+      const replyPreviewToggle = replyBox.querySelector(".reply-preview-toggle");
+      const replySendBtn = replyBox.querySelector(".send-reply");
+      const updateReply = () => {
+        count.textContent = `${textarea.value.length} / ${POST_CHARACTER_LIMIT}`;
+        replySendBtn.disabled = !textarea.value.trim() || textarea.value.length > POST_CHARACTER_LIMIT;
+        if (!replyPreview.classList.contains("hidden")) {
+          replyPreview.innerHTML = renderSafePostText(cleanMediaText(textarea.value)) ||
+            '<span class="reply-preview-empty">Your reply will appear here.</span>';
+        }
+      };
+      textarea.addEventListener("input", updateReply);
+      replyBox.querySelectorAll("[data-reply-format]").forEach(button => {
+        button.addEventListener("click", () => {
+          const updated = wrapTextSelection(textarea.value, textarea.selectionStart,
+            textarea.selectionEnd, button.dataset.replyFormat);
+          if (updated.text.length > POST_CHARACTER_LIMIT) {
+            showNotification("The reply would exceed 2,048 characters.", false);
+            return;
+          }
+          textarea.value = updated.text;
+          textarea.focus();
+          textarea.setSelectionRange(updated.start, updated.end);
+          updateReply();
+        });
       });
+      replyPreviewToggle.addEventListener("click", () => {
+        const opening = replyPreview.classList.contains("hidden");
+        replyPreview.classList.toggle("hidden", !opening);
+        replyPreviewToggle.setAttribute("aria-expanded", String(opening));
+        replyPreviewToggle.textContent = opening ? "Hide preview" : "Preview";
+        updateReply();
+      });
+      updateReply();
       const close = () => {
         replyBox.remove();
         replyBtn.setAttribute("aria-expanded", "false");
@@ -315,10 +356,11 @@ function setupFeedDelegation() {
         }
       });
       replyBox.querySelectorAll(".cancel-reply").forEach(button => button.addEventListener("click", close));
-      replyBox.querySelector(".send-reply").addEventListener("click", () => {
+      let replySubmitting = false;
+      replySendBtn.addEventListener("click", () => {
         const text = textarea.value.trim();
-        if (!text) {
-          showNotification("Write a reply before posting.", false);
+        if (!text || text.length > POST_CHARACTER_LIMIT || replySubmitting) {
+          if (!text) showNotification("Write a reply before posting.", false);
           textarea.focus();
           return;
         }
@@ -326,7 +368,12 @@ function setupFeedDelegation() {
         const targetPost = pool.find(post => String(post.id) === String(id)) ||
           allPosts.find(post => String(post.id) === String(id));
         const postChannel = targetPost?.custom_id || activeChannel;
-        sendPost(text, /^\d+$/.test(String(id)) ? Number(id) : id, postChannel);
+        replySubmitting = true;
+        replySendBtn.disabled = true;
+        const done = () => {replySubmitting = false;updateReply();};
+        const started = sendPost(text, /^\d+$/.test(String(id)) ? Number(id) : id,
+          postChannel, {onSuccess: () => {done();close();}, onFailure: done});
+        if (started === false) done();
       });
       textarea.focus();
       return;
@@ -514,71 +561,19 @@ function setupGlobalInteractions() {
 }
 
 function setupComposerControls() {
-  const btnPost = document.getElementById("btnPost");
-  const textarea = document.getElementById("newPostContent");
-  const charCount = document.getElementById("charCount");
-
-  if (textarea) {
-    textarea.addEventListener("input", () => {
-      const len = textarea.value.length;
-      if (charCount) charCount.textContent = `${len} / 2048`;
-    });
-  }
-
-  if (btnPost) {
-    btnPost.addEventListener("click", () => {
-      const text = textarea ? textarea.value.trim() : "";
-      if (!text) return showNotification("⚠️ Write something before posting!", false);
-      sendPost(text);
-    });
-  }
-
-  const btnExitChannel = document.getElementById("btnExitChannelComposer");
-  if (btnExitChannel) {
-    btnExitChannel.addEventListener("click", () => {
-      window.location.hash = "#/";
-    });
-  }
-
-  // Tool pills do Composer (Text, Image, Link, Video, File, Custom JSON)
-  document.querySelectorAll(".composer-tools .tool-pill").forEach(pill => {
-    pill.addEventListener("click", () => {
-      const mode = pill.dataset.mode;
-      // Advanced actions remain available without keeping the menu open.
-      const advancedMenu = pill.closest(".composer-extra");
-      if (advancedMenu) advancedMenu.open = false;
-      document.querySelectorAll(".composer-tools .tool-pill").forEach(p => p.classList.remove("active"));
-      pill.classList.add("active");
-
-      if (mode === "image") {
-        const url = prompt("Enter an image URL:");
-        if (url && textarea) {
-          textarea.value += `\n![image](${url})\n`;
-          textarea.focus();
-        }
-      } else if (mode === "link") {
-        const url = prompt("Enter a link URL:");
-        if (url && textarea) {
-          textarea.value += `\n[link](${url})\n`;
-          textarea.focus();
-        }
-      } else if (mode === "video") {
-        const url = prompt("Enter a video URL (YouTube/3Speak):");
-        if (url && textarea) {
-          textarea.value += `\n${url}\n`;
-          textarea.focus();
-        }
-      } else if (mode === "file") {
-        const url = prompt("Enter an attachment URL:");
-        if (url && textarea) {
-          textarea.value += `\n[file](${url})\n`;
-          textarea.focus();
-        }
-      } else if (mode === "json") {
-        document.getElementById("customJsonModal")?.classList.remove("hidden");
-        document.getElementById("customJsonId")?.focus();
-      }
-    });
+  // All toolbar and preview interactions remain local until Hive Keychain signs.
+  setupComposerStudio({
+    onPost: (text, callbacks) => sendPost(text, null, null, callbacks),
+    notify: showNotification,
+    getAuthor: () => loggedInUser,
+    getChannel: () => activeChannel,
+    onCustomJson: () => {
+      document.getElementById("customJsonModal")?.classList.remove("hidden");
+      document.getElementById("customJsonId")?.focus();
+    }
+  });
+  document.getElementById("btnExitChannelComposer")?.addEventListener("click", () => {
+    window.location.hash = "#/";
   });
 }
 
