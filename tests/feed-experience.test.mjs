@@ -22,8 +22,8 @@ const post=(id,author,content,replyTo=null)=>({
   id,
   required_posting_auths:[author],
   timestamp:"2026-11-07T12:00:00Z",
-  custom_id:"micro.fair",
-  json:JSON.stringify({app:"micro.fair",v:1,type:replyTo?"reply":"post",content,
+  custom_id:"hiveline.posts",
+  json:JSON.stringify({app:"hiveline",v:2,type:replyTo?"reply":"post",channel:"hiveline.posts",content,
     ...(replyTo?{reply_to:replyTo}:{})})
 });
 
