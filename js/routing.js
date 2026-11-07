@@ -20,6 +20,7 @@ import {
 import { fetchData, fetchChannelPosts } from "./api.js";
 import { parseEmbeddedJson, showNotification, escapeHtml } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
+import { getPostById } from "./data/post-index.js";
 import { buildPostCard, buildRepliesRecursive, buildProfilePage, buildChannelsPage } from "./render.js";
 import { rankPostsByVotes, rankPostsByComments } from "./helpers/ranking.js";
 import { ADMIN } from "./config.js";
@@ -65,15 +66,15 @@ export function updateNavSelection(newPage) {
 
 export function showSinglePost(postId) {
   let pool = allPosts;
-  let post = allPosts.find((p) => p.id == postId);
+  let post = getPostById(allPosts, postId);
   if (!post && activeChannel) {
     const chPosts = getChannelPosts(activeChannel);
-    post = chPosts.find((p) => p.id == postId);
+    post = getPostById(chPosts, postId);
     if (post) pool = chPosts;
   }
   if (!post) {
     for (const [, pList] of channelPostsMap.entries()) {
-      const found = pList.find(p => p.id == postId);
+      const found = getPostById(pList, postId);
       if (found) {
         post = found;
         pool = pList;
