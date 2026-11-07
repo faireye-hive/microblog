@@ -31,6 +31,8 @@ import { buildExploreOverview, buildSearchOverview } from "./ui/discovery.js";
 import { safeHiveUsername } from "./security/safe-values.js";
 import { fetchPublicHiveAccount } from "./hive/public-profile.js";
 import { buildPublicProfilePage, collectPublicProfilePosts } from "./ui/public-profile.js";
+import { buildProtocolReferencePage, setupProtocolReferenceEvents } from "./ui/protocol-reference.js";
+import { getHiveNamespace } from "./hive/registry.js";
 
 export let currentPage = "feed";
 let publicProfileRenderVersion = 0;
@@ -63,13 +65,15 @@ export function updateNavSelection(newPage) {
     document.getElementById("leftNavMessages")?.classList.add("active");
   } else if (newPage === "profile") {
     document.getElementById("leftNavProfile")?.classList.add("active");
+  } else if (newPage === "protocol") {
+    document.getElementById("leftNavProtocol")?.classList.add("active");
   } else if (newPage === "custom-json") {
     document.getElementById("leftNavCustomJson")?.classList.add("active");
   }
 
   // Retain secondary routes, but keep the sidebar uncluttered by default.
   const moreMenu = document.getElementById("leftNavMoreMenu");
-  if (moreMenu && ["custom-json", "notifications", "messages"].includes(newPage)) {
+  if (moreMenu && ["protocol", "custom-json", "notifications", "messages"].includes(newPage)) {
     moreMenu.open = true;
   }
 
@@ -417,7 +421,10 @@ export function showPublicUserProfile(rawUser, tab = "posts") {
 
 // Lógica principal de roteamento
 export async function handleRoute() {
-  if (allPosts.length === 0 && !hasFinishedFeedSync()) {
+  const path = window.location.hash.substring(1);
+  const protocolRoute = path === "/protocol" || path.startsWith("/protocol?");
+  // The protocol reference is static documentation and must work offline.
+  if (!protocolRoute && allPosts.length === 0 && !hasFinishedFeedSync()) {
     try {
       await fetchData();
     } catch (e) {
@@ -425,7 +432,6 @@ export async function handleRoute() {
     }
   }
 
-  const path = window.location.hash.substring(1);
   const searchRoute = path.match(/^\/search(?:\?(.*))?$/i);
   
   // CORREÇÃO: Adicionado o ponto (.) nas expressões regulares para capturar corretamente as rotas de canais e tags
@@ -469,10 +475,10 @@ export async function handleRoute() {
   }
 
   // Configuração da UI de visualização
-  const isSpecialView = ["profile", "custom-json", "notifications", "messages", "channels", "explore", "trending", "active", "search"].includes(newPage);
+  const isSpecialView = ["profile", "protocol", "custom-json", "notifications", "messages", "channels", "explore", "trending", "active", "search"].includes(newPage);
   
   if (feedHeaderBar) {
-    if (["feed", "profile", "channels", "explore", "trending", "active", "search"].includes(newPage)) {
+    if (["feed", "profile", "protocol", "channels", "explore", "trending", "active", "search"].includes(newPage)) {
       // Profile and directory already have their own clear page header.
       feedHeaderBar.classList.add("hidden");
     } else {
@@ -496,7 +502,10 @@ export async function handleRoute() {
 
   const feed = document.getElementById("feed");
 
-  if (newPage === "channels") {
+  if (newPage === "protocol") {
+    feed.innerHTML = buildProtocolReferencePage();
+    setupProtocolReferenceEvents();
+  } else if (newPage === "channels") {
     feed.innerHTML = buildChannelsPage();
     setupChannelsPageEvents();
   } else if (newPage === "search" && searchRoute) {
@@ -552,6 +561,12 @@ export async function handleRoute() {
 
   updateNavSelection(newPage);
   window.scrollTo(0, 0);
+  if (newPage === "protocol") {
+    const section = new URLSearchParams(path.split("?")[1] || "").get("section");
+    if (getHiveNamespace(section)) {
+      document.getElementById("protocol-" + section)?.scrollIntoView({block:"start"});
+    }
+  }
 }
 
 function setupDiscoveryPageEvents() {
@@ -607,6 +622,10 @@ function getRouteData(path) {
   } else if (path === "/messages") {
     route.title = "Messages";
     route.newPage = "messages";
+  } else if (path === "/protocol" || path.startsWith("/protocol?")) {
+    route.title = "Protocol Reference";
+    route.postsToRender = [];
+    route.newPage = "protocol";
   } else if (path === "/channels") {
     route.title = "Communities";
     route.postsToRender = mainFeedPosts;
