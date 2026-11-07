@@ -15,7 +15,7 @@ const magnifier = `<svg width="19" height="19" viewBox="0 0 24 24" fill="none"
 const arrow = '<span aria-hidden="true">↗</span>';
 const pathForTag=tag=>`#/tag/${encodeURIComponent(tag)}`;
 const pathForChannel=id=>`#/channel/${encodeURIComponent(id)}`;
-const pathForPerson=name=>`#/search?q=${encodeURIComponent("@"+name)}`;
+const pathForPerson=name=>`#/user/${encodeURIComponent(safeHiveUsername(name))}`;
 const resultPath=query=>`#/search?q=${encodeURIComponent(query)}`;
 
 function communityCard(channel) {
