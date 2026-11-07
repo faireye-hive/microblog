@@ -173,7 +173,7 @@ export function buildSearchSuggestions(results) {
   };
   for(const entry of r.communities.slice(0,2)){
     const id=parseChannelCustomId(entry?.id);
-    if(id)push(entry.name||id,pathForChannel(id),"#","Community · #"+id);
+    if(id)push(typeof entry.name==="string"&&entry.name?entry.name:id,pathForChannel(id),"#","Community · #"+id);
   }
   for(const entry of r.topics.slice(0,2)){
     const tag=safeTag(entry.tag);
@@ -185,7 +185,8 @@ export function buildSearchSuggestions(results) {
   }
   for(const post of r.posts.slice(0,3)){
     if(!/^\d+$/.test(String(post.id)))continue;
-    const content=String(parseEmbeddedJson(post.json)?.content||"").replace(/\s+/g," ").trim();
+    const rawContent=parseEmbeddedJson(post.json)?.content;
+    const content=(typeof rawContent==="string"?rawContent:"").replace(/\s+/g," ").trim();
     const author=safeHiveUsername(post.required_posting_auths?.[0]);
     push(content.slice(0,80)||"Post by @"+author,`#/thread/${encodeURIComponent(post.id)}`,"↗","Post by @"+author);
   }
