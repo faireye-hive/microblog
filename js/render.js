@@ -2,6 +2,7 @@
 import { parseEmbeddedJson, escapeHtml, escapeAttr, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
 import { safeExternalUrl, safeHiveUsername, hiveAvatarUrl, safeTag } from "./security/safe-values.js";
 import { proxiedImageUrl } from "./security/media-url.js";
+import { cleanMediaText, renderSafePostText } from "./ui/composer-tools.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
 import { getPostById, getDirectReplies, countDirectReplies } from "./data/post-index.js";
 import { 
@@ -67,7 +68,7 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1, seen = new 
       const author = safeHiveUsername(r.required_posting_auths?.[0]);
       const rj = parseEmbeddedJson(r.json);
       const nestedHTML = buildRepliesRecursive(r.id, allPosts, depth + 1, seen);
-      const replyContentHtml = linkifyText(escapeHtml(typeof rj?.content === "string" ? rj.content : "")).replace(/\n/g, "<br>");
+      const replyContentHtml = renderSafePostText(cleanMediaText(typeof rj?.content === "string" ? rj.content : ""));
       return `
         <div class="reply-thread-item" data-depth="${Math.min(depth, 6)}">
           <div class="reply-heading">
@@ -104,7 +105,7 @@ export function buildThreadAbove(post, allPosts) {
   const originalContent = typeof pj?.content === "string" ? pj.content : "";
   const snippetText = originalContent.slice(0, maxSlice);
   const ellipsis = originalContent.length > maxSlice ? '...' : ''; 
-  const contentHtml = linkifyText(escapeHtml(snippetText)).replace(/\n/g, "<br>");
+  const contentHtml = renderSafePostText(snippetText);
   
   return `
     <div class="post-parent-context">
@@ -124,7 +125,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   const parsed = parseEmbeddedJson(p.json);
 
   const rawContent = typeof parsed?.content === "string" ? parsed.content : ""; 
-  let text = stripMarkdown(rawContent);
+  let text = cleanMediaText(rawContent);
   const imgs = extractImages(rawContent); 
 
   if (imgs.length === 1 && text.trim() === imgs[0]) {
@@ -179,10 +180,10 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   let bodyText = text;
   const lines = text.split("\n").filter(line => line.trim().length > 0);
   if (lines.length > 1 && lines[0].length < 80) {
-    headlineHtml = `<h4 class="post-headline">${escapeHtml(lines[0])}</h4>`;
+    headlineHtml = `<h4 class="post-headline">${renderSafePostText(lines[0])}</h4>`;
     bodyText = text.slice(text.indexOf(lines[0]) + lines[0].length).trimStart();
   }
-  const mainContentHtml = linkifyText(escapeHtml(bodyText)).replace(/\n/g, "<br>");
+  const mainContentHtml = renderSafePostText(bodyText);
 
   // Use verified link data only. No unrelated stock images or fabricated previews.
   let previewBoxHtml = "";
