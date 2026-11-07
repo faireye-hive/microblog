@@ -2,6 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <!-- GitHub Pages cannot set HTTP response headers; enforce CSP via HTML meta. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://rpc.mahdiyari.info; frame-src 'none'; worker-src 'none'; media-src 'self' https:; manifest-src 'self'; form-action 'self'" />
+    <!-- External media should not receive the current page URL in Referrer. -->
+    <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>micro.fair — Conversas na Hive</title>
     <meta name="description" content="Uma rede social descentralizada na blockchain Hive, com conversas, canais e autenticação via Hive Keychain." />
