@@ -15,7 +15,7 @@ export const TopNavHTML = `
           </svg>
         </div>
         <div class="brand-info">
-          <span class="brand-title">micro.feed</span>
+          <span class="brand-title">micro.fair</span>
           <span class="brand-subtitle">Hive • Share • Build</span>
         </div>
       </a>
