@@ -44,6 +44,7 @@ test("channel registry preserves distinct hive.micro and hivemicro IDs", () => {
     {
       timestamp: "2026-10-03T00:00:00",
       required_posting_auths: ["user1"],
+      custom_id:"hiveline.communities",
       json: JSON.stringify({ app:"hiveline",v:2,channel_id: "hive.micro", name: "Hive Micro Updated" }),
     },
     {
