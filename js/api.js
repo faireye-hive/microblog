@@ -29,6 +29,7 @@ import {
     buildUserActionPayload, buildChannelCreatePayload
 } from "./hive/protocol.js";
 import { hasHiveKeychain, requestHiveCustomJson } from "./hive/keychain.js";
+import { processMuteData } from "./hive/moderation.js";
 import { readPostCache, writePostCache, clearPostCaches } from "./data/post-cache.js";
 import { mergePostSnapshots } from "./data/post-merge.js";
 import { processChannelsData } from "./helpers/channels.js";
@@ -347,45 +348,6 @@ export function sendPost(content, replyTo = null, channelOverride = null) {
     } else {
         showNotification("❌ Hive Keychain não detectado!", false);
     }
-}
-
-function processMuteData(muteData) {
-    // Retorna um Map: Map<postId, {cause: string, admin: string}>
-    const finalMutes = new Map(); 
-
-    if (!Array.isArray(muteData)) return finalMutes;
-
-    muteData
-        // Ordena para que a última operação (mute/unmute) prevaleça
-        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-        .forEach((muteOp) => {
-            // A custom_json ID is not access control. Only the configured
-            // administrator's signed operations may modify the mute state.
-            const signers = [
-                ...(muteOp.required_posting_auths || []),
-                ...(muteOp.required_auths || [])
-            ];
-            if (!signers.includes(ADMIN)) return;
-            if (muteOp.custom_id && muteOp.custom_id !== ADMIN_PMUTE_CUSTOM_ID) return;
-
-            const muteJson = parseEmbeddedJson(muteOp.json);
-            const postId = muteJson?.content_id;
-            const type = muteJson?.type; // 'mute' ou 'unmute'
-            const cause = muteJson?.cause || 'Motivo não especificado'; // Pega o motivo
-            const admin = muteOp.required_posting_auths?.[0] || 'admin';
-            
-            if (!postId) return;
-
-            if (type === 'mute') {
-                // Armazena o objeto de mute, incluindo o motivo e quem mutou
-                finalMutes.set(postId, { cause: cause, admin: admin });
-            } else if (type === 'unmute') {
-                // Remove do mapa se for um 'unmute'
-                finalMutes.delete(postId);
-            }
-        });
-
-    return finalMutes;
 }
 
 /// Nova Logica
