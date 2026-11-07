@@ -108,17 +108,32 @@ function setupDropdownListeners() {
     const btnMenu = document.getElementById("btnMenu");
     
     if (btnMenu && menuDropdown) {
+        const setMenuOpen = (open) => {
+            menuDropdown.classList.toggle("hidden", !open);
+            btnMenu.setAttribute("aria-expanded", String(open));
+        };
         btnMenu.addEventListener("click", (e) => {
             e.stopPropagation();
-            menuDropdown.classList.toggle("hidden");
+            setMenuOpen(menuDropdown.classList.contains("hidden"));
+        });
+        btnMenu.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                btnMenu.click();
+            } else if (e.key === "Escape") {
+                setMenuOpen(false);
+            }
         });
         document.addEventListener("click", (e) => {
             if (
                 !e.target.closest("#btnMenu") &&
                 !e.target.closest("#userMenuDropdown")
             ) {
-                menuDropdown.classList.add("hidden");
+                setMenuOpen(false);
             }
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") setMenuOpen(false);
         });
     }
 }

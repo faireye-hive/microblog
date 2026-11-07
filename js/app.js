@@ -366,6 +366,9 @@ function setupComposerControls() {
   document.querySelectorAll(".composer-tools .tool-pill").forEach(pill => {
     pill.addEventListener("click", () => {
       const mode = pill.dataset.mode;
+      // Advanced actions remain available without keeping the menu open.
+      const advancedMenu = pill.closest(".composer-extra");
+      if (advancedMenu) advancedMenu.open = false;
       document.querySelectorAll(".composer-tools .tool-pill").forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
 
@@ -419,13 +422,13 @@ function setupFeedFilters() {
     sortBtn.addEventListener("click", () => {
       if (currentSort === "recent") {
         setCurrentSort("votes");
-        if (sortLabel) sortLabel.textContent = "Trending";
+        if (sortLabel) sortLabel.textContent = "Em alta";
       } else if (currentSort === "votes") {
         setCurrentSort("comments");
-        if (sortLabel) sortLabel.textContent = "Comments";
+        if (sortLabel) sortLabel.textContent = "Comentários";
       } else {
         setCurrentSort("recent");
-        if (sortLabel) sortLabel.textContent = "Recent";
+        if (sortLabel) sortLabel.textContent = "Recentes";
       }
     });
   }
@@ -460,6 +463,11 @@ function setupSidebarControls() {
       }
     });
   }
+
+  // The header notification icon must navigate instead of being decorative.
+  document.getElementById("btnNotificationsTop")?.addEventListener("click", () => {
+    window.location.hash = "#/notifications";
+  });
 
   // Refresh Tags
   document.getElementById("btnRefreshTags")?.addEventListener("click", updateTags);
@@ -551,26 +559,6 @@ function setupSidebarControls() {
     }
 
     sendCreateChannel(channelId, channelName, channelDesc);
-  });
-
-  // Quick Actions
-  document.querySelectorAll(".quick-action-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const action = item.dataset.action;
-      if (action === "new-post") {
-        const textarea = document.getElementById("newPostContent");
-        if (textarea) {
-          textarea.focus();
-          textarea.scrollIntoView({ behavior: "smooth" });
-        }
-      } else if (action === "new-channel") {
-        openChannelModal();
-      } else if (action === "custom-json") {
-        document.getElementById("customJsonModal")?.classList.remove("hidden");
-      } else if (action === "settings") {
-        window.location.hash = "#/profile";
-      }
-    });
   });
 
   // Custom JSON Modal Handlers
