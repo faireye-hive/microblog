@@ -70,6 +70,7 @@ test("channel API and routing reuse the canonical identifier helper", () => {
   assert.match(transport, /encodeURIComponent\(id\)/);
   assert.match(routes, /parseChannelCustomId\(channelId\)/);
   assert.match(routes, /\[a-z0-9\._-\]\+/);
-  assert.match(html, /hive\.micro/);
+  // A channel ID is user-defined; the UI must not depend on one example name.
+  assert.match(html, /id="newChannelId"/);
   assert.match(html, /maxlength="32"/);
 });
