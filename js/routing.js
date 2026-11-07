@@ -37,10 +37,6 @@ export function updateNavSelection(newPage) {
     document.getElementById("tabForYou")?.classList.add("active");
   } else if (newPage === "followed") {
     document.getElementById("tabFollowing")?.classList.add("active");
-  } else if (newPage === "channels") {
-    document.getElementById("tabChannels")?.classList.add("active");
-  } else if (newPage === "trending" || newPage === "explore") {
-    document.getElementById("tabExplore")?.classList.add("active");
   }
 
   // 2. Left Nav
@@ -62,6 +58,17 @@ export function updateNavSelection(newPage) {
   } else if (newPage === "custom-json") {
     document.getElementById("leftNavCustomJson")?.classList.add("active");
   }
+
+  // Retain secondary routes, but keep the sidebar uncluttered by default.
+  const moreMenu = document.getElementById("leftNavMoreMenu");
+  if (moreMenu && ["custom-json", "notifications", "messages"].includes(newPage)) {
+    moreMenu.open = true;
+  }
+
+  document.querySelectorAll(".top-nav-tab, .left-nav-group a.nav-item").forEach(el => {
+    if (el.classList.contains("active")) el.setAttribute("aria-current", "page");
+    else el.removeAttribute("aria-current");
+  });
 }
 
 export function showSinglePost(postId) {
