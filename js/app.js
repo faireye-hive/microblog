@@ -270,7 +270,7 @@ function setupFeedDelegation() {
       replyBox.innerHTML = `
         <div class="reply-compose-top">
           <span class="reply-compose-target">Write a reply</span>
-          <button type="button" class="reply-compose-close cancel-reply" aria-label="Close reply editor">×</button>
+          <button type="button" class="reply-compose-close cancel-reply" aria-label="Close reply editor">&times;</button>
         </div>
         <textarea class="reply-input-textarea" rows="3" maxlength="2048"
                   aria-label="Write a reply" placeholder="Share your thoughts on Hive..."></textarea>
