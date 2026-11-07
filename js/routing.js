@@ -191,11 +191,9 @@ export async function filterByChannel(channelId, pushHistory = false) {
   if (pageTitle) {
     pageTitle.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-        <span style="color: #e31337; font-weight: 800; font-size: 1.25rem;">#${cleanId}</span>
-        <span style="font-weight: 600; font-size: 1.05rem; color: var(--text);">${escapeHtml(channelObj.name || cleanId)}</span>
-        <span style="font-size: 0.72rem; font-weight: 700; background: rgba(227, 19, 55, 0.08); color: #e31337; padding: 2px 8px; border-radius: 6px;">
-          Custom JSON: ${cleanId}
-        </span>
+        <span class="channel-route-hash">#${escapeHtml(cleanId)}</span>
+        <span class="channel-route-name">${escapeHtml(channelObj.name || cleanId)}</span>
+        <span class="channel-route-tag">Custom JSON</span>
       </div>
     `;
   }
@@ -220,16 +218,10 @@ export async function filterByChannel(channelId, pushHistory = false) {
 
   if (currentPosts.length === 0) {
     feed.innerHTML = `
-      <div class="composer-card" style="padding: 2.5rem 1.5rem; text-align: center; color: var(--text-muted);">
-        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(227, 19, 55, 0.1); color: #e31337; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem auto; font-weight: 800;">
-          #
-        </div>
-        <h4 style="color: var(--text); font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem;">
-          Carregando canal #${cleanId}...
-        </h4>
-        <p style="font-size: 0.85rem; color: var(--text-faint); margin: 0;">
-          Sincronizando operações Custom JSON (<code>${cleanId}</code>) na blockchain Hive...
-        </p>
+      <div class="community-empty-state community-loading" role="status">
+        <span class="community-empty-icon" aria-hidden="true">#</span>
+        <h2>Carregando #${escapeHtml(cleanId)}</h2>
+        <p>Buscando as publicações deste canal na blockchain Hive.</p>
       </div>
     `;
   } else {
@@ -249,17 +241,11 @@ export async function filterByChannel(channelId, pushHistory = false) {
   if (activeChannel === cleanId) {
     if (finalPosts.length === 0) {
       feed.innerHTML = `
-        <div class="composer-card" style="padding: 3rem 1.5rem; text-align: center; color: var(--text-muted);">
-          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">💬</div>
-          <h4 style="color: var(--text); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">
-            Nenhum post publicado no canal #${cleanId} ainda
-          </h4>
-          <p style="font-size: 0.88rem; max-width: 480px; margin: 0 auto 1.25rem auto; line-height: 1.5; color: var(--text-muted);">
-            Todas as publicações enviadas aqui são registradas na Hive com o Custom JSON ID <code>${cleanId}</code>, mantendo o conteúdo isolado do canal principal.
-          </p>
-          <button id="btnFocusChannelComposer" class="btn-post" style="display: inline-flex;">
-            Publicar primeiro post em #${cleanId}
-          </button>
+        <div class="community-empty-state">
+          <span class="community-empty-icon" aria-hidden="true">#</span>
+          <h2>Comece uma conversa em #${escapeHtml(cleanId)}</h2>
+          <p>Ainda não existem publicações neste canal. Você pode fazer a primeira!</p>
+          <button id="btnFocusChannelComposer" type="button" class="btn-post">Criar primeira publicação</button>
         </div>
       `;
     } else {
@@ -331,7 +317,7 @@ export function setupChannelsPageEvents() {
       toggleJoinChannel(ch);
       const isJoined = joinedChannels.has(ch);
       btn.classList.toggle("joined", isJoined);
-      btn.textContent = isJoined ? "Joined" : "Join";
+      btn.textContent = isJoined ? "Participando" : "Participar";
     });
   });
 
