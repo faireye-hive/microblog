@@ -4,6 +4,7 @@ import { buildPostCard } from "./render.js";
 import { parseEmbeddedJson, extractImages, escapeHtml, escapeAttr } from "./utils.js";
 import { ADMIN } from "./config.js";
 import { onlyHiveLinePosts } from "./hive/content-scope.js";
+import { resolveCustomJsonId } from "./hive/registry.js";
 import { getChannelPostsCacheKey } from "./data/cache-keys.js";
 import { writePostCache } from "./data/post-cache.js";
 import { hideFeedSkeleton } from "./ui/feed-loading.js";
@@ -53,7 +54,7 @@ export function getChannelPosts(channelId) {
     return channelPostsMap.get(clean);
   }
   try {
-    const raw = localStorage.getItem(getChannelPostsCacheKey(clean));
+    const raw = localStorage.getItem(getChannelPostsCacheKey(resolveCustomJsonId("community-post",{channel:clean})));
     if (raw) {
       const arr = JSON.parse(raw);
       const scoped = onlyHiveLinePosts(arr,clean);
@@ -74,7 +75,7 @@ export function addChannelPostLocally(channelId, post) {
   }
   channelPostsMap.set(clean, list);
   // Non-blocking persistence; writes to the legacy key only when IDB fails.
-  void writePostCache(clean, list.slice(0, 1000));
+  void writePostCache(resolveCustomJsonId("community-post",{channel:clean}), list.slice(0, 1000));
 }
 
 export function setActiveChannel(channelId) {
