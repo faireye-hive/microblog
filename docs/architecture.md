@@ -13,6 +13,7 @@ O frontend continua **Vanilla JavaScript (ES Modules)**, compatível com GitHub 
 | Sincronização | `js/data/sync.js` | Busca paginada, cache auxiliar incremental e dados por usuário |
 | Cache de publicações | `js/data/post-cache.js` | IndexedDB com migração do `localStorage` e fallback |
 | Consolidação de posts | `js/data/post-merge.js` | Deduplicação de operações por ID e canal |
+| Índices de posts e respostas | `js/data/post-index.js` | Busca O(1) por ID e contagem de respostas |
 | Identidade de canais | `js/helpers/channel-id.js` | Validação sem transformar `hive.micro` em `hivemicro` |
 | Registro de canais | `js/helpers/channels.js` | Converte operações do registro em objetos de canal |
 | Orquestração antiga | `js/api.js` | Ainda coordena sync, cache e efeitos de UI; migração futura |
@@ -39,6 +40,7 @@ js/
     sync.js          # HAFSQL sync incremental e paginação
     post-cache.js    # IndexedDB do feed e canais
     post-merge.js    # merge de operações sem duplicação
+    post-index.js    # índices de posts, pais e respostas
   helpers/
     channel-id.js
     channels.js
@@ -89,3 +91,17 @@ Publicações públicas são persistidas em `micro-fair-posts`, versão 1, objec
 - Indexar posts/respostas no estado para reduzir buscas de O(n²) na renderização.
 - Migrar, se necessário, votos/mutes volumosos do localStorage para IndexedDB após testes de regressão.
 - Extrair `fetchData` do orquestrador, mantendo compatibilidade com as rotas.
+
+## Etapa 4 — Índices de posts e conversas
+
+O feed utiliza `getPostIndex(posts)` para construir, em uma única passagem, os mapas `byId`, `repliesByParent` e `replyCounts`. Os mapas são mantidos em um `WeakMap` por identidade da lista: consultas de cartão, ordenação por comentários e navegação de thread deixam de procurar por toda a lista repetidamente.
+
+O índice é recalculado caso a lista mude de tamanho ou troque a primeira/última referência. Se um módulo editar o conteúdo de um post *in place* sem mudar a lista, deve chamar `invalidatePostIndex(posts)`. Uma nova lista criada via `setAllPosts` cria outro índice, sem manter o anterior preso em memória.
+
+**Complexidade:** construir O(n); consultar ID, respostas diretas ou contagem de comentários O(1); renderizar uma thread O(k) para k respostas visitadas, sem precisar varrer todas as publicações por nível.
+
+Os comentários continuam sendo contados diretamente no feed; a ordenação de tendências, já baseada em respostas recursivas, permanece inalterada nesta etapa.
+
+Um detector de ciclos evita recursão infinita quando um `custom_json` malformado referencia outro em um ciclo. Os testes cobrem chaves texto/número, arrays alterados, cache, canais separados e ciclos.
+
+**Revisão manual recomendada:** contagem de respostas, ordenação do feed, abertura de thread e comentários após postagem.

@@ -1,6 +1,7 @@
 // /js/render.js
 import { parseEmbeddedJson, escapeHtml, stripMarkdown, extractImages, fmtDate, linkifyText } from "./utils.js";
 import { parseChannelCustomId } from "./helpers/channel-id.js";
+import { getPostById, getDirectReplies, countDirectReplies } from "./data/post-index.js";
 import { 
   loggedInUser, 
   mutedPostIds, 
@@ -14,11 +15,6 @@ import {
   toggleJoinChannel
 } from "./state.js";
 import { ADMIN } from "./config.js";
-
-// Helper local
-function findPost(postId, allPosts) {
-  return allPosts.find((p) => p.id == postId);
-}
 
 function extractFirstUrl(text) {
   const match = text.match(/https?:\/\/[^\s<>"')]+/i);
@@ -56,16 +52,18 @@ function buildUserPopover(author, isBlocked) {
   `;
 }
 
-export function buildRepliesRecursive(parentId, allPosts, depth = 1) {
-  const replies = allPosts.filter(
-    (r) => parseEmbeddedJson(r.json)?.reply_to == parentId
-  );
+export function buildRepliesRecursive(parentId, allPosts, depth = 1, seen = new Set()) {
+  // A malformed custom_json can point back to itself; never recurse in cycles.
+  const key = String(parentId);
+  if (seen.has(key)) return "";
+  const replies = getDirectReplies(allPosts, parentId);
   if (replies.length === 0) return "";
-  return replies
+  seen.add(key);
+  const html = replies
     .map((r) => {
       const author = r.required_posting_auths?.[0] || "user";
       const rj = parseEmbeddedJson(r.json);
-      const nestedHTML = buildRepliesRecursive(r.id, allPosts, depth + 1);
+      const nestedHTML = buildRepliesRecursive(r.id, allPosts, depth + 1, seen);
       const replyContentHtml = linkifyText(escapeHtml(rj.content || "")).replace(/\n/g, "<br>");
       return `
         <div class="reply-thread-item" data-depth="${depth}">
@@ -83,12 +81,14 @@ export function buildRepliesRecursive(parentId, allPosts, depth = 1) {
         </div>`;
     })
     .join("");
+  seen.delete(key);
+  return html;
 }
 
 export function buildThreadAbove(post, allPosts) {
   const parsed = parseEmbeddedJson(post.json);
   if (!parsed?.reply_to) return ""; 
-  const parent = findPost(parsed.reply_to, allPosts);
+  const parent = getPostById(allPosts, parsed.reply_to);
   if (!parent) return ""; 
   const pj = parseEmbeddedJson(parent.json);
   const author = parent.required_posting_auths?.[0] || "user";
@@ -129,9 +129,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   // URL para preview card
   const firstUrl = extractFirstUrl(rawContent);
 
-  const replies = allPosts.filter(
-    (r) => parseEmbeddedJson(r.json)?.reply_to == p.id
-  );
+  const replyCount = countDirectReplies(allPosts, p.id);
 
   const votes = voteCounts[p.id] || { upvote: 0, downvote: 0 };
   const upvoteCount = votes.upvote;
@@ -287,7 +285,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
           </svg>
-          <span>${replies.length}</span>
+          <span>${replyCount}</span>
         </button>
 
         <!-- Bookmark -->
