@@ -9,7 +9,7 @@ test("English is the document language and international SEO copy is consistent"
     assert.match(read(file), /<html lang="en">/, file);
   }
   const html=read("index.html");
-  assert.match(html, /micro\.fair — The Hive conversation/);
+  assert.match(html, /HiveLine — Conversations on Hive/);
   assert.match(html, /Skip to content/);
   assert.match(html, /aria-label="Mobile navigation"/);
   assert.match(html, /data-mobile-section="channels" href="#\/channels" aria-label="Communities"/);
@@ -49,7 +49,7 @@ test("internationalized templates keep complete navigation, composer and dialogs
   assert.match(RightSidebarHTML,/>Trending</);
   assert.match(LoginModalHTML,/>Join the conversation</);
   assert.match(LoginModalHTML,/never ask for your private keys/);
-  assert.match(LogoutModalHTML,/Sign out of Micro\.fair/);
+  assert.match(LogoutModalHTML,/Sign out of HiveLine/);
   assert.match(CreateChannelModalHTML,/Create a community/);
   assert.match(CustomJsonModalHTML,/Broadcast operation/);
 });
