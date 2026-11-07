@@ -145,12 +145,13 @@ test("v2 namespace planning is disabled by default and cannot alter legacy mappi
   assert.equal(plan.enabled,false);
   assert.deepEqual(plan.ids,{
     posts:"hivora.posts",votes:"hivora.votes",moderation:"hivora.moderation",
-    communities:"hivora.communities",relationships:"hivora.relationships"
+    communities:"hivora.communities",relationships:"hivora.relationships",
+    communityPosts:"hivora.c.{channel}"
   });
-  assert.equal(plan.legacy.posts,HIVE_CUSTOM_JSON_IDS.POSTS);
-  assert.equal(plan.legacy.votes,HIVE_CUSTOM_JSON_IDS.VOTES);
+  assert.equal(plan.legacy.posts,"micro.fair");
+  assert.equal(plan.legacy.votes,"micro.fair.interation");
   assert.equal(plan.legacy.communityPosts,"{channel}");
-  assert.ok(plan.decisionsRequired.some(x=>x.includes("dual-read")));
+  assert.ok(plan.decisionsRequired.some(x=>x.includes("historic data")));
   assert.equal(proposeHiveV2Namespaces("hive").ids,null);
   assert.ok(proposeHiveV2Namespaces("Bad Brand!!").errors.length>0);
   assert.ok(proposeHiveV2Namespaces("a".repeat(19)).errors.length>0);
