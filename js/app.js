@@ -103,7 +103,7 @@ function showMuteReasonModal(contentId) {
             Cancel
           </button>
           <button id="confirmMute" class="btn-post">
-            Mutar
+            Mute
           </button>
         </div>
       </div>
