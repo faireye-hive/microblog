@@ -104,7 +104,7 @@ export function buildThreadAbove(post, allPosts) {
   return `
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.65rem; font-size: 0.85rem;">
       <span class="view-thread" data-id="${escapeAttr(parent.id)}" style="font-weight: 700; color: #0284c7; cursor: pointer;">
-        ↳ Em resposta a @${escapeHtml(author)}
+        ↳ Replying to @${escapeHtml(author)}
       </span>: 
       <span style="color: var(--text-muted);">${contentHtml}${ellipsis}</span>
     </div>`;
@@ -153,8 +153,8 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
   if (isMuted) {
     muteBannerHTML = `
       <div style="margin: 0.5rem 0; padding: 0.75rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; font-size: 0.85rem; color: #b91c1c;">
-        <strong>🚨 Post Mutado</strong> 
-        <span style="color: #64748b;">(por @${muteAdmin})</span>:
+        <strong>Post muted</strong> 
+        <span style="color: #64748b;">(by @${muteAdmin})</span>:
         <p style="margin: 0.25rem 0 0; font-weight: 600;">${muteCause}</p>
       </div>
     `;
@@ -236,7 +236,7 @@ export function buildPostCard(p, allPosts, voteCounts = {}, mutedPostMap = new M
         <div class="post-author-row">
           <span class="post-author-name author-name" data-author="${escapeAttr(author)}">@${escapeHtml(author)}</span>
           <span class="post-timestamp">• ${fmtDate(p.timestamp)}</span>
-          ${isMuted ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 700; margin-left: 0.25rem;">(Mutado)</span>' : ''}
+          ${isMuted ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 700; margin-left: 0.25rem;">(Muted)</span>' : ''}
           ${buildUserPopover(author, isBlocked)}
         </div>
 
