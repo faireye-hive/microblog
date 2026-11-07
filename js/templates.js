@@ -252,8 +252,61 @@ export const ComposerHTML = `
     </div>
   </div>
 
-  <div class="composer-textarea-wrap">
-    <textarea id="newPostContent" class="composer-textarea" rows="3" placeholder="What's on your mind?"></textarea>
+  <div class="composer-writing-surface">
+    <div class="composer-view-tabs" role="tablist" aria-label="Post editor view">
+      <button type="button" id="composerWriteTab" class="composer-view-tab active"
+              role="tab" aria-controls="composerWritePane" aria-selected="true">Write</button>
+      <button type="button" id="composerPreviewTab" class="composer-view-tab"
+              role="tab" aria-controls="composerPreviewPane" aria-selected="false">Preview</button>
+      <span class="composer-view-hint">Markdown supported</span>
+    </div>
+    <section id="composerWritePane" role="tabpanel" aria-labelledby="composerWriteTab">
+      <div class="composer-format-toolbar" role="toolbar" aria-label="Format your post">
+        <button type="button" data-format="bold" class="composer-format-btn"
+                title="Bold (Ctrl+B)" aria-label="Bold selected text"><strong>B</strong></button>
+        <button type="button" data-format="italic" class="composer-format-btn"
+                title="Italic (Ctrl+I)" aria-label="Italic selected text"><em>I</em></button>
+        <button type="button" data-format="code" class="composer-format-btn"
+                title="Inline code" aria-label="Format selected text as code">&lt;/&gt;</button>
+        <span class="composer-format-divider" aria-hidden="true"></span>
+        <span class="composer-format-help">Use #topics and @mentions to connect.</span>
+      </div>
+      <div class="composer-textarea-wrap">
+        <label class="visually-hidden" for="newPostContent">Write your post</label>
+        <textarea id="newPostContent" class="composer-textarea" rows="4" maxlength="2048"
+                  aria-describedby="charCount" spellcheck="true"
+                  placeholder="What's on your mind?"></textarea>
+      </div>
+      <div id="composerMediaTray" class="composer-media-tray hidden" aria-label="Attached images"></div>
+    </section>
+    <section id="composerPreviewPane" class="composer-preview-pane hidden"
+             role="tabpanel" aria-labelledby="composerPreviewTab">
+      <div id="composerPreviewContent" aria-live="off"></div>
+    </section>
+  </div>
+
+  <div id="composerAttachmentPanel" class="composer-asset-panel hidden">
+    <div class="composer-asset-panel-top">
+      <div>
+        <span class="composer-asset-eyebrow">ATTACH BY URL</span>
+        <h4 id="composerAssetTitle">Add image</h4>
+      </div>
+      <button id="composerAssetClose" type="button" class="composer-asset-close"
+              aria-label="Close attachment form">&times;</button>
+    </div>
+    <form id="composerAssetForm" class="composer-asset-form" novalidate>
+      <label for="composerAssetUrl">Public HTTPS or HTTP URL</label>
+      <input id="composerAssetUrl" type="url" inputmode="url" maxlength="4096"
+             placeholder="https://example.com/image.jpg" autocomplete="off" required>
+      <label for="composerAssetLabel" id="composerAssetLabelCaption">Description (optional)</label>
+      <input id="composerAssetLabel" type="text" maxlength="60"
+             placeholder="Describe the attachment" autocomplete="off">
+      <p id="composerAssetHelp">Images must already be hosted online. No file is uploaded from your device.</p>
+      <div class="composer-asset-actions">
+        <button id="composerAssetCancel" type="button" class="btn-outline-small">Cancel</button>
+        <button type="submit" class="btn-post">Insert into post</button>
+      </div>
+    </form>
   </div>
 
   <div class="composer-bottom">
@@ -314,7 +367,7 @@ export const ComposerHTML = `
     </div>
 
     <div class="composer-actions-right">
-      <span id="charCount" class="char-counter">0 / 2048</span>
+      <span id="charCount" class="char-counter" role="status" aria-live="polite">0 / 2048</span>
       <button id="btnPost" class="btn-post">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
