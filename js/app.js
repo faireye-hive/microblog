@@ -808,10 +808,12 @@ function setupSidebarControls() {
 
   // Custom JSON Modal Handlers
   const customModal = document.getElementById("customJsonModal");
+  document.getElementById("customJsonProtocolLink")?.addEventListener("click", () => customModal?.classList.add("hidden"));
   document.getElementById("closeCustomJsonModal")?.addEventListener("click", () => customModal?.classList.add("hidden"));
   document.getElementById("cancelCustomJson")?.addEventListener("click", () => customModal?.classList.add("hidden"));
   document.getElementById("submitCustomJson")?.addEventListener("click", () => {
-    const customId = document.getElementById("customJsonId")?.value.trim() || "microblog_v1";
+    const customId = document.getElementById("customJsonId")?.value.trim() || "";
+    if (!customId) return showNotification("Choose a custom_json operation ID first.", false);
     const payload = document.getElementById("customJsonPayload")?.value.trim();
     if (!payload) return showNotification("⚠️ Enter a JSON payload!", false);
     if (!hasHiveKeychain()) return showNotification("❌ Hive Keychain was not detected!", false);
