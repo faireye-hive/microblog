@@ -143,7 +143,10 @@ export function filterByTag(tag, pushHistory = true) {
     return;
   }
 
-  const filteredPosts = allPosts.filter((p) => {
+  const isAdmin = loggedInUser === ADMIN;
+  const pool = discoveryPostPool(allPosts, [...channelPostsMap.values()].flat(),
+    isAdmin ? new Set() : blockedUsers, isAdmin ? new Map() : mutedPostIds);
+  const filteredPosts = pool.filter((p) => {
     const js = parseEmbeddedJson(p.json);
     const tags = js?.tags || [];
     const text = js?.content || "";
@@ -152,11 +155,7 @@ export function filterByTag(tag, pushHistory = true) {
     return allT.includes(tag.toLowerCase());
   });
   
-  let finalPosts = filteredPosts;
-  const isAdmin = loggedInUser === ADMIN;
-  if (!isAdmin) {
-    finalPosts = filteredPosts.filter(p => !mutedPostIds.has(p.id));
-  }
+  const finalPosts = filteredPosts;
 
   const feedHeaderBar = document.getElementById("feedHeaderBar");
   if (feedHeaderBar) feedHeaderBar.classList.remove("hidden");
@@ -168,7 +167,7 @@ export function filterByTag(tag, pushHistory = true) {
   }
   document.getElementById("newPostSection")?.classList.remove("hidden");
 
-  renderFeed(finalPosts);
+  renderFeed(finalPosts, pool);
   updateNavSelection("tag");
   window.scrollTo(0, 0);
 }
