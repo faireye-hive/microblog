@@ -247,13 +247,17 @@ function setupFeedDelegation() {
     const replyBtn = e.target.closest(".reply-btn");
     if (replyBtn) {
       const id = replyBtn.dataset.id;
-      const card = replyBtn.closest(".post-card");
+      // Full conversation replies live in a sibling panel of the root post.
+      const card = replyBtn.closest(".post-card") ||
+        (replyBtn.closest(".conversation-panel") ? feed.querySelector(".post-card") : null);
       if (!card) return;
-      const existing = card.querySelector(".reply-input-box");
+      const existing = currentPage === "thread"
+        ? feed.querySelector(".reply-input-box")
+        : card.querySelector(".reply-input-box");
       if (existing) {
         const sameTarget = existing.dataset.replyId === String(id);
         existing.remove();
-        card.querySelectorAll(".reply-btn[aria-expanded]").
+        feed.querySelectorAll('.reply-btn[aria-expanded="true"]').
           forEach(button => button.setAttribute("aria-expanded", "false"));
         if (sameTarget) return;
       }
