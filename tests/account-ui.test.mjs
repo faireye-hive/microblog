@@ -30,7 +30,7 @@ test("Keychain login dialog has associated fields, status cues and no unsafe scr
     /<label[^>]*for="loginUsername"/, /id="loginUsername"/,
     /autocomplete="username"/, /aria-describedby="authUsernameHint"/,
     /id="confirmLogin" type="submit"/, /id="cancelLoginModal"/,
-    /id="closeLoginModal"/, /Não solicitamos suas chaves/,
+    /id="closeLoginModal"/, /We never ask for your private keys/,
   ]) assert.match(LoginModalHTML, pattern);
   assert.doesNotMatch(LoginModalHTML, /\son(?:click|load|error)=/i);
   assert.match(securityHtml, /script-src 'self'/);
@@ -118,7 +118,7 @@ test("logged-out header opens login directly; signed login updates img.src and c
     setAuthCallbacks(user=>{loggedIn=user;},()=>{});
     setupAuthListeners();
     assert.equal(elements.btnMenu.dataset.authenticated,"false");
-    assert.equal(elements.accountTriggerLabel.textContent,"Entrar");
+    assert.equal(elements.accountTriggerLabel.textContent,"Sign in");
     assert.ok(elements.menuLogout.classList.contains("hidden"));
     assert.ok(elements.navUserAvatar.classList.contains("hidden"));
     elements.btnMenu.click();
