@@ -14,7 +14,7 @@ export function processChannelsData(channelsData) {
     );
 
     sorted.forEach((op) => {
-      if (op.custom_id && op.custom_id !== CHANNELS_CUSTOM_ID) return;
+      if (op.custom_id !== CHANNELS_CUSTOM_ID) return;
       const creator = safeHiveUsername(
         op.required_posting_auths?.[0] || op.required_auths?.[0]
       );
