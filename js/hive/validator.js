@@ -70,6 +70,7 @@ export function validateCustomJsonOperation(draft = {}) {
   const rawSigner=typeof draft.signer==="string"?draft.signer:"";
   const signer=safeHiveUsername(rawSigner);
   let payload=null;
+  let parsed=false;
   let actionKey=null;
   let recognized=false;
   let requiresAcknowledgement=false;
@@ -87,11 +88,12 @@ export function validateCustomJsonOperation(draft = {}) {
     else if(new TextEncoder().encode(raw).length>MAX_VALIDATOR_JSON_BYTES)
       push(errors,"json","The JSON payload exceeds the validator's 64 KiB safety limit.");
     else {
-      try {payload=JSON.parse(raw);}
+      try {payload=JSON.parse(raw);parsed=true;}
       catch {push(errors,"json","The JSON is not valid. Check commas, quotation marks and brackets.");}
     }
   } else if(draft.json && typeof draft.json==="object") {
     payload=draft.json;
+    parsed=true;
     try {
       if(new TextEncoder().encode(JSON.stringify(payload)).length>MAX_VALIDATOR_JSON_BYTES)
         push(errors,"json","The JSON payload exceeds the validator's 64 KiB safety limit.");
@@ -100,7 +102,7 @@ export function validateCustomJsonOperation(draft = {}) {
     push(errors,"json","Enter a JSON object before broadcasting.");
   }
 
-  if(payload !== null && (Array.isArray(payload)||typeof payload!=="object"||!payload)) {
+  if(parsed && (Array.isArray(payload)||typeof payload!=="object"||!payload)) {
     push(errors,"json","The payload must be a JSON object, not an array or primitive.");
     payload=null;
   }
