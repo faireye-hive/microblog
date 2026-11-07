@@ -231,15 +231,6 @@ export function setupProtocolReferenceEvents(root = document) {
     });
   });
 
-  root.querySelectorAll("[data-protocol-jump]").forEach(link=>{
-    link.addEventListener("click",event=>{
-      event.preventDefault();
-      const key=link.dataset.protocolJump;
-      const section=root.getElementById("protocol-"+key);
-      if(!section)return;
-      input.value="";
-      filter();
-      section.scrollIntoView({behavior:"auto",block:"start"});
-    });
-  });
+  // Quick links use real #/protocol?section=... URLs for shareable deep links.
+  // The router renders the target and scrolls to it after navigation.
 }
