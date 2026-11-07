@@ -105,6 +105,7 @@ function processUserTargetOps(opData) {
 
     relevantOps.forEach(op => {
         const json = parseEmbeddedJson(op.json);
+        if (!json || typeof json !== "object") return;
         const type = json.type;
 
         if (json.target_user) {
@@ -358,6 +359,15 @@ function processMuteData(muteData) {
         // Ordena para que a última operação (mute/unmute) prevaleça
         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
         .forEach((muteOp) => {
+            // A custom_json ID is not access control. Only the configured
+            // administrator's signed operations may modify the mute state.
+            const signers = [
+                ...(muteOp.required_posting_auths || []),
+                ...(muteOp.required_auths || [])
+            ];
+            if (!signers.includes(ADMIN)) return;
+            if (muteOp.custom_id && muteOp.custom_id !== ADMIN_PMUTE_CUSTOM_ID) return;
+
             const muteJson = parseEmbeddedJson(muteOp.json);
             const postId = muteJson?.content_id;
             const type = muteJson?.type; // 'mute' ou 'unmute'
